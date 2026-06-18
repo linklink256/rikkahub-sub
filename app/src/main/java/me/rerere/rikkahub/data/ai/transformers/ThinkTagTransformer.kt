@@ -27,7 +27,7 @@ object ThinkTagTransformer : OutputMessageTransformer {
             if (message.role == MessageRole.ASSISTANT && message.hasPart<UIMessagePart.Text>()) {
                 message.copy(
                     parts = message.parts.flatMap { part ->
-                        transformPart(part, message, finishedAt = null)
+                        if (part is UIMessagePart.Text) transformPart(part, message, finishedAt = null) else listOf(part)
                     }
                 )
             } else {
@@ -45,7 +45,7 @@ object ThinkTagTransformer : OutputMessageTransformer {
             if (message.role == MessageRole.ASSISTANT && message.hasPart<UIMessagePart.Text>()) {
                 message.copy(
                     parts = message.parts.flatMap { part ->
-                        transformPart(part, message, finishedAt = now)
+                        if (part is UIMessagePart.Text) transformPart(part, message, finishedAt = now) else listOf(part)
                     }
                 )
             } else {
