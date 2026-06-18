@@ -51,6 +51,8 @@ data class Assistant(
     val enableSubagents: Boolean = true,               // 是否启用子代理委派能力（默认开启）
     val subagentMaxDepth: Int = 2,                     // 子代理最大嵌套深度
     val subagentProfiles: List<SubagentProfile> = emptyList(), // 自定义子代理配置档（与内置合并）
+    /** 被显式禁用的内置子代理 profile 名（实现「完全删除内置子代理」；删除内置名时加入此集合）。 */
+    val disabledBuiltinSubagents: Set<String> = emptySet(),
     /**
      * 纯决策模式：启用子代理后，主代理只负责拆解任务 / 委派 / 综合结果，
      * 不再直接持有执行类工具（搜索 / workspace / 本地 / skills / mcp），

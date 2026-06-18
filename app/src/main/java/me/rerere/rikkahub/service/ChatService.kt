@@ -69,6 +69,8 @@ import me.rerere.rikkahub.data.ai.subagent.SubagentResult
 import me.rerere.rikkahub.data.ai.subagent.SubagentTranscriptStep
 import me.rerere.rikkahub.data.ai.subagent.createSubagentTools
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
+import me.rerere.rikkahub.data.ai.subagent.removeSubagentProfile
+import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import me.rerere.rikkahub.data.ai.tools.LocalTools
 import me.rerere.rikkahub.data.ai.tools.createSearchTools
@@ -755,7 +757,7 @@ class ChatService(
         includeBase: Boolean,
         @Suppress("UNUSED_PARAMETER") conversationId: Uuid? = null,
     ): List<Tool> {
-        val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
+        val profiles = mergeSubagentProfiles(assistant.subagentProfiles, assistant.disabledBuiltinSubagents)
         if (profiles.isEmpty()) return emptyList()
 
         val result = mutableListOf<Tool>()
@@ -843,6 +845,11 @@ class ChatService(
                     )
                     if (r.succeeded) r.summary else "(side agent failed: ${r.error})"
                 },
+                // manage_subagent_profile 回调：仅根代理（depth==0）注入，让主代理自主增删改
+                // 子代理配置并持久化到当前 assistant。修改后立即生效（下一轮 spawn 可用）。
+                manage = if (depth == 0) { action, name, profile ->
+                    manageSubagentProfile(assistant.id, action, name, profile)
+                } else null,
             )
         }
 
@@ -898,6 +905,90 @@ class ChatService(
     }
 
     // ---- 检查无效消息 ----
+
+    /**
+     * 主代理通过 manage_subagent_profile 工具增删改子代理配置的实际处理。
+     * 修改持久化到 [settingsStore] 中对应 assistant，并立即生效。
+     *
+     * - list：返回当前全部可用子代理 profile 概览。
+     * - create/update：upsert [profile] 到 assistant.subagentProfiles（内置同名会被覆盖）。
+     * - delete：内置 profile → 加入 disabledBuiltinSubagents（完全禁用）；自定义 → 从列表移除。
+     *
+     * @param assistantId 当前对话所用 assistant 的 id
+     */
+    private suspend fun manageSubagentProfile(
+        assistantId: Uuid,
+        action: String,
+        name: String,
+        profile: SubagentProfile?,
+    ): String {
+        val current = settingsStore.settingsFlow.first()
+        val target = current.assistants.firstOrNull { it.id == assistantId }
+            ?: return "Error: assistant not found"
+        val merged = mergeSubagentProfiles(target.subagentProfiles, target.disabledBuiltinSubagents)
+        return when (action) {
+            "list" -> {
+                if (merged.isEmpty()) {
+                    "No subagent profiles available."
+                } else {
+                    "Available subagent profiles (${merged.size}):\n" + merged.joinToString("\n") { p ->
+                        val tools = if (p.inheritTools) "inherit all" else {
+                            listOfNotNull(
+                                p.localTools.takeIf { it.isNotEmpty() }?.joinToString(",") { it.toToolName() },
+                                p.enabledSkills.takeIf { it.isNotEmpty() }?.let { "skills:${it.size}" },
+                                p.mcpServerIds.takeIf { it.isNotEmpty() }?.let { "mcp:${it.size}" },
+                            ).joinToString(" | ").ifBlank { "no tools" }
+                        }
+                        "- ${p.name}: ${p.description.ifBlank { "(no description)" }} [tools: $tools]"
+                    }
+                }
+            }
+            "create", "update" -> {
+                val p = profile ?: return "Error: profile data missing"
+                settingsStore.update { settings ->
+                    settings.copy(
+                        assistants = settings.assistants.map { a ->
+                            if (a.id == assistantId) {
+                                a.copy(subagentProfiles = upsertSubagentProfile(a.subagentProfiles, p))
+                            } else a
+                        }
+                    )
+                }
+                "$action: subagent profile '${p.name}' saved. It is now available for spawn_subagent."
+            }
+            "delete" -> {
+                if (name.isBlank()) return "Error: name required for delete"
+                val isBuiltin = SubagentProfile.BUILTIN.any { it.name == name }
+                settingsStore.update { settings ->
+                    settings.copy(
+                        assistants = settings.assistants.map { a ->
+                            if (a.id == assistantId) {
+                                a.copy(
+                                    subagentProfiles = removeSubagentProfile(a.subagentProfiles, name),
+                                    disabledBuiltinSubagents = if (isBuiltin) {
+                                        a.disabledBuiltinSubagents + name
+                                    } else a.disabledBuiltinSubagents,
+                                )
+                            } else a
+                        }
+                    )
+                }
+                "delete: subagent profile '$name' removed." +
+                    if (isBuiltin) " (built-in profile disabled)" else ""
+            }
+            else -> "Error: unknown action '$action'"
+        }
+    }
+
+    /** LocalToolOption -> 工具参数用的字符串名（与 toLocalToolOption 对应）。 */
+    private fun LocalToolOption.toToolName(): String = when (this) {
+        is LocalToolOption.JavascriptEngine -> "javascript_engine"
+        is LocalToolOption.TimeInfo -> "time_info"
+        is LocalToolOption.Clipboard -> "clipboard"
+        is LocalToolOption.Tts -> "tts"
+        is LocalToolOption.AskUser -> "ask_user"
+        is LocalToolOption.AskBtw -> "ask_btw"
+    }
 
     /**
      * 实时更新对话中 spawn_subagent 工具的 output，使 UI 能流式展示子代理的进度。
