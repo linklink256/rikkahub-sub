@@ -2,6 +2,7 @@ package me.rerere.ai.provider.providers.openai
 
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -174,44 +175,50 @@ class ChatCompletionsAPI(
                     .trim()
                     .split("\n")
                     .filter { it.isNotBlank() }
-                    .map { json.parseToJsonElement(it).jsonObject }
-                    .forEach {
-                        if (it["error"] != null) {
-                            val error = it["error"]!!.parseErrorDetail()
-                            throw error
-                        }
-                        val id = it["id"]?.jsonPrimitive?.contentOrNull ?: ""
-                        val model = it["model"]?.jsonPrimitive?.contentOrNull ?: ""
-
-                        val choices = it["choices"]?.jsonArray ?: JsonArray(emptyList())
-                        val choiceList = buildList {
-                            if (choices.isNotEmpty()) {
-                                val choice = choices[0].jsonObject
-                                val message =
-                                    choice["delta"]?.jsonObject ?: choice["message"]?.jsonObject
-                                    ?: throw Exception("delta/message is null")
-                                val finishReason =
-                                    choice["finish_reason"]?.jsonPrimitive?.contentOrNull
-                                        ?: "unknown"
-                                add(
-                                    UIMessageChoice(
-                                        index = 0,
-                                        delta = parseMessage(message),
-                                        message = null,
-                                        finishReason = finishReason,
-                                    )
-                                )
+                    .forEach { line ->
+                        try {
+                            val obj = json.parseToJsonElement(line).jsonObject
+                            if (obj["error"] != null) {
+                                val error = obj["error"]!!.parseErrorDetail()
+                                throw error
                             }
+                            val chunkId = obj["id"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val model = obj["model"]?.jsonPrimitive?.contentOrNull ?: ""
+                            val choices = obj["choices"]?.jsonArray ?: JsonArray(emptyList())
+                            val choiceList = buildList {
+                                if (choices.isNotEmpty()) {
+                                    val choice = choices[0].jsonObject
+                                    val message =
+                                        choice["delta"]?.jsonObject ?: choice["message"]?.jsonObject
+                                        ?: throw Exception("delta/message is null")
+                                    val finishReason =
+                                        choice["finish_reason"]?.jsonPrimitive?.contentOrNull
+                                            ?: "unknown"
+                                    add(
+                                        UIMessageChoice(
+                                            index = 0,
+                                            delta = parseMessage(message),
+                                            message = null,
+                                            finishReason = finishReason,
+                                        )
+                                    )
+                                }
+                            }
+                            val usage = parseTokenUsage(obj["usage"] as? JsonObject)
+                            trySend(
+                                MessageChunk(
+                                    id = chunkId,
+                                    model = model,
+                                    choices = choiceList,
+                                    usage = usage
+                                )
+                            )
+                        } catch (e: Throwable) {
+                            if (e is CancellationException) throw e
+                            // SSE 流中收到非 JSON 行（服务端可能返回 HTML / 错误信息）
+                            Log.w(TAG, "onEvent: failed to parse SSE line: $line", e)
+                            throw parseErrorBody(line, e)
                         }
-                        val usage = parseTokenUsage(it["usage"] as? JsonObject)
-
-                        val messageChunk = MessageChunk(
-                            id = id,
-                            model = model,
-                            choices = choiceList,
-                            usage = usage
-                        )
-                        trySend(messageChunk)
                     }
             }
 

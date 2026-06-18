@@ -1,6 +1,7 @@
 package me.rerere.ai.provider.providers.openai
 
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
@@ -145,13 +146,19 @@ class ResponseAPI(
                     return
                 }
                 Log.d(TAG, "onEvent: $id/$type $data")
-                val json = json.parseToJsonElement(data).jsonObject
-                val chunk = parseResponseDelta(json)
-                if (chunk != null) {
-                    trySend(chunk)
-                }
-                if (type == "response.completed") {
-                    close()
+                try {
+                    val json = json.parseToJsonElement(data).jsonObject
+                    val chunk = parseResponseDelta(json)
+                    if (chunk != null) {
+                        trySend(chunk)
+                    }
+                    if (type == "response.completed") {
+                        close()
+                    }
+                } catch (e: Throwable) {
+                    if (e is CancellationException) throw e
+                    Log.w(TAG, "onEvent: failed to parse SSE data: $data", e)
+                    throw parseErrorBody(data, e)
                 }
             }
 

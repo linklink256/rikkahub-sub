@@ -2,6 +2,7 @@ package me.rerere.ai.provider.providers
 
 import android.content.Context
 import android.util.Log
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -299,8 +300,9 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
 
                     trySend(messageChunk)
                 } catch (e: Exception) {
-                    e.printStackTrace()
-                    println("[onEvent] 解析错误: $data")
+                    if (e is CancellationException) throw e
+                    Log.w(TAG, "onEvent: failed to parse SSE data: $data", e)
+                    close(parseErrorBody(data, e))
                 }
             }
 
