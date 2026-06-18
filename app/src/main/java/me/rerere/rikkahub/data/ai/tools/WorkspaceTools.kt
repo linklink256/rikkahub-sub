@@ -53,6 +53,25 @@ suspend fun createWorkspaceTools(
     )
 }
 
+/** 只读 workspace 工具集（read_file / shell），用于纯决策模式下保留主代理的读取能力 */
+suspend fun createWorkspaceReadOnlyTools(
+    workspaceId: String?,
+    workspaceRepository: WorkspaceRepository,
+    cwd: String? = null,
+): List<Tool> {
+    if (workspaceId.isNullOrBlank()) return emptyList()
+    val approvalOverrides = workspaceRepository.getById(workspaceId)?.toolApprovalOverrides().orEmpty()
+    fun needsApproval(name: String) = resolveWorkspaceToolApproval(name, approvalOverrides)
+
+    val shellCwd = cwd?.removePrefix("/workspace/")?.removePrefix("/workspace")
+
+    return listOf(
+        createReadFileTool(workspaceId, ::needsApproval, workspaceRepository),
+        // shell 也保留（只读导向：模型可以用 cat/ls/grep 等），但纯决策模式提示词会引导只读使用
+        createShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
+    )
+}
+
 private val IMAGE_EXTENSIONS = setOf("png", "jpg", "jpeg", "gif", "webp", "bmp", "svg")
 
 private fun String.isImagePath(): Boolean =

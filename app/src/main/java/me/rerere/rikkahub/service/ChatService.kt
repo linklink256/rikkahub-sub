@@ -579,30 +579,36 @@ class ChatService(
                 outputTransformers = outputTransformers,
                 tools = buildList {
                     val delegateOnly = assistant.enableSubagents && assistant.subagentDelegateOnly
-                    if (settings.enableWebSearch && !delegateOnly) {
-                        addAll(createSearchTools(settings))
-                    }
                     if (delegateOnly) {
-                        // 纯决策模式：主代理只保留 ask_user（用于与用户交互），
-                        // 实际执行类工具全部移除，交由子代理。memory 工具由 GenerationHandler
-                        // 根据 enableMemory 自动注入，无需在此处理。
-                        addAll(localTools.getTools(assistant.localTools.filter { it == LocalToolOption.AskUser }))
+                        // 纯决策模式：主代理保留「只读」能力以便快速查看上下文，
+                        // 但不持有写入/编辑能力——实际执行（写文件、跑脚本等）交由子代理。
+                        // 搜索 / workspace_read_file / workspace_shell(cat,ls,grep) / time_info / clipboard
+                        if (settings.enableWebSearch) {
+                            addAll(createSearchTools(settings))
+                        }
+                        addAll(localTools.getTools(assistant.localTools.filter {
+                            it == LocalToolOption.AskUser || it == LocalToolOption.TimeInfo || it == LocalToolOption.Clipboard
+                        }))
+                        addAll(createWorkspaceToolsIfReady(
+                            assistant.workspaceId?.toString(),
+                            conversation.workspaceCwd,
+                            readOnly = true,
+                        ))
                     } else {
+                        if (settings.enableWebSearch) {
+                            addAll(createSearchTools(settings))
+                        }
                         addAll(localTools.getTools(assistant.localTools))
-                    }
-                    if (!delegateOnly) {
                         addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
-                    }
-                    if (assistant.enabledSkills.isNotEmpty() && !delegateOnly) {
-                        addAll(
-                            createSkillTools(
-                                enabledSkills = assistant.enabledSkills,
-                                allSkills = skillManager.listSkills(),
-                                skillManager = skillManager,
+                        if (assistant.enabledSkills.isNotEmpty()) {
+                            addAll(
+                                createSkillTools(
+                                    enabledSkills = assistant.enabledSkills,
+                                    allSkills = skillManager.listSkills(),
+                                    skillManager = skillManager,
+                                )
                             )
-                        )
-                    }
-                    if (!delegateOnly) {
+                        }
                         mcpManager.getAllAvailableTools().also { allTools ->
                             val invalidNames = allTools
                                 .map { it.second }
@@ -689,7 +695,11 @@ class ChatService(
         }
     }
 
-    private suspend fun createWorkspaceToolsIfReady(workspaceId: String?, cwd: String? = null): List<Tool> {
+    private suspend fun createWorkspaceToolsIfReady(
+        workspaceId: String?,
+        cwd: String? = null,
+        readOnly: Boolean = false,
+    ): List<Tool> {
         if (workspaceId.isNullOrBlank()) return emptyList()
         val workspace = workspaceRepository.getById(workspaceId) ?: return emptyList()
         if (workspace.shellStatus != WorkspaceShellStatus.READY.name) {
@@ -699,7 +709,11 @@ class ChatService(
             )
             return emptyList()
         }
-        return createWorkspaceTools(workspaceId, workspaceRepository, cwd)
+        return if (readOnly) {
+            createWorkspaceReadOnlyTools(workspaceId, workspaceRepository, cwd)
+        } else {
+            createWorkspaceTools(workspaceId, workspaceRepository, cwd)
+        }
     }
 
     /**

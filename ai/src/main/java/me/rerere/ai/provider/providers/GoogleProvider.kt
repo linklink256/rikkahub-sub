@@ -49,7 +49,9 @@ import me.rerere.ai.ui.UIMessagePart
 import me.rerere.ai.ui.metadataAs
 import me.rerere.ai.ui.toMetadata
 import me.rerere.ai.util.KeyRoulette
+import me.rerere.ai.util.HttpException
 import me.rerere.ai.util.configureReferHeaders
+import me.rerere.ai.util.parseErrorBody
 import me.rerere.ai.util.encodeBase64
 import me.rerere.ai.util.json
 import me.rerere.ai.util.mergeCustomBody
@@ -185,11 +187,16 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
 
         val response = client.newCall(request).await()
         if (!response.isSuccessful) {
-            throw Exception("Failed to get response: ${response.code} ${response.body?.string()}")
+            val errorBody = response.body?.string() ?: ""
+            throw parseErrorBody(errorBody, null)
         }
 
         val bodyStr = response.body?.string() ?: ""
-        val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+        val bodyJson = try {
+            json.parseToJsonElement(bodyStr).jsonObject
+        } catch (e: Throwable) {
+            throw parseErrorBody(bodyStr, e)
+        }
 
         val candidates = bodyJson["candidates"]!!.jsonArray
         val usage = bodyJson["usageMetadata"]!!.jsonObject
@@ -302,33 +309,12 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                 t: Throwable?,
                 response: Response?
             ) {
-                var exception = t
-
                 t?.printStackTrace()
-                println("[onFailure] 发生错误: ${t?.message}")
+                Log.e(TAG, "onFailure: ${t?.javaClass?.name} ${t?.message} / $response")
 
-                try {
-                    if (t == null && response != null) {
-                        val bodyStr = response.body.stringSafe()
-                        if (!bodyStr.isNullOrEmpty()) {
-                            val bodyElement = json.parseToJsonElement(bodyStr)
-                            println(bodyElement)
-                            if (bodyElement is JsonObject) {
-                                exception = Exception(
-                                    bodyElement["error"]?.jsonObject?.get("message")?.jsonPrimitive?.content
-                                        ?: "unknown"
-                                )
-                            }
-                        } else {
-                            exception = Exception("Unknown error: ${response.code}")
-                        }
-                    }
-                } catch (e: Throwable) {
-                    e.printStackTrace()
-                    exception = e
-                } finally {
-                    close(exception ?: Exception("Stream failed"))
-                }
+                val bodyRaw = response?.body?.stringSafe()
+                val exception = parseErrorBody(bodyRaw, t)
+                close(exception ?: HttpException("Stream failed"))
             }
 
             override fun onClosed(eventSource: EventSource) {

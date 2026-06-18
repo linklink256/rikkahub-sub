@@ -1,5 +1,6 @@
 package me.rerere.rikkahub.data.ai.subagent
 
+import kotlinx.datetime.Instant
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.rerere.ai.core.ReasoningLevel
@@ -166,6 +167,9 @@ fun removeSubagentProfile(
  * @param depth       该子代理所在的递归深度（0 = 直接子代理）
  * @param usage       子代理本次运行累计的 token 用量（含扩写追问轮次）；null 表示未统计到
  * @param steps       子代理实际执行的 generation 轮次（含扩写追问）
+ * @param transcript  子代理完整运行轨迹（思维链 + 工具调用 + 正文），用于 UI 可视化展开。
+ *                    传输时序列化进 [SubagentResult]，但 UI 渲染依赖 metadata 中的副本。
+ *                    为 null 表示无轨迹（如 depth 超限、profile 未找到等提前返回场景）。
  */
 @Serializable
 data class SubagentResult(
@@ -176,4 +180,42 @@ data class SubagentResult(
     @SerialName("depth") val depth: Int = 0,
     @SerialName("usage") val usage: TokenUsage? = null,
     @SerialName("steps") val steps: Int = 0,
+    @SerialName("transcript") val transcript: List<SubagentTranscriptStep> = emptyList(),
 )
+
+/**
+ * 子代理运行轨迹中的一个步骤，用于 UI 嵌套展开可视化。
+ *
+ * 三种类型分别对应子代理消息中的：
+ * - [Reasoning] → 子代理的 `<think>` / reasoning part（思维链）
+ * - [ToolCall]  → 子代理调用的工具（含入参与完整输出）
+ * - [Text]      → 子代理产出的正文文本（通常是末轮摘要）
+ *
+ * 完整保留（不截断）——用户可展开查看子代理搜索到的原始网页内容等。
+ * 嵌套深度超过 1 层时，孙代理的 ToolCall 内部不再展开其 transcript（见 UI 渲染）。
+ */
+@Serializable
+sealed interface SubagentTranscriptStep {
+    @Serializable
+    @SerialName("reasoning")
+    data class Reasoning(
+        val text: String,
+        val createdAt: Long = 0,
+    ) : SubagentTranscriptStep
+
+    @Serializable
+    @SerialName("tool_call")
+    data class ToolCall(
+        val name: String,
+        val input: String,
+        val output: String,
+        val executed: Boolean,
+        val childTranscript: List<SubagentTranscriptStep> = emptyList(),
+    ) : SubagentTranscriptStep
+
+    @Serializable
+    @SerialName("text")
+    data class Text(
+        val text: String,
+    ) : SubagentTranscriptStep
+}

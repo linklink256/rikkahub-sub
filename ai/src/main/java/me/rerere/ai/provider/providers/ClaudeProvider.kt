@@ -45,6 +45,7 @@ import me.rerere.ai.util.configureReferHeaders
 import me.rerere.ai.util.encodeBase64
 import me.rerere.ai.util.json
 import me.rerere.ai.util.mergeCustomBody
+import me.rerere.ai.util.parseErrorBody
 import me.rerere.ai.util.parseErrorDetail
 import me.rerere.ai.util.stringSafe
 import me.rerere.ai.util.toHeaders
@@ -122,11 +123,16 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
 
         val response = client.newCall(request).await()
         if (!response.isSuccessful) {
-            throw Exception("Failed to get response: ${response.code} ${response.body?.string()}")
+            val errorBody = response.body?.string() ?: ""
+            throw parseErrorBody(errorBody, null)
         }
 
         val bodyStr = response.body?.string() ?: ""
-        val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
+        val bodyJson = try {
+            json.parseToJsonElement(bodyStr).jsonObject
+        } catch (e: Throwable) {
+            throw parseErrorBody(bodyStr, e)
+        }
 
         // 从 JsonObject 中提取必要的信息
         val id = bodyJson["id"]?.jsonPrimitive?.contentOrNull ?: ""
@@ -227,24 +233,12 @@ class ClaudeProvider(private val client: OkHttpClient, context: Context? = null)
             }
 
             override fun onFailure(eventSource: EventSource, t: Throwable?, response: Response?) {
-                var exception = t
-
                 t?.printStackTrace()
                 Log.e(TAG, "onFailure: ${t?.javaClass?.name} ${t?.message} / $response")
 
                 val bodyRaw = response?.body?.stringSafe()
-                try {
-                    if (!bodyRaw.isNullOrBlank()) {
-                        val bodyElement = Json.parseToJsonElement(bodyRaw)
-                        Log.i(TAG, "Error response: $bodyElement")
-                        exception = bodyElement.parseErrorDetail()
-                    }
-                } catch (e: Throwable) {
-                    Log.w(TAG, "onFailure: failed to parse from $bodyRaw")
-                    e.printStackTrace()
-                } finally {
-                    close(exception)
-                }
+                val exception = parseErrorBody(bodyRaw, t)
+                close(exception)
             }
 
             override fun onClosed(eventSource: EventSource) {
