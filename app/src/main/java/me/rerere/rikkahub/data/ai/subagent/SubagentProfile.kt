@@ -127,10 +127,19 @@ data class SubagentProfile(
 
 /**
  * 把用户自定义的 profile 与内置 profile 合并（用户同名覆盖内置）。
+ *
+ * @param disabledBuiltin 被显式禁用的内置 profile 名集合。出现在其中的内置 profile
+ *   不会被合并进来（实现「完全删除内置子代理」——删除内置 profile 时将其名加入此集合，
+ *   而非仅从 custom 移除，否则 BUILTIN 会被重新加入）。自定义 profile 不受此参数影响。
  */
-fun mergeSubagentProfiles(custom: List<SubagentProfile>): List<SubagentProfile> {
+fun mergeSubagentProfiles(
+    custom: List<SubagentProfile>,
+    disabledBuiltin: Set<String> = emptySet(),
+): List<SubagentProfile> {
     val byName = LinkedHashMap<String, SubagentProfile>()
-    SubagentProfile.BUILTIN.forEach { byName[it.name] = it }
+    SubagentProfile.BUILTIN
+        .filter { it.name !in disabledBuiltin }
+        .forEach { byName[it.name] = it }
     custom.forEach { byName[it.name] = it }
     return byName.values.toList()
 }

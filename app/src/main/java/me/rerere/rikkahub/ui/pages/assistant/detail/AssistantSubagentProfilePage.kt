@@ -97,7 +97,7 @@ private fun AssistantSubagentProfileContent(
     profileName: String,
     onUpdate: (Assistant) -> Unit,
 ) {
-    val merged = mergeSubagentProfiles(assistant.subagentProfiles)
+    val merged = mergeSubagentProfiles(assistant.subagentProfiles, assistant.disabledBuiltinSubagents)
     val current = merged.firstOrNull { it.name == profileName } ?: SubagentProfile(name = profileName)
 
     val latestAssistant = rememberUpdatedState(assistant)
@@ -113,7 +113,7 @@ private fun AssistantSubagentProfileContent(
 
     fun saveProfileLatest(transform: (SubagentProfile) -> SubagentProfile) {
         val a = latestAssistant.value
-        val cur = mergeSubagentProfiles(a.subagentProfiles).firstOrNull { it.name == profileName }
+        val cur = mergeSubagentProfiles(a.subagentProfiles, a.disabledBuiltinSubagents).firstOrNull { it.name == profileName }
             ?: SubagentProfile(name = profileName)
         onUpdate(a.copy(subagentProfiles = upsertSubagentProfile(a.subagentProfiles, transform(cur))))
     }

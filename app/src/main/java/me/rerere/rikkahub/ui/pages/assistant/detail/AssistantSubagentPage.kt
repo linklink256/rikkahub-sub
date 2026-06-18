@@ -39,6 +39,7 @@ import me.rerere.hugeicons.stroke.Add01
 import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.hugeicons.stroke.Connect
 import me.rerere.hugeicons.stroke.Delete01
+import me.rerere.hugeicons.stroke.Reload01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
@@ -93,7 +94,7 @@ private fun AssistantSubagentContent(
     onUpdate: (Assistant) -> Unit,
     onOpenProfile: (String) -> Unit,
 ) {
-    val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
+    val profiles = mergeSubagentProfiles(assistant.subagentProfiles, assistant.disabledBuiltinSubagents)
     var showCreateDialog by remember { mutableStateOf(false) }
     var newProfileName by remember { mutableStateOf("") }
     var pendingDelete by remember { mutableStateOf<String?>(null) }
@@ -207,11 +208,20 @@ private fun AssistantSubagentContent(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
-                IconButton(
-                    onClick = { showCreateDialog = true },
+                Row(
                     modifier = Modifier.align(Alignment.CenterEnd),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Icon(HugeIcons.Add01, contentDescription = null)
+                    if (assistant.disabledBuiltinSubagents.isNotEmpty()) {
+                        IconButton(onClick = {
+                            onUpdate(assistant.copy(disabledBuiltinSubagents = emptySet()))
+                        }) {
+                            Icon(HugeIcons.Reload01, contentDescription = null)
+                        }
+                    }
+                    IconButton(onClick = { showCreateDialog = true }) {
+                        Icon(HugeIcons.Add01, contentDescription = null)
+                    }
                 }
             }
         }
@@ -236,10 +246,8 @@ private fun AssistantSubagentContent(
                     },
                     trailingContent = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (assistant.subagentProfiles.any { it.name == profile.name }) {
-                                IconButton(onClick = { pendingDelete = profile.name }) {
-                                    Icon(HugeIcons.Delete01, contentDescription = null)
-                                }
+                            IconButton(onClick = { pendingDelete = profile.name }) {
+                                Icon(HugeIcons.Delete01, contentDescription = null)
                             }
                             Icon(HugeIcons.ArrowRight01, null)
                         }
@@ -310,16 +318,22 @@ private fun AssistantSubagentContent(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             title = { Text("删除子代理") },
-            text = { Text("确定删除该子代理配置吗？内置配置删除后将恢复默认。") },
+            text = { Text("确定删除该子代理配置吗？") },
             confirmButton = {
                 TextButton(
                     onClick = {
+                        val name = pendingDelete!!
+                        val isBuiltin = SubagentProfile.BUILTIN.any { it.name == name }
                         onUpdate(
                             assistant.copy(
-                                subagentProfiles = removeSubagentProfile(
-                                    assistant.subagentProfiles,
-                                    pendingDelete!!,
-                                )
+                                subagentProfiles = removeSubagentProfile(assistant.subagentProfiles, name),
+                                // 内置 profile 删除后加入禁用集合，使其不再出现在合并结果中（完全删除）；
+                                // 自定义 profile 仅从 custom 列表移除即可。
+                                disabledBuiltinSubagents = if (isBuiltin) {
+                                    assistant.disabledBuiltinSubagents + name
+                                } else {
+                                    assistant.disabledBuiltinSubagents
+                                },
                             )
                         )
                         pendingDelete = null
