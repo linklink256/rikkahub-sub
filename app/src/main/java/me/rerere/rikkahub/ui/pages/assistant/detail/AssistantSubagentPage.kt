@@ -39,7 +39,7 @@ import me.rerere.hugeicons.stroke.Add01
 import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.hugeicons.stroke.Connect
 import me.rerere.hugeicons.stroke.Delete01
-import me.rerere.hugeicons.stroke.Reload01
+import me.rerere.hugeicons.stroke.Refresh03
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
@@ -216,7 +216,7 @@ private fun AssistantSubagentContent(
                         IconButton(onClick = {
                             onUpdate(assistant.copy(disabledBuiltinSubagents = emptySet()))
                         }) {
-                            Icon(HugeIcons.Reload01, contentDescription = null)
+                            Icon(HugeIcons.Refresh03, contentDescription = null)
                         }
                     }
                     IconButton(onClick = { showCreateDialog = true }) {
