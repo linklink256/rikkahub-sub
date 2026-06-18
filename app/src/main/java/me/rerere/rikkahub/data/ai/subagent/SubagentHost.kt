@@ -74,7 +74,7 @@ class SubagentHost(
         settings: Settings,
         parentAssistant: Assistant,
         parentModel: Model,
-        buildChildTools: (childAssistant: Assistant, depth: Int) -> List<Tool>,
+        buildChildTools: suspend (childAssistant: Assistant, depth: Int) -> List<Tool>,
         depth: Int = 0,
         maxDepth: Int = DEFAULT_MAX_DEPTH,
         onProgress: ((List<UIMessage>) -> Unit)? = null,

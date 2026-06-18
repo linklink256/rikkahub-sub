@@ -255,7 +255,7 @@ private fun AssistantSubagentProfileContent(
                     range = 1f..256f,
                     isInt = true,
                     onValueChange = { v ->
-                        saveProfile { it.copy(maxSteps = v.toInt().coerceIn(1, 256)) }
+                        if (v != null) saveProfile { it.copy(maxSteps = v.toInt().coerceIn(1, 256)) }
                     },
                 )
                 HorizontalDivider()
@@ -301,7 +301,7 @@ private fun AssistantSubagentProfileContent(
                     range = 0f..1000f,
                     isInt = true,
                     onValueChange = { v ->
-                        saveProfile { it.copy(summaryMinLength = v.toInt().coerceIn(0, 1000)) }
+                        if (v != null) saveProfile { it.copy(summaryMinLength = v.toInt().coerceIn(0, 1000)) }
                     },
                 )
             }
