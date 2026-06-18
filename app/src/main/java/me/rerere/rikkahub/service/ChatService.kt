@@ -537,8 +537,6 @@ class ChatService(
             // start generating
             val session = getOrCreateSession(conversationId)
             val subagentTools = if (assistant.enableSubagents) {
-                // 把子代理运行状态冒泡到根对话的 processingStatus，让用户在长时间子代理任务中
-                // 也能看到「子代理正在做什么」（调用哪个工具 / 思考中 / 扩写摘要 …）。
                 buildSubagentTools(
                     assistant,
                     settings,
@@ -546,7 +544,6 @@ class ChatService(
                     depth = 0,
                     assistant.subagentMaxDepth,
                     includeBase = false,
-                    onStatus = { status -> session.processingStatus.value = status },
                 )
             } else {
                 emptyList()
@@ -734,8 +731,6 @@ class ChatService(
      * @param depth        当前递归深度（根代理为 0）
      * @param maxDepth     允许的最大嵌套深度
      * @param includeBase  是否包含基础工具（子代理 true / 根代理 false）
-     * @param onStatus     子代理运行状态文案回调（向上冒泡到根对话的 processingStatus，
-     *                     让用户看到子代理正在做什么）；为 null 时不广播
      *
      * 深度语义：[depth] 表示当前这层代理所在的深度（根代理为 0）。子代理在 spawn 时位于
      * `depth + 1`，其工具由 [buildChildTools] 以子代理自身的深度构建 —— 不再额外 +1
@@ -749,7 +744,6 @@ class ChatService(
         depth: Int,
         maxDepth: Int,
         includeBase: Boolean,
-        onStatus: ((String?) -> Unit)? = null,
     ): List<Tool> {
         val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
         if (profiles.isEmpty()) return emptyList()
@@ -798,12 +792,10 @@ class ChatService(
                                     d,
                                     maxDepth,
                                     includeBase = true,
-                                    onStatus = onStatus,
                                 )
                             },
                             depth = depth + 1,
                             maxDepth = maxDepth,
-                            onStatus = onStatus,
                         )
                     }
                 },
@@ -828,7 +820,6 @@ class ChatService(
                         buildChildTools = { _, _ -> emptyList() },
                         depth = depth + 1,
                         maxDepth = maxDepth,
-                        onStatus = onStatus,
                     )
                     if (r.succeeded) r.summary else "(side agent failed: ${r.error})"
                 },

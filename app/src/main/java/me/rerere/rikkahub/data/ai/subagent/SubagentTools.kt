@@ -5,13 +5,13 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
 import me.rerere.ai.ui.UIMessagePart
-
 /**
  * 创建 subagent 相关工具（移植自 kimi-code 的 collaboration/agent.ts + agent-swarm.ts）。
  *
@@ -163,7 +163,27 @@ $profileListText
                 put("depth", JsonPrimitive(result.depth))
                 put("steps", JsonPrimitive(result.steps))
             }
-            listOf(UIMessagePart.Text(payload.toString()))
+            // transcript 完整存入 metadata（不发给模型，仅 UI 渲染用）。
+            // provider 序列化时只取 Text.text，metadata 持久化到对话但不出现在 API 请求中。
+            val transcriptMetadata = if (result.transcript.isNotEmpty()) {
+                val listSerializer = kotlinx.serialization.builtins.ListSerializer(
+                    SubagentTranscriptStep.serializer()
+                )
+                buildJsonObject {
+                    put("subagent_transcript", json.encodeToJsonElement(listSerializer, result.transcript))
+                    put("subagent_profile", JsonPrimitive(result.profileName))
+                    put("subagent_steps", JsonPrimitive(result.steps))
+                    put("subagent_succeeded", JsonPrimitive(result.succeeded))
+                }
+            } else {
+                null
+            }
+            listOf(
+                UIMessagePart.Text(
+                    text = payload.toString(),
+                    metadata = transcriptMetadata,
+                )
+            )
         },
     )
 

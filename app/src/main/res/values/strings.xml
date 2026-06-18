@@ -1230,6 +1230,7 @@
   <string name="subagent_delegate_only_desc">The main agent makes decisions only; all execution (search, files, shell, skills, MCP) is delegated to subagents. Enable parallel execution below for best results.</string>
   <string name="subagent_parallel_execution_title">Parallel Tool Execution</string>
   <string name="subagent_parallel_execution_desc">Run multiple tool calls (e.g. several spawned subagents) in the same turn concurrently instead of one by one.</string>
+  <string name="subagent_tool_title">Subagent</string>
   <string name="subagent_profiles_section">Subagent Profiles</string>
   <string name="subagent_profiles_section_desc">Built-in profiles can be edited directly; changes override the defaults.</string>
   <string name="subagent_profile_name">Profile Name</string>
