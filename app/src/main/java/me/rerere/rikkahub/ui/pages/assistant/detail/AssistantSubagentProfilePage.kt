@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
@@ -15,6 +16,7 @@ import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -29,6 +31,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.flow.collect
@@ -46,6 +49,7 @@ import me.rerere.rikkahub.ui.components.ui.TextArea
 import me.rerere.rikkahub.ui.theme.CustomColors
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
+import kotlin.math.roundToInt
 
 @Composable
 fun AssistantSubagentProfilePage(id: String, profileName: String) {
@@ -86,12 +90,9 @@ private fun AssistantSubagentProfileContent(
     profileName: String,
     onUpdate: (Assistant) -> Unit,
 ) {
-    // 当前编辑的 profile：从合并后的列表里取（内置 + 自定义覆盖）
     val merged = mergeSubagentProfiles(assistant.subagentProfiles)
     val current = merged.firstOrNull { it.name == profileName } ?: SubagentProfile(name = profileName)
 
-    // 用 rememberUpdatedState 持有最新 assistant，供长效协程（systemPrompt 的 snapshotFlow）读取，
-    // 避免闭包捕获 stale assistant 导致并发编辑互相覆盖。
     val latestAssistant = rememberUpdatedState(assistant)
 
     fun saveProfile(transform: (SubagentProfile) -> SubagentProfile) {
@@ -103,8 +104,7 @@ private fun AssistantSubagentProfileContent(
         )
     }
 
-    /** 在协程里基于最新 assistant 保存 profile（避免 stale 覆盖） */
-    fun saveProfileFromCoroutine(transform: (SubagentProfile) -> SubagentProfile) {
+    fun saveProfileLatest(transform: (SubagentProfile) -> SubagentProfile) {
         val a = latestAssistant.value
         val cur = mergeSubagentProfiles(a.subagentProfiles).firstOrNull { it.name == profileName }
             ?: SubagentProfile(name = profileName)
@@ -117,33 +117,44 @@ private fun AssistantSubagentProfileContent(
             .padding(16.dp)
             .imePadding()
             .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ---- 基本信息 ----
         Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_name)) },
+                description = { Text(stringResource(R.string.subagent_profile_name_desc)) },
             ) {
-                // name（标识符，不可改 —— 改名等于新建另一个 profile）
                 OutlinedTextField(
                     value = current.name,
                     onValueChange = {},
                     readOnly = true,
-                    label = { Text(stringResource(R.string.subagent_profile_name)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_display_name)) },
+            ) {
                 OutlinedTextField(
                     value = current.displayName,
                     onValueChange = { v -> saveProfile { it.copy(displayName = v) } },
-                    label = { Text(stringResource(R.string.subagent_profile_display_name)) },
                     modifier = Modifier.fillMaxWidth(),
                 )
+            }
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_description)) },
+                description = { Text(stringResource(R.string.subagent_profile_description_desc)) },
+            ) {
                 OutlinedTextField(
                     value = current.description,
                     onValueChange = { v -> saveProfile { it.copy(description = v) } },
-                    label = { Text(stringResource(R.string.subagent_profile_description)) },
                     modifier = Modifier.fillMaxWidth(),
+                    minLines = 2,
                 )
             }
         }
@@ -151,198 +162,262 @@ private fun AssistantSubagentProfileContent(
         // ---- 系统提示词 ----
         Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.subagent_profile_system_prompt),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                val promptState = rememberTextFieldState(initialText = current.systemPrompt)
-                LaunchedEffect(promptState) {
-                    snapshotFlow { promptState.text }.collect { text ->
-                        val v = text.toString()
-                        saveProfileFromCoroutine { it.copy(systemPrompt = v) }
+                FormItem(
+                    label = { Text(stringResource(R.string.subagent_profile_system_prompt)) },
+                    description = { Text(stringResource(R.string.subagent_profile_system_prompt_desc)) },
+                ) {
+                    val promptState = rememberTextFieldState(initialText = current.systemPrompt)
+                    LaunchedEffect(promptState) {
+                        snapshotFlow { promptState.text }.collect { text ->
+                            saveProfileLatest { it.copy(systemPrompt = text.toString()) }
+                        }
                     }
+                    TextArea(
+                        state = promptState,
+                        label = stringResource(R.string.subagent_profile_system_prompt),
+                        minLines = 6,
+                        maxLines = 15,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
                 }
-                TextArea(
-                    state = promptState,
-                    label = stringResource(R.string.subagent_profile_system_prompt),
-                    minLines = 6,
-                    maxLines = 15,
-                    modifier = Modifier.fillMaxWidth(),
-                )
             }
         }
 
         // ---- 模型与参数 ----
         Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_model)) },
+                description = { Text(stringResource(R.string.subagent_profile_model_desc)) },
             ) {
-                FormItem(
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.subagent_profile_model)) },
-                    description = { Text(stringResource(R.string.subagent_profile_model_desc)) },
-                ) {
-                    ModelSelector(
-                        modelId = current.chatModelId,
-                        providers = providers,
-                        type = ModelType.CHAT,
-                        allowClear = true,
-                        onSelect = { model ->
-                            saveProfile { it.copy(chatModelId = model.id) }
-                        },
-                    )
-                }
-                HorizontalDivider()
-
-                // temperature
-                NumberField(
-                    label = stringResource(R.string.subagent_profile_temperature),
-                    value = current.temperature,
-                    range = 0f..2f,
-                    onValueChange = { v -> saveProfile { it.copy(temperature = v) } },
-                )
-                HorizontalDivider()
-
-                // topP
-                NumberField(
-                    label = stringResource(R.string.subagent_profile_top_p),
-                    value = current.topP,
-                    range = 0f..1f,
-                    onValueChange = { v -> saveProfile { it.copy(topP = v) } },
-                )
-                HorizontalDivider()
-
-                // maxTokens
-                NumberField(
-                    label = stringResource(R.string.subagent_profile_max_tokens),
-                    value = current.maxTokens?.toFloat(),
-                    range = 1f..128000f,
-                    isInt = true,
-                    onValueChange = { v ->
-                        saveProfile { it.copy(maxTokens = v?.toInt()) }
+                ModelSelector(
+                    modelId = current.chatModelId,
+                    providers = providers,
+                    type = ModelType.CHAT,
+                    allowClear = true,
+                    onSelect = { model ->
+                        saveProfile { it.copy(chatModelId = model.id) }
                     },
                 )
-                HorizontalDivider()
+            }
+            HorizontalDivider()
 
-                // reasoningLevel
-                FormItem(
-                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                    label = { Text(stringResource(R.string.subagent_profile_reasoning)) },
-                ) {
-                    ReasoningButton(
-                        reasoningLevel = current.reasoningLevel,
-                        onUpdateReasoningLevel = { level ->
-                            saveProfile { it.copy(reasoningLevel = level) }
+            // temperature —— Switch 开关控制（null = 继承父代理）
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_temperature)) },
+                description = { Text(stringResource(R.string.subagent_profile_temperature_desc)) },
+                tail = {
+                    Switch(
+                        checked = current.temperature != null,
+                        onCheckedChange = { enabled ->
+                            saveProfile { it.copy(temperature = if (enabled) 1.0f else null) }
                         },
                     )
+                },
+            ) {
+                if (current.temperature != null) {
+                    var temperatureInput by remember(profileName) {
+                        mutableStateOf(current.temperature.toString())
+                    }
+                    val temperatureValue = temperatureInput.toFloatOrNull()
+                    OutlinedTextField(
+                        value = temperatureInput,
+                        onValueChange = { value ->
+                            temperatureInput = value
+                            value.toFloatOrNull()?.takeIf { it in 0f..2f }?.let { temperature ->
+                                saveProfile { it.copy(temperature = temperature) }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = temperatureValue == null || temperatureValue !in 0f..2f,
+                        supportingText = { Text("0 - 2") },
+                    )
                 }
+            }
+            HorizontalDivider()
+
+            // topP —— Switch 开关控制（null = 继承父代理）
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_top_p)) },
+                description = { Text(stringResource(R.string.subagent_profile_top_p_desc)) },
+                tail = {
+                    Switch(
+                        checked = current.topP != null,
+                        onCheckedChange = { enabled ->
+                            saveProfile { it.copy(topP = if (enabled) 1.0f else null) }
+                        },
+                    )
+                },
+            ) {
+                current.topP?.let { topP ->
+                    var topPInput by remember(profileName) {
+                        mutableStateOf(topP.toString())
+                    }
+                    val topPValue = topPInput.toFloatOrNull()
+                    OutlinedTextField(
+                        value = topPInput,
+                        onValueChange = { value ->
+                            topPInput = value
+                            value.toFloatOrNull()?.takeIf { it in 0f..1f }?.let { nextTopP ->
+                                saveProfile { it.copy(topP = nextTopP) }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                        singleLine = true,
+                        isError = topPValue == null || topPValue !in 0f..1f,
+                        supportingText = { Text("0 - 1") },
+                    )
+                }
+            }
+            HorizontalDivider()
+
+            // maxTokens —— 直接 TextField（空 = 继承父代理）
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_max_tokens)) },
+                description = { Text(stringResource(R.string.subagent_profile_max_tokens_desc)) },
+            ) {
+                OutlinedTextField(
+                    value = current.maxTokens?.toString() ?: "",
+                    onValueChange = { text ->
+                        val tokens = if (text.isBlank()) {
+                            null
+                        } else {
+                            text.toIntOrNull()?.takeIf { it > 0 }
+                        }
+                        saveProfile { it.copy(maxTokens = tokens) }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    placeholder = {
+                        Text(stringResource(R.string.subagent_profile_max_tokens_inherit))
+                    },
+                    supportingText = {
+                        if (current.maxTokens != null) {
+                            Text(stringResource(R.string.subagent_profile_max_tokens_limit, current.maxTokens))
+                        } else {
+                            Text(stringResource(R.string.subagent_profile_max_tokens_inherit))
+                        }
+                    },
+                )
+            }
+            HorizontalDivider()
+
+            // reasoningLevel
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_reasoning)) },
+            ) {
+                ReasoningButton(
+                    reasoningLevel = current.reasoningLevel,
+                    onUpdateReasoningLevel = { level ->
+                        saveProfile { it.copy(reasoningLevel = level) }
+                    },
+                )
             }
         }
 
         // ---- 行为参数 ----
         Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+            // maxSteps —— Slider
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_max_steps)) },
+                description = { Text(stringResource(R.string.subagent_profile_max_steps_desc)) },
             ) {
-                NumberField(
-                    label = stringResource(R.string.subagent_profile_max_steps),
+                Slider(
                     value = current.maxSteps.toFloat(),
-                    range = 1f..256f,
-                    isInt = true,
                     onValueChange = { v ->
-                        if (v != null) saveProfile { it.copy(maxSteps = v.toInt().coerceIn(1, 256)) }
+                        saveProfile { it.copy(maxSteps = v.roundToInt().coerceIn(1, 256)) }
                     },
-                )
-                HorizontalDivider()
-                FormItem(
+                    valueRange = 1f..256f,
+                    steps = 0,
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.subagent_profile_inherit_tools)) },
-                    description = { Text(stringResource(R.string.subagent_profile_inherit_tools_desc)) },
-                    tail = {
-                        Switch(
-                            checked = current.inheritTools,
-                            onCheckedChange = { v -> saveProfile { it.copy(inheritTools = v) } },
-                        )
-                    },
                 )
-                HorizontalDivider()
-                FormItem(
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.subagent_profile_stream)) },
-                    description = { Text(stringResource(R.string.subagent_profile_stream_desc)) },
-                    tail = {
-                        Switch(
-                            checked = current.streamOutput,
-                            onCheckedChange = { v -> saveProfile { it.copy(streamOutput = v) } },
-                        )
-                    },
+                Text(
+                    text = stringResource(R.string.subagent_profile_max_steps_value, current.maxSteps),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.75f),
                 )
-                HorizontalDivider()
-                FormItem(
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text(stringResource(R.string.subagent_profile_memory)) },
-                    description = { Text(stringResource(R.string.subagent_profile_memory_desc)) },
-                    tail = {
-                        Switch(
-                            checked = current.enableMemory,
-                            onCheckedChange = { v -> saveProfile { it.copy(enableMemory = v) } },
-                        )
-                    },
-                )
-                HorizontalDivider()
-                NumberField(
-                    label = stringResource(R.string.subagent_profile_summary_min_length),
+            }
+            HorizontalDivider()
+
+            // inheritTools —— Switch
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_inherit_tools)) },
+                description = { Text(stringResource(R.string.subagent_profile_inherit_tools_desc)) },
+                tail = {
+                    Switch(
+                        checked = current.inheritTools,
+                        onCheckedChange = { v -> saveProfile { it.copy(inheritTools = v) } },
+                    )
+                },
+            )
+            HorizontalDivider()
+
+            // streamOutput —— Switch
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_stream)) },
+                description = { Text(stringResource(R.string.subagent_profile_stream_desc)) },
+                tail = {
+                    Switch(
+                        checked = current.streamOutput,
+                        onCheckedChange = { v -> saveProfile { it.copy(streamOutput = v) } },
+                    )
+                },
+            )
+            HorizontalDivider()
+
+            // enableMemory —— Switch
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_memory)) },
+                description = { Text(stringResource(R.string.subagent_profile_memory_desc)) },
+                tail = {
+                    Switch(
+                        checked = current.enableMemory,
+                        onCheckedChange = { v -> saveProfile { it.copy(enableMemory = v) } },
+                    )
+                },
+            )
+            HorizontalDivider()
+
+            // summaryMinLength —— Slider
+            FormItem(
+                modifier = Modifier.padding(8.dp),
+                label = { Text(stringResource(R.string.subagent_profile_summary_min_length)) },
+                description = { Text(stringResource(R.string.subagent_profile_summary_min_length_desc)) },
+            ) {
+                Slider(
                     value = current.summaryMinLength.toFloat(),
-                    range = 0f..1000f,
-                    isInt = true,
                     onValueChange = { v ->
-                        if (v != null) saveProfile { it.copy(summaryMinLength = v.toInt().coerceIn(0, 1000)) }
+                        saveProfile { it.copy(summaryMinLength = v.roundToInt().coerceIn(0, 1000)) }
                     },
+                    valueRange = 0f..1000f,
+                    steps = 0,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Text(
+                    text = if (current.summaryMinLength > 0) {
+                        stringResource(R.string.subagent_profile_summary_min_length_value, current.summaryMinLength)
+                    } else {
+                        stringResource(R.string.subagent_profile_summary_min_length_disabled)
+                    },
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.75f),
                 )
             }
         }
-    }
-}
-
-/**
- * 通用数值输入字段（Float / Int），支持可空的"未设置"状态。
- */
-@Composable
-private fun NumberField(
-    label: String,
-    value: Float?,
-    range: ClosedFloatingPointRange<Float>,
-    isInt: Boolean = false,
-    onValueChange: (Float?) -> Unit,
-) {
-    FormItem(
-        modifier = Modifier.fillMaxWidth(),
-        label = { Text(label) },
-    ) {
-        // 用稳定 key（label）避免 value 变化时重置文本，否则 Float.toString()（如 "1.0"）
-        // 会覆盖用户正在输入的中间态。文本完全由用户输入驱动，仅初始值取自 value。
-        var text by remember(label) {
-            mutableStateOf(value?.let { if (isInt) it.toInt().toString() else it.toString() } ?: "")
-        }
-        val parsed = text.toFloatOrNull()
-        OutlinedTextField(
-            value = text,
-            onValueChange = { input ->
-                text = input
-                val v = input.toFloatOrNull()
-                if (v != null && v in range) {
-                    onValueChange(v)
-                } else if (input.isBlank()) {
-                    onValueChange(null)
-                }
-            },
-            isError = text.isNotBlank() && (parsed == null || parsed !in range),
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }

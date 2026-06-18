@@ -1228,16 +1228,26 @@
   <string name="subagent_profiles_section">Subagent Profiles</string>
   <string name="subagent_profiles_section_desc">Built-in profiles can be edited directly; changes override the defaults.</string>
   <string name="subagent_profile_name">Profile Name</string>
+  <string name="subagent_profile_name_desc">Unique identifier (read-only, lowercase letters/digits/underscore)</string>
   <string name="subagent_profile_display_name">Display Name</string>
   <string name="subagent_profile_description">Description</string>
+  <string name="subagent_profile_description_desc">Tells the parent agent what this subagent is good at</string>
   <string name="subagent_profile_system_prompt">System Prompt</string>
+  <string name="subagent_profile_system_prompt_desc">Instructions that define the subagent\'s behavior and role</string>
   <string name="subagent_profile_model">Model</string>
   <string name="subagent_profile_model_desc">Leave empty to inherit the parent assistant\'s model</string>
   <string name="subagent_profile_temperature">Temperature</string>
+  <string name="subagent_profile_temperature_desc">Controls randomness. Turn off to inherit from parent</string>
   <string name="subagent_profile_top_p">Top P</string>
+  <string name="subagent_profile_top_p_desc">Nucleus sampling. Turn off to inherit from parent</string>
   <string name="subagent_profile_max_tokens">Max Tokens</string>
+  <string name="subagent_profile_max_tokens_desc">Maximum tokens per generation. Leave empty to inherit</string>
+  <string name="subagent_profile_max_tokens_inherit">Inherit from parent</string>
+  <string name="subagent_profile_max_tokens_limit">%1$d tokens</string>
   <string name="subagent_profile_reasoning">Reasoning Level</string>
   <string name="subagent_profile_max_steps">Max Steps</string>
+  <string name="subagent_profile_max_steps_desc">Maximum tool-call rounds before the subagent stops</string>
+  <string name="subagent_profile_max_steps_value">%1$d steps</string>
   <string name="subagent_profile_inherit_tools">Inherit Tools</string>
   <string name="subagent_profile_inherit_tools_desc">Inherit the parent assistant\'s tool set</string>
   <string name="subagent_profile_stream">Stream Output</string>
@@ -1245,5 +1255,8 @@
   <string name="subagent_profile_memory">Enable Memory</string>
   <string name="subagent_profile_memory_desc">Let the subagent use the memory tool (off by default)</string>
   <string name="subagent_profile_summary_min_length">Min Summary Length</string>
+  <string name="subagent_profile_summary_min_length_desc">If the summary is shorter than this, a follow-up expansion turn is triggered. Set to 0 to disable</string>
+  <string name="subagent_profile_summary_min_length_value">%1$d characters</string>
+  <string name="subagent_profile_summary_min_length_disabled">Disabled (no expansion)</string>
 </resources>
 
