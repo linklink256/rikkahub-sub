@@ -924,11 +924,10 @@ class ChatService(
                 metadata = transcriptMetadata,
             )
 
-            conversations.update { current ->
-                val conversation = current[conversationId] ?: return@update current
+            updateConversationState(conversationId) { conversation ->
                 val messages = conversation.currentMessages
                 val lastAssistantIndex = messages.indexOfLast { it.role == MessageRole.ASSISTANT }
-                if (lastAssistantIndex < 0) return@update current
+                if (lastAssistantIndex < 0) return@updateConversationState conversation
 
                 val updatedMessages = messages.mapIndexed { index, message ->
                     if (index != lastAssistantIndex) return@mapIndexed message
@@ -948,9 +947,7 @@ class ChatService(
                         }
                     })
                 }
-                current.toMutableMap().apply {
-                    this[conversationId] = conversation.updateCurrentMessages(updatedMessages)
-                }
+                conversation.updateCurrentMessages(updatedMessages)
             }
         }.onFailure {
             Log.w(TAG, "updateSubagentProgress failed: ${it.message}")
