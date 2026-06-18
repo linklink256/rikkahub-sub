@@ -931,9 +931,7 @@ class ChatService(
                 if (merged.isEmpty()) {
                     "No subagent profiles available."
                 } else {
-                    "Available subagent profiles (${merged.size}):
-" + merged.joinToString("
-") { p ->
+                    "Available subagent profiles (${merged.size}):\n" + merged.joinToString("\n") { p ->
                         val tools = if (p.inheritTools) "inherit all" else {
                             listOfNotNull(
                                 p.localTools.takeIf { it.isNotEmpty() }?.joinToString(",") { it.toToolName() },

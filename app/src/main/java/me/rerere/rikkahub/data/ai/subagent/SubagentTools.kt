@@ -373,9 +373,9 @@ private fun SubagentProfile.applyPatch(
     json: Json,
 ): SubagentProfile {
     fun str(key: String): String? = params[key]?.jsonPrimitive?.contentOrNull
-    fun bool(key: String): Boolean? = params[key]?.booleanOrNull
-    fun int(key: String): Int? = params[key]?.intOrNull
-    fun flt(key: String): Float? = params[key]?.floatOrNull
+    fun bool(key: String): Boolean? = params[key]?.jsonPrimitive?.booleanOrNull
+    fun int(key: String): Int? = params[key]?.jsonPrimitive?.intOrNull
+    fun flt(key: String): Float? = params[key]?.jsonPrimitive?.floatOrNull
     fun strList(key: String): List<String> = (params[key] as? JsonArray)?.mapNotNull {
         runCatching { it.jsonPrimitive.content }.getOrNull()
     } ?: emptyList()
