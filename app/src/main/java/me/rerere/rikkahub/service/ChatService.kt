@@ -61,6 +61,7 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.ai.GenerationChunk
 import me.rerere.rikkahub.data.ai.GenerationHandler
+import me.rerere.rikkahub.data.ai.currentToolCallId
 import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.ai.subagent.SubagentHost
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
@@ -786,6 +787,9 @@ class ChatService(
                     } else {
                         val parentModel = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
                             ?: error("Model not found for subagent parent")
+                        // 读取当前 toolCallId（由 GenerationHandler.executeSingleTool 经协程上下文注入），
+                        // 供并行多子代理时把流式进度精确写到各自的 Tool part，避免互相覆盖。
+                        val toolCallId = currentToolCallId()
                         subagentHost.spawn(
                             profile = profile,
                             task = task,
@@ -808,9 +812,9 @@ class ChatService(
                             maxDepth = maxDepth,
                             onProgress = if (conversationId != null) { subMessages ->
                                 // 实时流式更新：把子代理当前的消息构建为部分 transcript，
-                                // 更新到对话中对应 spawn_subagent 工具的 output，
+                                // 按 toolCallId 精确更新到对话中对应的 spawn_subagent 工具 output，
                                 // 使 UI 上的 SubagentToolUI 能实时展示子代理的思维链 / 工具调用。
-                                updateSubagentProgress(conversationId, profileName, subMessages)
+                                updateSubagentProgress(conversationId, toolCallId, profileName, subMessages)
                             } else null,
                         )
                     }
@@ -904,6 +908,7 @@ class ChatService(
      */
     private fun updateSubagentProgress(
         conversationId: Uuid,
+        toolCallId: String?,
         profileName: String,
         subMessages: List<UIMessage>,
     ) {
@@ -935,16 +940,20 @@ class ChatService(
 
                 val updatedMessages = messages.mapIndexed { index, message ->
                     if (index != lastAssistantIndex) return@mapIndexed message
-                    val hasSpawnTool = message.parts.any { part ->
-                        part is UIMessagePart.Tool && part.toolName == "spawn_subagent" && (!part.isExecuted || isStreamingSubagent(part))
+                    // 精确匹配目标工具：
+                    // - 优先按 toolCallId（并行多子代理时各自隔离，互不覆盖）；
+                    // - toolCallId 为 null 时回退到任意未完成/流式中的 spawn_subagent。
+                    val matchesTool: (UIMessagePart.Tool) -> Boolean = { part ->
+                        part.toolName == "spawn_subagent" &&
+                            (!part.isExecuted || isStreamingSubagent(part)) &&
+                            (toolCallId == null || part.toolCallId == toolCallId)
                     }
-                    if (!hasSpawnTool) return@mapIndexed message
+                    if (!message.parts.any { it is UIMessagePart.Tool && matchesTool(it) }) {
+                        return@mapIndexed message
+                    }
 
                     message.copy(parts = message.parts.map { part ->
-                        if (part is UIMessagePart.Tool &&
-                            part.toolName == "spawn_subagent" &&
-                            (!part.isExecuted || isStreamingSubagent(part))
-                        ) {
+                        if (part is UIMessagePart.Tool && matchesTool(part)) {
                             part.copy(output = listOf(partialOutput))
                         } else {
                             part
