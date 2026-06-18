@@ -535,7 +535,17 @@ class ChatService(
             // start generating
             val session = getOrCreateSession(conversationId)
             val subagentTools = if (assistant.enableSubagents) {
-                buildSubagentTools(assistant, settings, conversation.workspaceCwd, depth = 0, assistant.subagentMaxDepth, includeBase = false)
+                // 把子代理运行状态冒泡到根对话的 processingStatus，让用户在长时间子代理任务中
+                // 也能看到「子代理正在做什么」（调用哪个工具 / 思考中 / 扩写摘要 …）。
+                buildSubagentTools(
+                    assistant,
+                    settings,
+                    conversation.workspaceCwd,
+                    depth = 0,
+                    assistant.subagentMaxDepth,
+                    includeBase = false,
+                    onStatus = { status -> session.processingStatus.value = status },
+                )
             } else {
                 emptyList()
             }
@@ -696,6 +706,13 @@ class ChatService(
      * @param depth        当前递归深度（根代理为 0）
      * @param maxDepth     允许的最大嵌套深度
      * @param includeBase  是否包含基础工具（子代理 true / 根代理 false）
+     * @param onStatus     子代理运行状态文案回调（向上冒泡到根对话的 processingStatus，
+     *                     让用户看到子代理正在做什么）；为 null 时不广播
+     *
+     * 深度语义：[depth] 表示当前这层代理所在的深度（根代理为 0）。子代理在 spawn 时位于
+     * `depth + 1`，其工具由 [buildChildTools] 以子代理自身的深度构建 —— 不再额外 +1
+     * （此前这里多加了一次 +1，导致 maxDepth 与实际嵌套层数对应关系错乱）。
+     * 因此实际可嵌套层数 = maxDepth - 1（maxDepth=2 → 1 层子代理）。
      */
     private suspend fun buildSubagentTools(
         assistant: Assistant,
@@ -704,6 +721,7 @@ class ChatService(
         depth: Int,
         maxDepth: Int,
         includeBase: Boolean,
+        onStatus: ((String?) -> Unit)? = null,
     ): List<Tool> {
         val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
         if (profiles.isEmpty()) return emptyList()
@@ -742,10 +760,21 @@ class ChatService(
                             parentAssistant = assistant,
                             parentModel = parentModel,
                             buildChildTools = { child, d ->
-                                buildSubagentTools(child, settings, workspaceCwd, d + 1, maxDepth, includeBase = true)
+                                // d 是子代理自身的深度（spawn 已在 depth+1 处运行），
+                                // 这里直接用 d 构建子代理工具，不再 +1。
+                                buildSubagentTools(
+                                    child,
+                                    settings,
+                                    workspaceCwd,
+                                    d,
+                                    maxDepth,
+                                    includeBase = true,
+                                    onStatus = onStatus,
+                                )
                             },
                             depth = depth + 1,
                             maxDepth = maxDepth,
+                            onStatus = onStatus,
                         )
                     }
                 },
@@ -770,6 +799,7 @@ class ChatService(
                         buildChildTools = { _, _ -> emptyList() },
                         depth = depth + 1,
                         maxDepth = maxDepth,
+                        onStatus = onStatus,
                     )
                     if (r.succeeded) r.summary else "(side agent failed: ${r.error})"
                 },

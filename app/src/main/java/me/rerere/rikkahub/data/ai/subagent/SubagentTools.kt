@@ -141,6 +141,7 @@ $profileListText
                 }
                 put("summary", JsonPrimitive(result.summary))
                 put("depth", JsonPrimitive(result.depth))
+                put("steps", JsonPrimitive(result.steps))
             }
             listOf(UIMessagePart.Text(payload.toString()))
         },

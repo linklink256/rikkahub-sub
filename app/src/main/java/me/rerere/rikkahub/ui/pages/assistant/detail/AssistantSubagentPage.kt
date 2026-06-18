@@ -107,16 +107,22 @@ private fun AssistantSubagentContent(
                         },
                     )
                     HorizontalDivider()
+                    val levels = (assistant.subagentMaxDepth - 1).coerceAtLeast(0)
                     FormItem(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text(stringResource(R.string.subagent_max_depth_title)) },
                         description = {
-                            Text(
-                                stringResource(
-                                    R.string.subagent_max_depth_desc,
-                                    assistant.subagentMaxDepth,
+                            if (levels == 0) {
+                                Text(stringResource(R.string.subagent_max_depth_disabled))
+                            } else {
+                                Text(
+                                    stringResource(
+                                        R.string.subagent_max_depth_desc,
+                                        assistant.subagentMaxDepth,
+                                        levels,
+                                    )
                                 )
-                            )
+                            }
                         },
                     ) {
                         Slider(

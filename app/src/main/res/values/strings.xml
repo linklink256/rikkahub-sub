@@ -1224,7 +1224,8 @@
   <string name="subagent_enable_title">Enable Subagents</string>
   <string name="subagent_enable_desc">Allow the assistant to delegate tasks to autonomous subagents via the spawn_subagent tool</string>
   <string name="subagent_max_depth_title">Max Nesting Depth</string>
-  <string name="subagent_max_depth_desc">Maximum subagent recursion depth: %1$d</string>
+  <string name="subagent_max_depth_desc">Maximum subagent recursion depth: %1$d (allows %2$d level(s) of delegation)</string>
+  <string name="subagent_max_depth_disabled">Set to at least 2 to enable subagent delegation</string>
   <string name="subagent_profiles_section">Subagent Profiles</string>
   <string name="subagent_profiles_section_desc">Built-in profiles can be edited directly; changes override the defaults.</string>
   <string name="subagent_profile_name">Profile Name</string>

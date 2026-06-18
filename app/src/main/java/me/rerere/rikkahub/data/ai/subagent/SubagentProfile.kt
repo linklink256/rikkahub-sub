@@ -3,6 +3,7 @@ package me.rerere.rikkahub.data.ai.subagent
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import me.rerere.ai.core.ReasoningLevel
+import me.rerere.ai.core.TokenUsage
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import kotlin.uuid.Uuid
 
@@ -157,6 +158,14 @@ fun removeSubagentProfile(
 
 /**
  * Subagent 运行结果 —— 对应 kimi-code 的 SubagentCompletion / SubagentResult。
+ *
+ * @param profileName 触发时引用的配置档名
+ * @param summary     子代理最终摘要文本（作为工具结果返回给父代理）
+ * @param succeeded   是否成功完成
+ * @param error       失败时的错误信息
+ * @param depth       该子代理所在的递归深度（0 = 直接子代理）
+ * @param usage       子代理本次运行累计的 token 用量（含扩写追问轮次）；null 表示未统计到
+ * @param steps       子代理实际执行的 generation 轮次（含扩写追问）
  */
 @Serializable
 data class SubagentResult(
@@ -165,4 +174,6 @@ data class SubagentResult(
     @SerialName("succeeded") val succeeded: Boolean,
     @SerialName("error") val error: String? = null,
     @SerialName("depth") val depth: Int = 0,
+    @SerialName("usage") val usage: TokenUsage? = null,
+    @SerialName("steps") val steps: Int = 0,
 )

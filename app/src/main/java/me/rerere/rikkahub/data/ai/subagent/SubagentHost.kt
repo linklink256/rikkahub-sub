@@ -66,7 +66,9 @@ class SubagentHost(
      * @param depth           当前递归深度（0 = 直接子代理）
      * @param maxDepth        允许的最大子代理嵌套深度
      * @param onProgress      可选的进度回调（每收到一批消息时触发，便于 UI 展示子代理流）
-     * @return 子代理运行结果（含摘要 / 是否成功 / 错误信息）
+     * @param onStatus        可选的状态文案回调（向 UI 广播子代理运行状态，如「子代理 explore 正在搜索…」；
+     *                        传入 null 表示清空状态。对应根对话的 `processingStatus`）
+     * @return 子代理运行结果（含摘要 / 是否成功 / 错误信息 / token 用量 / 步数）
      */
     suspend fun spawn(
         profile: SubagentProfile,
@@ -78,6 +80,7 @@ class SubagentHost(
         depth: Int = 0,
         maxDepth: Int = DEFAULT_MAX_DEPTH,
         onProgress: ((List<UIMessage>) -> Unit)? = null,
+        onStatus: ((String?) -> Unit)? = null,
     ): SubagentResult {
         if (depth >= maxDepth) {
             return SubagentResult(
@@ -95,14 +98,28 @@ class SubagentHost(
             ?: parentModel
 
         val childAssistant = buildChildAssistant(profile, parentAssistant)
-        val childTools = runCatching {
+        val rawChildTools = runCatching {
             buildChildTools(childAssistant, depth)
         }.getOrElse {
             Log.w(TAG, "spawn: buildChildTools failed: ${it.message}")
             emptyList()
         }
+        // 应用 profile.excludedTools：按工具名剔除（例如 reviewer 配置为只读，
+        // 排除 workspace_write_file / workspace_shell 等）。此前该字段未被应用，是一处遗漏。
+        val childTools = if (profile.excludedTools.isEmpty()) {
+            rawChildTools
+        } else {
+            rawChildTools.filter { it.name !in profile.excludedTools }
+        }
+
+        var totalUsage: TokenUsage? = null
+        var steps = 0
 
         return runCatching {
+            // 广播子代理启动状态
+            onStatus?.invoke(statusLabel(profile, depth, "started"))
+            Log.i(TAG, "spawn: subagent '${profile.name}' (depth=$depth) started")
+
             // 第 1 轮：直接以任务作为 user 消息启动
             var messages = listOf(UIMessage.user(task))
             var run = runToCompletion(
@@ -113,7 +130,11 @@ class SubagentHost(
                 tools = childTools,
                 initialMessages = messages,
                 onProgress = onProgress,
+                onStatus = onStatus,
+                depth = depth,
             )
+            steps += 1
+            totalUsage = mergeUsage(totalUsage, run.usage)
             messages = run.messages
 
             // 摘要过短 → 追问扩写（移植自 kimi-code waitForChildCompletion 的 continuation 逻辑）
@@ -121,6 +142,7 @@ class SubagentHost(
             var remainingContinuations = profile.summaryContinuationAttempts
             while (remainingContinuations > 0 && summary.length < profile.summaryMinLength) {
                 remainingContinuations -= 1
+                onStatus?.invoke(statusLabel(profile, depth, "expanding summary"))
                 val continuationMessages = messages + UIMessage.user(SUMMARY_CONTINUATION_PROMPT)
                 run = runToCompletion(
                     profile = profile,
@@ -130,17 +152,25 @@ class SubagentHost(
                     tools = childTools,
                     initialMessages = continuationMessages,
                     onProgress = onProgress,
+                    onStatus = onStatus,
+                    depth = depth,
                 )
+                steps += 1
+                totalUsage = mergeUsage(totalUsage, run.usage)
                 messages = run.messages
                 summary = run.summary
             }
 
-            SubagentResult(
+            val result = SubagentResult(
                 profileName = profile.name,
                 summary = summary.ifBlank { "(subagent produced no textual summary)" },
                 succeeded = true,
                 depth = depth,
+                usage = totalUsage,
+                steps = steps,
             )
+            logResult(result)
+            result
         }.onFailure {
             if (it is CancellationException) throw it
             Log.e(TAG, "spawn: subagent '${profile.name}' failed: ${it.message}", it)
@@ -151,7 +181,12 @@ class SubagentHost(
                 succeeded = false,
                 error = it.message ?: it.javaClass.name,
                 depth = depth,
+                usage = totalUsage,
+                steps = steps,
             )
+        }.also {
+            // 子代理结束（无论成功与否），清空状态文案，把 processingStatus 还给父代理
+            onStatus?.invoke(null)
         }
     }
 
@@ -169,6 +204,8 @@ class SubagentHost(
         tools: List<Tool>,
         initialMessages: List<UIMessage>,
         onProgress: ((List<UIMessage>) -> Unit)?,
+        onStatus: ((String?) -> Unit)? = null,
+        depth: Int = 0,
     ): RunCompletion {
         val finalMessages = generationHandler.generateText(
             settings = settings,
@@ -179,8 +216,10 @@ class SubagentHost(
             maxSteps = profile.maxSteps.coerceIn(1, 256),
             memories = emptyList(),
         ).onEach { chunk ->
-            if (onProgress != null && chunk is GenerationChunk.Messages) {
-                onProgress(chunk.messages)
+            if (chunk is GenerationChunk.Messages) {
+                onProgress?.invoke(chunk.messages)
+                // 从最新消息推断一句简短状态，让用户感知子代理正在做什么
+                onStatus?.invoke(progressStatus(profile, depth, chunk.messages))
             }
         }.fold(initialMessages) { _, chunk ->
             when (chunk) {
@@ -263,6 +302,70 @@ class SubagentHost(
             acc = acc.merge(u)
         }
         return acc
+    }
+
+    private fun mergeUsage(acc: TokenUsage?, other: TokenUsage?): TokenUsage? {
+        if (acc == null) return other
+        if (other == null) return acc
+        return acc.merge(other)
+    }
+
+    /** 生成子代理状态文案的前缀（含深度缩进，便于多级嵌套时区分）。 */
+    private fun statusLabel(profile: SubagentProfile, depth: Int, phase: String): String {
+        val indent = "  ".repeat(depth.coerceIn(0, 4))
+        val name = profile.displayName.ifBlank { profile.name }
+        val phaseText = when (phase) {
+            "started" -> "running"
+            "expanding summary" -> "expanding summary"
+            else -> phase
+        }
+        return "${indent}↳ subagent [$name] $phaseText"
+    }
+
+    /**
+     * 从最新消息列表推断一句简短进度状态。
+     * 优先展示子代理正在调用 / 刚完成的工具名，其次展示「thinking…」。
+     */
+    private fun progressStatus(
+        profile: SubagentProfile,
+        depth: Int,
+        messages: List<UIMessage>,
+    ): String {
+        val last = messages.lastOrNull() ?: return statusLabel(profile, depth, "thinking")
+        val tools = last.getTools()
+        return when {
+            last.role == MessageRole.ASSISTANT && tools.isNotEmpty() -> {
+                val pending = tools.filter { !it.isExecuted }.map { it.toolName }
+                val done = tools.filter { it.isExecuted }.map { it.toolName }
+                val detail = when {
+                    pending.isNotEmpty() -> "calling ${pending.joinToString(", ")}"
+                    done.isNotEmpty() -> "done: ${done.joinToString(", ")}"
+                    else -> "thinking"
+                }
+                statusLabel(profile, depth, detail)
+            }
+            last.role == MessageRole.TOOL -> statusLabel(profile, depth, "processing results")
+            else -> statusLabel(profile, depth, "thinking")
+        }
+    }
+
+    private fun logResult(result: SubagentResult) {
+        val u = result.usage
+        if (u != null) {
+            Log.i(
+                TAG,
+                "spawn: subagent '${result.profileName}' (depth=${result.depth}) " +
+                    "finished in ${result.steps} step(s); " +
+                    "tokens: prompt=${u.promptTokens}, completion=${u.completionTokens}, " +
+                    "cached=${u.cachedTokens}, total=${u.totalTokens}"
+            )
+        } else {
+            Log.i(
+                TAG,
+                "spawn: subagent '${result.profileName}' (depth=${result.depth}) " +
+                    "finished in ${result.steps} step(s); tokens: n/a"
+            )
+        }
     }
 
     private data class RunCompletion(
