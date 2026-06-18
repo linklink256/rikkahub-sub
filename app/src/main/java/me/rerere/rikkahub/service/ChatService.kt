@@ -906,7 +906,9 @@ class ChatService(
         subMessages: List<UIMessage>,
     ) {
         runCatching {
-            val transcript = SubagentHost.buildTranscript(subMessages)
+            // 流式 partial transcript：截断工具输出（UI 本就只展示前 2000 字符），
+            // 避免逐 tick 序列化完整搜索结果等大体积输出，把每 tick 序列化体积降到 ~KB 级。
+            val transcript = SubagentHost.buildTranscript(subMessages, truncateToolOutput = 2000)
             if (transcript.isEmpty()) return@runCatching
 
             val listSerializer = kotlinx.serialization.builtins.ListSerializer(

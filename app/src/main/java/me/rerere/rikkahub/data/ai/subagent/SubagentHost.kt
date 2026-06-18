@@ -197,6 +197,38 @@ class SubagentHost(
         initialMessages: List<UIMessage>,
         onProgress: ((List<UIMessage>) -> Unit)?,
     ): RunCompletion {
+        // 流式进度节流。
+        //
+        // 背景：onProgress -> ChatService.updateSubagentProgress 会在 UI 侧把子代理当前
+        // 的【全部】消息重建为 transcript、整体 JSON 序列化（含搜索结果等大体积工具输出）、
+        // 拷贝整个父对话并触发 Compose 重新渲染 ChainOfThought + MarkdownBlock。若逐 token
+        // 调用，生成摘要时 transcript 已达到最大，主线程被压垮，表现为「开了流式但子代理不
+        // 流式输出」——UI 冻结，结束后一次性 dump。
+        //
+        // 策略：按时间节流（默认 120ms 一次，约 8Hz），降低生产/消费两侧的每 token 开销；
+        // 同时在 transcript 【结构变化】（新增 part / 新增 assistant 消息 —— 即新思维链、
+        // 新工具调用、新步骤）时立即放行，保证工具调用与思维链即时可见，仅对逐 token 增长
+        // 的正文文本做时间节流。最终结果由工具返回值覆盖，节流不会丢失终态。
+        val throttledProgress = onProgress?.let { cb ->
+            var lastEmitTime = 0L
+            var lastSignature = -1
+            val minIntervalMs = 120L
+            { messages: List<UIMessage> ->
+                val now = System.currentTimeMillis()
+                // 结构签名：所有 assistant 消息的 part 总数。
+                // 新增 part（reasoning/tool/text）时变化 -> 立即放行；
+                // 同一 part 增长（逐 token 文本）时不变 -> 时间节流。
+                val signature = messages.sumOf { msg ->
+                    if (msg.role == MessageRole.ASSISTANT) msg.parts.size else 0
+                }
+                if (signature != lastSignature || now - lastEmitTime >= minIntervalMs) {
+                    lastEmitTime = now
+                    lastSignature = signature
+                    cb(messages)
+                }
+            }
+        }
+
         val finalMessages = generationHandler.generateText(
             settings = settings,
             model = model,
@@ -207,7 +239,7 @@ class SubagentHost(
             memories = emptyList(),
         ).onEach { chunk ->
             if (chunk is GenerationChunk.Messages) {
-                onProgress?.invoke(chunk.messages)
+                throttledProgress?.invoke(chunk.messages)
             }
         }.fold(initialMessages) { _, chunk ->
             when (chunk) {
@@ -330,7 +362,19 @@ class SubagentHost(
          * 从子代理的完整消息列表构建 UI 可视化用的 transcript。
          * 公开供 ChatService 在 onProgress 回调中构建实时部分 transcript。
          */
-        fun buildTranscript(messages: List<UIMessage>): List<SubagentTranscriptStep> {
+        /**
+         * 从子代理的完整消息列表构建 UI 可视化用的 transcript。
+         * 公开供 ChatService 在 onProgress 回调中构建实时部分 transcript。
+         *
+         * @param truncateToolOutput 工具调用输出的最大字符数；<= 0 表示不截断（保留完整输出，
+         *   用于最终 transcript）。流式 partial 场景传入正值（如 2000），可大幅缩小序列化体积
+         *   —— UI 渲染器本就把工具输出 take(2000) 展示，流式期间序列化完整搜索结果纯属浪费，
+         *   是逐 tick 序列化的主要开销来源。
+         */
+        fun buildTranscript(
+            messages: List<UIMessage>,
+            truncateToolOutput: Int = 0,
+        ): List<SubagentTranscriptStep> {
             val steps = mutableListOf<SubagentTranscriptStep>()
             for (message in messages) {
                 if (message.role != MessageRole.ASSISTANT) continue
@@ -355,7 +399,7 @@ class SubagentHost(
                                 SubagentTranscriptStep.ToolCall(
                                     name = part.toolName,
                                     input = part.input,
-                                    output = outputText,
+                                    output = if (truncateToolOutput > 0) outputText.take(truncateToolOutput) else outputText,
                                     executed = part.isExecuted,
                                 )
                             )
