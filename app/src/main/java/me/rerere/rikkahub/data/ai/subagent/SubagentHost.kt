@@ -250,7 +250,7 @@ class SubagentHost(
             maxTokens = profile.maxTokens ?: parent.maxTokens,
             reasoningLevel = profile.reasoningLevel,
             contextMessageSize = 0, // 子代理从空上下文开始
-            streamOutput = profile.streamOutput,
+            streamOutput = profile.streamOutput || parent.streamOutput,
             enableMemory = profile.enableMemory,
             useGlobalMemory = false,
             enableRecentChatsReference = false,
