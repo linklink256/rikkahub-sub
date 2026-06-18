@@ -37,6 +37,7 @@ fun createSubagentTools(
     spawn: suspend (profileName: String, task: String, description: String) -> SubagentResult,
     askBtw: suspend (question: String) -> String,
     delegateOnly: Boolean = false,
+    includeAskBtw: Boolean = true,
 ): List<Tool> {
     if (profiles.isEmpty()) return emptyList()
 
@@ -217,7 +218,7 @@ $profileListText
         },
     )
 
-    return listOf(spawnTool, btwTool)
+    return if (includeAskBtw) listOf(spawnTool, btwTool) else listOf(spawnTool)
 }
 
 /** subagent 工具名集合，便于在构建子代理工具时排除 / 判断递归。 */

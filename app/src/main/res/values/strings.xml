@@ -1231,6 +1231,8 @@
   <string name="subagent_parallel_execution_title">Parallel Tool Execution</string>
   <string name="subagent_parallel_execution_desc">Run multiple tool calls (e.g. several spawned subagents) in the same turn concurrently instead of one by one.</string>
   <string name="subagent_tool_title">Subagent</string>
+  <string name="assistant_page_local_tools_ask_btw_title">Ask By The Way</string>
+  <string name="assistant_page_local_tools_ask_btw_desc">Lightweight side-question tool for quick second opinions without spawning a full subagent (requires subagents enabled)</string>
   <string name="subagent_profiles_section">Subagent Profiles</string>
   <string name="subagent_profiles_section_desc">Built-in profiles can be edited directly; changes override the defaults.</string>
   <string name="subagent_profile_name">Profile Name</string>

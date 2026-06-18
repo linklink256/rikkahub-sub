@@ -32,7 +32,11 @@ import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.put
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.ReasoningLevel
 import me.rerere.ai.core.Tool
@@ -59,6 +63,7 @@ import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.ai.subagent.SubagentHost
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.SubagentResult
+import me.rerere.rikkahub.data.ai.subagent.SubagentTranscriptStep
 import me.rerere.rikkahub.data.ai.subagent.createSubagentTools
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
@@ -544,6 +549,7 @@ class ChatService(
                     depth = 0,
                     assistant.subagentMaxDepth,
                     includeBase = false,
+                    conversationId = conversationId,
                 )
             } else {
                 emptyList()
@@ -744,6 +750,7 @@ class ChatService(
         depth: Int,
         maxDepth: Int,
         includeBase: Boolean,
+        @Suppress("UNUSED_PARAMETER") conversationId: Uuid? = null,
     ): List<Tool> {
         val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
         if (profiles.isEmpty()) return emptyList()
@@ -763,6 +770,7 @@ class ChatService(
                 profiles = profiles,
                 json = json,
                 delegateOnly = depth == 0 && assistant.enableSubagents && assistant.subagentDelegateOnly,
+                includeAskBtw = assistant.localTools.contains(LocalToolOption.AskBtw),
                 spawn = { profileName, task, _ ->
                     val profile = profiles.firstOrNull { it.name == profileName }
                     if (profile == null) {
@@ -796,6 +804,12 @@ class ChatService(
                             },
                             depth = depth + 1,
                             maxDepth = maxDepth,
+                            onProgress = if (conversationId != null) { subMessages ->
+                                // 实时流式更新：把子代理当前的消息构建为部分 transcript，
+                                // 更新到对话中对应 spawn_subagent 工具的 output，
+                                // 使 UI 上的 SubagentToolUI 能实时展示子代理的思维链 / 工具调用。
+                                updateSubagentProgress(conversationId, profileName, subMessages)
+                            } else null,
                         )
                     }
                 },
@@ -874,6 +888,74 @@ class ChatService(
     }
 
     // ---- 检查无效消息 ----
+
+    /**
+     * 实时更新对话中 spawn_subagent 工具的 output，使 UI 能流式展示子代理的进度。
+     *
+     * 子代理运行在工具执行期间（父代理 generateText 流被挂起），此方法直接更新对话状态，
+     * 把子代理当前的部分 transcript 写入对应工具的 output metadata。父代理流恢复后会用
+     * 最终结果覆盖，因此不会产生冲突。
+     *
+     * @param conversationId 对话 ID
+     * @param profileName    子代理配置档名（用于 UI 标题）
+     * @param subMessages    子代理当前的消息列表
+     */
+    private fun updateSubagentProgress(
+        conversationId: Uuid,
+        profileName: String,
+        subMessages: List<UIMessage>,
+    ) {
+        runCatching {
+            val transcript = SubagentHost.buildTranscript(subMessages)
+            if (transcript.isEmpty()) return@runCatching
+
+            val listSerializer = kotlinx.serialization.builtins.ListSerializer(
+                SubagentTranscriptStep.serializer()
+            )
+            val transcriptMetadata = buildJsonObject {
+                put("subagent_transcript", json.encodeToJsonElement(listSerializer, transcript))
+                put("subagent_profile", JsonPrimitive(profileName))
+                put("subagent_steps", JsonPrimitive(transcript.size))
+                put("subagent_succeeded", JsonPrimitive(false))
+                put("subagent_streaming", JsonPrimitive(true))
+            }
+            val partialOutput = UIMessagePart.Text(
+                text = "{\"profile_name\":\"$profileName\",\"succeeded\":false,\"streaming\":true}",
+                metadata = transcriptMetadata,
+            )
+
+            conversations.update { current ->
+                val conversation = current[conversationId] ?: return@update current
+                val messages = conversation.currentMessages
+                val lastAssistantIndex = messages.indexOfLast { it.role == MessageRole.ASSISTANT }
+                if (lastAssistantIndex < 0) return@update current
+
+                val updatedMessages = messages.mapIndexed { index, message ->
+                    if (index != lastAssistantIndex) return@mapIndexed message
+                    val hasSpawnTool = message.parts.any {
+                        it is UIMessagePart.Tool && it.toolName == "spawn_subagent" && !it.isExecuted
+                    }
+                    if (!hasSpawnTool) return@mapIndexed message
+
+                    message.copy(parts = message.parts.map { part ->
+                        if (part is UIMessagePart.Tool &&
+                            part.toolName == "spawn_subagent" &&
+                            !part.isExecuted
+                        ) {
+                            part.copy(output = listOf(partialOutput))
+                        } else {
+                            part
+                        }
+                    })
+                }
+                current.toMutableMap().apply {
+                    this[conversationId] = conversation.updateCurrentMessages(updatedMessages)
+                }
+            }
+        }.onFailure {
+            Log.w(TAG, "updateSubagentProgress failed: ${it.message}")
+        }
+    }
 
     private fun checkInvalidMessages(conversationId: Uuid) {
         val conversation = getConversationFlow(conversationId).value

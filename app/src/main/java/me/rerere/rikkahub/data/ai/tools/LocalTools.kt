@@ -45,6 +45,10 @@ sealed class LocalToolOption {
     @Serializable
     @SerialName("ask_user")
     data object AskUser : LocalToolOption()
+
+    @Serializable
+    @SerialName("ask_btw")
+    data object AskBtw : LocalToolOption()
 }
 
 class LocalTools(private val context: Context, private val eventBus: AppEventBus) {

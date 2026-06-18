@@ -298,61 +298,6 @@ class SubagentHost(
         return acc.merge(other)
     }
 
-    /**
-     * 从子代理的完整消息列表构建 UI 可视化用的 transcript。
-     *
-     * 遍历每条消息，提取：
-     * - ASSISTANT 消息中的 Reasoning part → [SubagentTranscriptStep.Reasoning]
-     * - ASSISTANT 消息中的 Tool part     → [SubagentTranscriptStep.ToolCall]（含完整 output）
-     * - ASSISTANT 消息中的 Text part      → [SubagentTranscriptStep.Text]（正文/摘要）
-     * - USER 消息（任务/扩写提示）跳过
-     *
-     * 工具输出完整保留（不截断），便于用户展开查看子代理搜索到的原始内容。
-     */
-    private fun buildTranscript(messages: List<UIMessage>): List<SubagentTranscriptStep> {
-        val steps = mutableListOf<SubagentTranscriptStep>()
-        for (message in messages) {
-            if (message.role != MessageRole.ASSISTANT) continue
-            for (part in message.parts) {
-                when (part) {
-                    is UIMessagePart.Reasoning -> {
-                        if (part.reasoning.isNotBlank()) {
-                            steps.add(
-                                SubagentTranscriptStep.Reasoning(
-                                    text = part.reasoning,
-                                    createdAt = part.createdAt.toEpochMilliseconds(),
-                                )
-                            )
-                        }
-                    }
-
-                    is UIMessagePart.Tool -> {
-                        val outputText = part.output
-                            .filterIsInstance<UIMessagePart.Text>()
-                            .joinToString("\n") { it.text }
-                        steps.add(
-                            SubagentTranscriptStep.ToolCall(
-                                name = part.toolName,
-                                input = part.input,
-                                output = outputText,
-                                executed = part.isExecuted,
-                            )
-                        )
-                    }
-
-                    is UIMessagePart.Text -> {
-                        if (part.text.isNotBlank()) {
-                            steps.add(SubagentTranscriptStep.Text(part.text.trim()))
-                        }
-                    }
-
-                    else -> {}
-                }
-            }
-        }
-        return steps
-    }
-
     private fun logResult(result: SubagentResult) {
         val u = result.usage
         if (u != null) {
@@ -380,6 +325,54 @@ class SubagentHost(
 
     companion object {
         private const val DEFAULT_MAX_DEPTH = 2
+
+        /**
+         * 从子代理的完整消息列表构建 UI 可视化用的 transcript。
+         * 公开供 ChatService 在 onProgress 回调中构建实时部分 transcript。
+         */
+        fun buildTranscript(messages: List<UIMessage>): List<SubagentTranscriptStep> {
+            val steps = mutableListOf<SubagentTranscriptStep>()
+            for (message in messages) {
+                if (message.role != MessageRole.ASSISTANT) continue
+                for (part in message.parts) {
+                    when (part) {
+                        is UIMessagePart.Reasoning -> {
+                            if (part.reasoning.isNotBlank()) {
+                                steps.add(
+                                    SubagentTranscriptStep.Reasoning(
+                                        text = part.reasoning,
+                                        createdAt = part.createdAt.toEpochMilliseconds(),
+                                    )
+                                )
+                            }
+                        }
+
+                        is UIMessagePart.Tool -> {
+                            val outputText = part.output
+                                .filterIsInstance<UIMessagePart.Text>()
+                                .joinToString("\n") { it.text }
+                            steps.add(
+                                SubagentTranscriptStep.ToolCall(
+                                    name = part.toolName,
+                                    input = part.input,
+                                    output = outputText,
+                                    executed = part.isExecuted,
+                                )
+                            )
+                        }
+
+                        is UIMessagePart.Text -> {
+                            if (part.text.isNotBlank()) {
+                                steps.add(SubagentTranscriptStep.Text(part.text.trim()))
+                            }
+                        }
+
+                        else -> {}
+                    }
+                }
+            }
+            return steps
+        }
 
         /**
          * 给定一批工具，把它们"沙箱化"为子代理可用版本：

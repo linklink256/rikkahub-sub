@@ -55,12 +55,27 @@ object SubagentToolUI : ToolUIRenderer {
 
     @Composable
     override fun title(context: ToolUIContext): String {
-        val meta = subagentMetadata(context) ?: return stringResource(R.string.subagent_tool_title)
-        val profile = meta["subagent_profile"]?.jsonPrimitive?.contentOrNull ?: "subagent"
-        val steps = meta["subagent_steps"]?.jsonPrimitive?.contentOrNull ?: "?"
-        val succeeded = meta["subagent_succeeded"]?.jsonPrimitive?.contentOrNull == "true"
-        val statusText = if (succeeded) "" else " ✗"
-        return "↳ $profile · $steps steps$statusText"
+        // 优先从 metadata（已完成）取 profile 名
+        val meta = subagentMetadata(context)
+        if (meta != null) {
+            val profile = meta["subagent_profile"]?.jsonPrimitive?.contentOrNull ?: "subagent"
+            val steps = meta["subagent_steps"]?.jsonPrimitive?.contentOrNull ?: "?"
+            val succeeded = meta["subagent_succeeded"]?.jsonPrimitive?.contentOrNull == "true"
+            val streaming = meta["subagent_streaming"]?.jsonPrimitive?.contentOrNull == "true"
+            val statusText = when {
+                streaming -> " · running"
+                !succeeded -> " ✗"
+                else -> ""
+            }
+            return "$profile · $steps steps$statusText"
+        }
+        // 执行中（无 output）：从工具入参取 profile_name
+        val profileName = context.arguments.let { args ->
+            (args as? JsonObject)?.get("profile_name")?.let {
+                runCatching { it.jsonPrimitive.content }.getOrNull()
+            }
+        } ?: "subagent"
+        return "$profileName · running"
     }
 
     override fun hasSummary(context: ToolUIContext): Boolean = transcriptSteps(context).isNotEmpty()

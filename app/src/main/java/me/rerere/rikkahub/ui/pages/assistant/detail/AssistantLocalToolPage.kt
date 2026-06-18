@@ -156,6 +156,20 @@ private fun AssistantLocalToolContent(
                     )
                 }
             )
+            item(
+                headlineContent = {
+                    Text(stringResource(R.string.assistant_page_local_tools_ask_btw_title))
+                },
+                supportingContent = {
+                    Text(stringResource(R.string.assistant_page_local_tools_ask_btw_desc))
+                },
+                trailingContent = {
+                    Switch(
+                        checked = assistant.localTools.contains(LocalToolOption.AskBtw),
+                        onCheckedChange = { toggleLocalTool(LocalToolOption.AskBtw, it) }
+                    )
+                }
+            )
         }
     }
 }
