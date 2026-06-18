@@ -7,6 +7,7 @@ import me.rerere.ai.provider.CustomBody
 import me.rerere.ai.provider.CustomHeader
 import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.core.ReasoningLevel
+import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import kotlin.uuid.Uuid
 
@@ -46,6 +47,10 @@ data class Assistant(
     val enableTimeReminder: Boolean = false,            // 时间间隔提醒注入
     val allowConversationSystemPrompt: Boolean = false, // 允许对话单独重写 system prompt
     val allowConversationPromptInjection: Boolean = false, // 允许对话单独绑定提示词注入
+    // ---- Subagent (子代理) ---- 移植自 kimi-code 的 subagent 体系
+    val enableSubagents: Boolean = false,              // 是否启用子代理委派能力
+    val subagentMaxDepth: Int = 2,                     // 子代理最大嵌套深度
+    val subagentProfiles: List<SubagentProfile> = emptyList(), // 自定义子代理配置档（与内置合并）
 )
 
 @Serializable

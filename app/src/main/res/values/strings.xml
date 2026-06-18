@@ -7,12 +7,13 @@
   <string name="about_page_version">Version</string>
   <string name="about_page_website">Website</string>
   <string name="add">Add</string>
-  <string name="app_name">RikkaHub</string>
+  <string name="app_name">RikkaHub Sub</string>
   <string name="asr_button_content_description">Speech Recognition</string>
   <string name="asr_button_stop">Stop</string>
   <string name="assistant_detail_basic_desc">Configure name, avatar, model, and parameters</string>
   <string name="assistant_detail_extensions_desc">Manage quick messages, prompt injections, lorebooks and skills</string>
   <string name="assistant_detail_local_tools_desc">Enable local tools like JavaScript engine</string>
+  <string name="assistant_detail_subagent_desc">Configure subagents for delegated autonomous tasks</string>
   <string name="assistant_detail_mcp_desc">Configure MCP server tools for the assistant</string>
   <string name="assistant_detail_memory_desc">Manage assistant memory and recent chat references</string>
   <string name="assistant_detail_prompt_desc">Set system prompts, message templates, and regex rules</string>
@@ -133,6 +134,7 @@
   <string name="assistant_page_tab_basic">Basic Settings</string>
   <string name="assistant_page_tab_extensions">Extensions</string>
   <string name="assistant_page_tab_local_tools">Local Tools</string>
+  <string name="assistant_page_tab_subagent">Subagents</string>
   <string name="assistant_page_tab_mcp">MCP</string>
   <string name="assistant_page_tab_memory">Memory</string>
   <string name="assistant_page_tab_prompt">Prompts</string>
@@ -1217,5 +1219,31 @@
   <string name="tool_ui_file">file</string>
   <string name="workspace_page_name_duplicate">Name already exists</string>
   <string name="setting_mcp_page_name_invalid">Name can only contain English letters and numbers</string>
+
+  <!-- Subagent -->
+  <string name="subagent_enable_title">Enable Subagents</string>
+  <string name="subagent_enable_desc">Allow the assistant to delegate tasks to autonomous subagents via the spawn_subagent tool</string>
+  <string name="subagent_max_depth_title">Max Nesting Depth</string>
+  <string name="subagent_max_depth_desc">Maximum subagent recursion depth: %1$d</string>
+  <string name="subagent_profiles_section">Subagent Profiles</string>
+  <string name="subagent_profiles_section_desc">Built-in profiles can be edited directly; changes override the defaults.</string>
+  <string name="subagent_profile_name">Profile Name</string>
+  <string name="subagent_profile_display_name">Display Name</string>
+  <string name="subagent_profile_description">Description</string>
+  <string name="subagent_profile_system_prompt">System Prompt</string>
+  <string name="subagent_profile_model">Model</string>
+  <string name="subagent_profile_model_desc">Leave empty to inherit the parent assistant\'s model</string>
+  <string name="subagent_profile_temperature">Temperature</string>
+  <string name="subagent_profile_top_p">Top P</string>
+  <string name="subagent_profile_max_tokens">Max Tokens</string>
+  <string name="subagent_profile_reasoning">Reasoning Level</string>
+  <string name="subagent_profile_max_steps">Max Steps</string>
+  <string name="subagent_profile_inherit_tools">Inherit Tools</string>
+  <string name="subagent_profile_inherit_tools_desc">Inherit the parent assistant\'s tool set</string>
+  <string name="subagent_profile_stream">Stream Output</string>
+  <string name="subagent_profile_stream_desc">Stream subagent output (off by default; results returned at once)</string>
+  <string name="subagent_profile_memory">Enable Memory</string>
+  <string name="subagent_profile_memory_desc">Let the subagent use the memory tool (off by default)</string>
+  <string name="subagent_profile_summary_min_length">Min Summary Length</string>
 </resources>
 

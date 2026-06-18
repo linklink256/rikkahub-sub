@@ -19,11 +19,15 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "me.rerere.rikkahub"
+        // Fork: 改 applicationId 以便与原版 RikkaHub 共存安装（不冲突）。
+        // 注意：仅改 applicationId（APK 身份标识），不改 Kotlin 源码 package 声明，
+        // Android 官方支持 applicationId != 包名，369 个源文件无需改动。
+        // manifest 中的 ${applicationId} 与运行时 context.packageName 会自动同步为新值。
+        applicationId = "me.rerere.rikkahub.sub"
         minSdk = 26
         targetSdk = 37
         versionCode = 164
-        versionName = "2.3.1"
+        versionName = "2.3.1-sub"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -46,9 +50,14 @@ android {
 
     signingConfigs {
         create("release") {
+            // Fork: 固定签名策略
+            // 1) 优先使用 local.properties 里的自定义签名（便于有自己 key 的人覆盖）；
+            // 2) 否则回退到仓库内置的 fork keystore（保证 fork 构建始终用同一个固定签名，
+            //    所有 fork 版本可互相升级、身份一致）。
             val localProperties = Properties()
             val localPropertiesFile = rootProject.file("local.properties")
 
+            var customKeyAvailable = false
             if (localPropertiesFile.exists()) {
                 localProperties.load(FileInputStream(localPropertiesFile))
 
@@ -64,6 +73,18 @@ android {
                     storePassword = storePasswordValue
                     keyAlias = keyAliasValue
                     keyPassword = keyPasswordValue
+                    customKeyAvailable = true
+                }
+            }
+
+            if (!customKeyAvailable) {
+                // Fork 固定签名 keystore（已内置仓库，随项目分发）
+                val forkKeystore = rootProject.file("app/keystore/subagent-fork.keystore")
+                if (forkKeystore.exists()) {
+                    storeFile = forkKeystore
+                    storePassword = "rikkahub-subagent-fork"
+                    keyAlias = "subagent-fork"
+                    keyPassword = "rikkahub-subagent-fork"
                 }
             }
         }

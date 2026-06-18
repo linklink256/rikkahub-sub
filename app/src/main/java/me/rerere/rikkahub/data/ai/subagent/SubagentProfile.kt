@@ -1,0 +1,168 @@
+package me.rerere.rikkahub.data.ai.subagent
+
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import me.rerere.ai.core.ReasoningLevel
+import me.rerere.rikkahub.data.ai.tools.LocalToolOption
+import kotlin.uuid.Uuid
+
+/**
+ * Subagent 配置档 —— 移植自 kimi-code 的 ResolvedAgentProfile / DEFAULT_AGENT_PROFILES.subagents。
+ *
+ * 一个 SubagentProfile 描述了一类"子代理"的行为：它拥有独立的系统提示词、
+ * 可独立配置的模型 / 温度 / 最大步数，并可选择继承父代理的工具集（子集）。
+ * 父代理通过 `spawn_subagent` 工具按 profile 名称委派任务，子代理自主运行
+ * 完整的 generation 循环后，把最终摘要作为工具结果返回给父代理。
+ *
+ * @param name            唯一标识名（小写英文，用于工具参数引用）
+ * @param displayName     展示名称
+ * @param description     向父代理描述该子代理擅长什么（会注入到 spawn_subagent 工具说明中）
+ * @param systemPrompt    子代理系统提示词
+ * @param chatModelId     指定模型；为 null 时继承父代理当前模型
+ * @param temperature     采样温度；为 null 时继承父代理
+ * @param topP            top_p；为 null 时继承父代理
+ * @param maxTokens       单轮最大 token；为 null 时继承父代理
+ * @param reasoningLevel  推理强度；默认 AUTO
+ * @param maxSteps        子代理最大工具调用轮次（防止无限循环）
+ * @param inheritTools    是否继承父代理工具集
+ * @param excludedTools   继承时要排除的工具名（例如避免递归委派）
+ * @param extraLocalTools 额外注入的本地工具选项
+ * @param enableMemory    是否启用记忆（子代理通常独立、无记忆）
+ * @param summaryMinLength 摘要短于该长度时触发一次"扩写"追问（对应 kimi-code SUMMARY_MIN_LENGTH）
+ * @param summaryContinuationAttempts 扩写追问最大次数
+ * @param streamOutput    是否流式输出（子代理默认不流式，结果一次性返回）
+ */
+@Serializable
+data class SubagentProfile(
+    val name: String,
+    val displayName: String = name,
+    val description: String = "",
+    val systemPrompt: String = "",
+    val chatModelId: Uuid? = null,
+    val temperature: Float? = null,
+    val topP: Float? = null,
+    val maxTokens: Int? = null,
+    val reasoningLevel: ReasoningLevel = ReasoningLevel.AUTO,
+    val maxSteps: Int = 32,
+    val inheritTools: Boolean = true,
+    val excludedTools: Set<String> = emptySet(),
+    val extraLocalTools: List<LocalToolOption> = emptyList(),
+    val enableMemory: Boolean = false,
+    val summaryMinLength: Int = DEFAULT_SUMMARY_MIN_LENGTH,
+    val summaryContinuationAttempts: Int = DEFAULT_SUMMARY_CONTINUATION_ATTEMPTS,
+    val streamOutput: Boolean = false,
+) {
+    init {
+        require(name.isNotBlank()) { "Subagent profile name must not be blank" }
+        require(name.matches(IdentifierRegex)) {
+            "Subagent profile name must be lowercase letters/digits/underscore: $name"
+        }
+    }
+
+    companion object {
+        val IdentifierRegex = Regex("^[a-z][a-z0-9_]*$")
+
+        /** 摘要过短时触发扩写的最小长度（移植自 kimi-code SUMMARY_MIN_LENGTH = 200） */
+        const val DEFAULT_SUMMARY_MIN_LENGTH = 200
+
+        /** 扩写追问最大次数（移植自 kimi-code SUMMARY_CONTINUATION_ATTEMPTS = 1） */
+        const val DEFAULT_SUMMARY_CONTINUATION_ATTEMPTS = 1
+
+        /**
+         * 内置默认 subagent 配置档，移植自 kimi-code 的 DEFAULT_AGENT_PROFILES.agent.subagents。
+         * 用户可在 Assistant 上自定义覆盖 / 追加。
+         */
+        val BUILTIN: List<SubagentProfile> = listOf(
+            SubagentProfile(
+                name = "explore",
+                displayName = "Explorer",
+                description = "Explore and gather information autonomously. " +
+                    "Use for research, reading files, searching, and producing a factual summary. " +
+                    "Best when the parent needs to collect context before deciding.",
+                systemPrompt = """
+                    You are an exploration subagent. Your job is to autonomously investigate the task
+                    using the tools available to you, then return a concise but complete factual summary.
+                    Do not ask the user questions — make reasonable assumptions and proceed.
+                    Always end with a structured summary of your findings; do not leave the work unfinished.
+                """.trimIndent(),
+                maxSteps = 48,
+            ),
+            SubagentProfile(
+                name = "coder",
+                displayName = "Coder",
+                description = "Execute a well-scoped coding / editing task autonomously and report results. " +
+                    "Use for writing or modifying files, running shell commands, and verifying outcomes.",
+                systemPrompt = """
+                    You are a coding subagent. Complete the assigned task autonomously using your tools.
+                    Make changes, verify them (e.g. by running commands), and report what you did and
+                    whether it succeeded. Return a concise summary of changes and verification results.
+                    Do not ask the user questions — proceed with reasonable defaults.
+                """.trimIndent(),
+                maxSteps = 64,
+            ),
+            SubagentProfile(
+                name = "reviewer",
+                displayName = "Reviewer",
+                description = "Review / critique an artifact or plan and return structured feedback. " +
+                    "Read-only oriented; does not make changes.",
+                systemPrompt = """
+                    You are a review subagent. Analyze the subject described in the task, optionally use
+                    read-only tools to inspect it, and return structured feedback: strengths, issues,
+                    and concrete suggestions. Do not modify anything unless explicitly asked.
+                """.trimIndent(),
+                inheritTools = true,
+                excludedTools = setOf(
+                    "workspace_write_file", "workspace_edit_file", "workspace_shell",
+                ),
+                maxSteps = 24,
+            ),
+        )
+    }
+}
+
+/**
+ * 把用户自定义的 profile 与内置 profile 合并（用户同名覆盖内置）。
+ */
+fun mergeSubagentProfiles(custom: List<SubagentProfile>): List<SubagentProfile> {
+    val byName = LinkedHashMap<String, SubagentProfile>()
+    SubagentProfile.BUILTIN.forEach { byName[it.name] = it }
+    custom.forEach { byName[it.name] = it }
+    return byName.values.toList()
+}
+
+/**
+ * 把一个 profile upsert 到自定义列表（按 name 去重替换）。
+ * 用于 UI 编辑：编辑内置 profile 时，把修改后的副本写入 subagentProfiles，
+ * mergeSubagentProfiles 会让它覆盖同名内置项。
+ */
+fun upsertSubagentProfile(
+    custom: List<SubagentProfile>,
+    profile: SubagentProfile,
+): List<SubagentProfile> {
+    val exists = custom.any { it.name == profile.name }
+    return if (exists) {
+        custom.map { if (it.name == profile.name) profile else it }
+    } else {
+        custom + profile
+    }
+}
+
+/**
+ * 按 name 删除一个自定义 profile（不影响内置）。
+ */
+fun removeSubagentProfile(
+    custom: List<SubagentProfile>,
+    name: String,
+): List<SubagentProfile> = custom.filterNot { it.name == name }
+
+/**
+ * Subagent 运行结果 —— 对应 kimi-code 的 SubagentCompletion / SubagentResult。
+ */
+@Serializable
+data class SubagentResult(
+    @SerialName("profile_name") val profileName: String,
+    @SerialName("summary") val summary: String,
+    @SerialName("succeeded") val succeeded: Boolean,
+    @SerialName("error") val error: String? = null,
+    @SerialName("depth") val depth: Int = 0,
+)

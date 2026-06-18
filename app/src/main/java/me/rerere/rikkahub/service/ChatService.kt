@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onCompletion
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.ReasoningLevel
@@ -55,6 +56,11 @@ import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.ai.GenerationChunk
 import me.rerere.rikkahub.data.ai.GenerationHandler
 import me.rerere.rikkahub.data.ai.mcp.McpManager
+import me.rerere.rikkahub.data.ai.subagent.SubagentHost
+import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
+import me.rerere.rikkahub.data.ai.subagent.SubagentResult
+import me.rerere.rikkahub.data.ai.subagent.createSubagentTools
+import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
 import me.rerere.rikkahub.data.ai.tools.LocalTools
 import me.rerere.rikkahub.data.ai.tools.createSearchTools
 import me.rerere.rikkahub.data.ai.tools.createSkillTools
@@ -153,6 +159,8 @@ class ChatService(
     private val filesManager: FilesManager,
     private val skillManager: SkillManager,
     private val workspaceRepository: WorkspaceRepository,
+    private val subagentHost: SubagentHost,
+    private val json: Json,
 ) {
     // workspace 系统提示注入 (依赖 workspaceRepository, 故在类内构造)
     private val workspaceReminderTransformer = WorkspaceReminderTransformer(workspaceRepository)
@@ -525,6 +533,11 @@ class ChatService(
 
             // start generating
             val session = getOrCreateSession(conversationId)
+            val subagentTools = if (assistant.enableSubagents) {
+                buildSubagentTools(assistant, settings, conversation.workspaceCwd, depth = 0, assistant.subagentMaxDepth, includeBase = false)
+            } else {
+                emptyList()
+            }
             generationHandler.generateText(
                 settings = settings,
                 model = model,
@@ -597,6 +610,8 @@ class ChatService(
                             )
                         )
                     }
+                    // subagent 委派工具（移植自 kimi-code subagent 体系）
+                    addAll(subagentTools)
                 },
             ).onCompletion {
                 // 取消 Live Update 通知
@@ -661,6 +676,150 @@ class ChatService(
             return emptyList()
         }
         return createWorkspaceTools(workspaceId, workspaceRepository, cwd)
+    }
+
+    /**
+     * 构建某一层 (子)代理可用的 subagent 相关工具集 —— 移植自 kimi-code 的 subagent 工具继承 / 裁剪逻辑。
+     *
+     * - 当 [includeBase] = true（子代理场景）：复用父代理同款基础工具（搜索 / 本地 / workspace /
+     *   skills / mcp，MCP 名非法项软过滤），并通过 [SubagentHost.sandboxToolsForSubagent] 关闭审批，
+     *   使子代理可自主运行。
+     * - 当 [includeBase] = false（根代理场景）：根代理的基础工具已在外层 buildList 装配，这里只追加
+     *   spawn_subagent / ask_btw 两个委派工具，避免重复。
+     * - 当 [depth] + 1 < [maxDepth] 时，递归注入 spawn_subagent / ask_btw，允许子代理再次委派
+     *   （对应 kimi-code 的嵌套 subagent）。
+     *
+     * @param assistant    本层 (子)代理的 Assistant 配置
+     * @param settings     当前设置
+     * @param workspaceCwd workspace 当前工作目录（继承自根对话）
+     * @param depth        当前递归深度（根代理为 0）
+     * @param maxDepth     允许的最大嵌套深度
+     * @param includeBase  是否包含基础工具（子代理 true / 根代理 false）
+     */
+    private suspend fun buildSubagentTools(
+        assistant: Assistant,
+        settings: Settings,
+        workspaceCwd: String?,
+        depth: Int,
+        maxDepth: Int,
+        includeBase: Boolean,
+    ): List<Tool> {
+        val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
+        if (profiles.isEmpty()) return emptyList()
+
+        val result = mutableListOf<Tool>()
+
+        // 1) 基础工具（仅子代理需要；根代理已在外层装配）
+        if (includeBase) {
+            result += SubagentHost.sandboxToolsForSubagent(
+                buildSubagentBaseTools(assistant, settings, workspaceCwd)
+            )
+        }
+
+        // 2) 递归注入 spawn_subagent / ask_btw（受 maxDepth 约束）
+        if (depth + 1 < maxDepth) {
+            result += createSubagentTools(
+                profiles = profiles,
+                json = json,
+                spawn = { profileName, task, _ ->
+                    val profile = profiles.firstOrNull { it.name == profileName }
+                    if (profile == null) {
+                        SubagentResult(
+                            profileName = profileName,
+                            summary = "",
+                            succeeded = false,
+                            error = "Subagent profile not found: $profileName",
+                            depth = depth + 1,
+                        )
+                    } else {
+                        val parentModel = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
+                            ?: error("Model not found for subagent parent")
+                        subagentHost.spawn(
+                            profile = profile,
+                            task = task,
+                            settings = settings,
+                            parentAssistant = assistant,
+                            parentModel = parentModel,
+                            buildChildTools = { child, d ->
+                                buildSubagentTools(child, settings, workspaceCwd, d + 1, maxDepth, includeBase = true)
+                            },
+                            depth = depth + 1,
+                            maxDepth = maxDepth,
+                        )
+                    }
+                },
+                askBtw = { question ->
+                    // 轻量"顺便问一句"：无工具、单轮、继承父系统提示词（对应 kimi-code startBtw）
+                    val btwProfile = SubagentProfile(
+                        name = "btw",
+                        systemPrompt = assistant.systemPrompt,
+                        inheritTools = false,
+                        maxSteps = 1,
+                        summaryMinLength = 0,
+                        summaryContinuationAttempts = 0,
+                    )
+                    val parentModel = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
+                        ?: return@createSubagentTools "(side agent failed: model not found)"
+                    val r = subagentHost.spawn(
+                        profile = btwProfile,
+                        task = question,
+                        settings = settings,
+                        parentAssistant = assistant,
+                        parentModel = parentModel,
+                        buildChildTools = { _, _ -> emptyList() },
+                        depth = depth + 1,
+                        maxDepth = maxDepth,
+                    )
+                    if (r.succeeded) r.summary else "(side agent failed: ${r.error})"
+                },
+            )
+        }
+
+        return result
+    }
+
+    /**
+     * 子代理的基础工具集（搜索 / 本地 / workspace / skills / mcp）。
+     * 与根代理外层 buildList 同源，但 MCP 名非法项做软过滤（子代理不抛错、不打断）。
+     */
+    private suspend fun buildSubagentBaseTools(
+        assistant: Assistant,
+        settings: Settings,
+        workspaceCwd: String?,
+    ): List<Tool> = buildList {
+        if (settings.enableWebSearch) {
+            addAll(createSearchTools(settings))
+        }
+        addAll(localTools.getTools(assistant.localTools))
+        addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
+        if (assistant.enabledSkills.isNotEmpty()) {
+            addAll(
+                createSkillTools(
+                    enabledSkills = assistant.enabledSkills,
+                    allSkills = skillManager.listSkills(),
+                    skillManager = skillManager,
+                )
+            )
+        }
+        mcpManager.getAllAvailableTools()
+            .filter { (_, serverName, _) ->
+                serverName.isNotEmpty() && serverName.all {
+                    it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9'
+                }
+            }
+            .forEach { (serverId, serverName, tool) ->
+                add(
+                    Tool(
+                        name = "mcp__${serverName}__${tool.name}",
+                        description = tool.description ?: "",
+                        parameters = { tool.inputSchema },
+                        needsApproval = { tool.needsApproval },
+                        execute = {
+                            mcpManager.callTool(serverId, tool.name, it.jsonObject)
+                        },
+                    )
+                )
+            }
     }
 
     // ---- 检查无效消息 ----
