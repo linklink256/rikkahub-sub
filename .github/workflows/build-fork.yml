@@ -22,6 +22,20 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Set up Node.js & pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install zsh & pnpm
+        run: |
+          sudo apt-get update -y && sudo apt-get install -y zsh
+          npm install -g pnpm
+
+      - name: Install web-ui dependencies
+        working-directory: web-ui
+        run: pnpm install --frozen-lockfile || pnpm install
+
       - name: Accept Android SDK licenses
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
@@ -47,14 +61,14 @@ jobs:
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
-        if: success()
+        if: always()
         with:
           name: rikkahub-sub-debug
           path: app/build/outputs/apk/debug/*.apk
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
-        if: success()
+        if: always()
         with:
           name: rikkahub-sub-release
           path: app/build/outputs/apk/release/*.apk
