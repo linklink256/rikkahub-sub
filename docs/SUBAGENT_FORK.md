@@ -97,13 +97,41 @@ RikkaHub 没有 kimi-code 的 Session/Agent/Turn 抽象，但其 `GenerationHand
 ## 递归与安全
 
 - 嵌套深度由 `Assistant.subagentMaxDepth`（默认 2）控制：`depth + 1 < maxDepth` 时才向子代理注入 `spawn_subagent`，防止无限递归。
+  实际可委派层数 = `maxDepth - 1`（`maxDepth=2` → 1 层子代理）。UI 滑块会显示允许的委派层数，并在 `maxDepth=1` 时提示「未启用委派」。
 - 子代理不挂 MCP（`mcpServers = emptySet()`）、不启用 skills / 注入 / 记忆引用，保证一次性隔离。
 - `ask_btw` 使用无工具、单轮的合成 profile（对应 kimi-code `DenyAllPermissionPolicy` + 工具禁用的 side-channel）。
+- `SubagentProfile.excludedTools` 按 **工具名** 过滤子代理可用工具（例如 reviewer 排除 `workspace_write_file` /
+  `workspace_shell`），在 `SubagentHost.spawn` 中应用。此前该字段定义了但未被使用，已修正。
+
+## 运行可见性（完善项）
+
+子代理此前是「黑盒」——父代理调用 `spawn_subagent` 后，用户在等待期间看不到任何反馈。
+现已加入状态冒泡链路：
+
+- `SubagentHost.spawn` 新增 `onStatus: ((String?) -> Unit)?` 回调，在每个 generation chunk 到达时
+  推断一句简短状态（`↳ subagent [Explorer] calling workspace_shell` / `thinking` / `expanding summary`），
+  多级嵌套时按深度缩进区分。
+- `ChatService.buildSubagentTools` 把该回调接根对话的 `session.processingStatus`，子代理运行期间
+  顶栏状态栏会显示「子代理正在做什么」，结束后回调 `null` 把状态还给父代理。
+
+## 用量与步数统计（完善项）
+
+- `SubagentResult` 新增 `usage: TokenUsage?`（跨轮次累计，含扩写追问）与 `steps: Int`（实际 generation 轮次）。
+- `spawn_subagent` 工具结果 JSON 现在包含 `steps`；usage 通过 `Log.i` 记录（prompt/completion/cached/total），
+  便于排查子代理 token 消耗。
+
+## 深度语义修正（完善项）
+
+`buildSubagentTools` 此前在把 `depth+1` 传给 `SubagentHost.spawn` 的同时，又在 `buildChildTools` 回调里
+再 `+1` 构建子代理工具，导致深度双重递增、`maxDepth` 与真实嵌套层数错位。已修正：子代理工具以其自身
+深度（`spawn` 已位于 `depth+1`）构建，不再额外 `+1`。
 
 ## 使用方式
 
 在 Assistant 配置中开启 `enableSubagents`，可选自定义 `subagentProfiles`（同名覆盖内置）。
 开启后模型即可在对话中调用 `spawn_subagent` 委派任务。
 
-> 注：受当前构建环境限制（无 Android SDK），未做完整 Gradle 编译验证；代码已通过静态检查
-> （括号配平 / 字段名核对 / 导入核对）。建议在 Android Studio 中打开后跑一次 `:app:compileDebugKotlin`。
+> 注：本次完善（excludedTools 应用 / 深度 off-by-one 修正 / 运行可见性 / 用量统计）已通过
+> GitHub Actions（`build-fork.yml`）完整编译验证：`:app:compileDebugKotlin` +
+> `assembleDebug`（BUILD SUCCESSFUL in 3m45s）+ `assembleRelease`（BUILD SUCCESSFUL in 9m43s）
+> 均通过，Debug / Release APK 工件均产出。
