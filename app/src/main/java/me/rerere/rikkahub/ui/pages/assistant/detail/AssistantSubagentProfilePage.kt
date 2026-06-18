@@ -2,6 +2,8 @@ package me.rerere.rikkahub.ui.pages.assistant.detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
@@ -11,6 +13,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -40,6 +43,9 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
 import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
+import me.rerere.rikkahub.data.ai.tools.LocalToolOption
+import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.ai.ReasoningButton
@@ -47,6 +53,7 @@ import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.TextArea
 import me.rerere.rikkahub.ui.theme.CustomColors
+import org.koin.androidx.compose.koinInject
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 import kotlin.math.roundToInt
@@ -363,7 +370,121 @@ private fun AssistantSubagentProfileContent(
                     )
                 },
             )
-            HorizontalDivider()
+            // todo: 仅在 inheritTools=false 时显示工具/skills/MCP 选择
+            if (!current.inheritTools) {
+                // ---- 本地工具 ----
+                val allLocalToolOptions = listOf(
+                    LocalToolOption.JavascriptEngine,
+                    LocalToolOption.TimeInfo,
+                    LocalToolOption.Clipboard,
+                    LocalToolOption.Tts,
+                    LocalToolOption.AskBtw,
+                )
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
+                    label = { Text("Local Tools") },
+                    // todo: use string resource subagent_profile_local_tools_desc
+                    description = { Text("Select local tools available to this subagent") },
+                )
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    allLocalToolOptions.forEach { option ->
+                        FilterChip(
+                            selected = option in current.localTools,
+                            onClick = {
+                                saveProfile {
+                                    it.copy(
+                                        localTools = if (option in it.localTools)
+                                            it.localTools - option
+                                        else
+                                            it.localTools + option
+                                    )
+                                }
+                            },
+                            label = { Text(option::class.simpleName ?: "Unknown") },
+                        )
+                    }
+                }
+
+                // ---- Skills ----
+                val skillManager: SkillManager = koinInject()
+                val availableSkills = remember { skillManager.listSkills() }
+                if (availableSkills.isNotEmpty()) {
+                    HorizontalDivider()
+                    FormItem(
+                        modifier = Modifier.padding(8.dp),
+                        label = { Text("Skills") },
+                        // todo: use string resource subagent_profile_skills_desc
+                        description = { Text("Select skills to enable for this subagent") },
+                    )
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        availableSkills.forEach { skill ->
+                            FilterChip(
+                                selected = skill.name in current.enabledSkills,
+                                onClick = {
+                                    saveProfile {
+                                        it.copy(
+                                            enabledSkills = if (skill.name in it.enabledSkills)
+                                                it.enabledSkills - skill.name
+                                            else
+                                                it.enabledSkills + skill.name
+                                        )
+                                    }
+                                },
+                                label = { Text(skill.name) },
+                            )
+                        }
+                    }
+                }
+
+                // ---- MCP 服务器 ----
+                val settingsStore: SettingsStore = koinInject()
+                val availableMcp by settingsStore.settingsFlow
+                    .collectAsStateWithLifecycle(initialValue = null)
+                val mcpServers = availableMcp?.mcpServers ?: emptyList()
+                if (mcpServers.isNotEmpty()) {
+                    HorizontalDivider()
+                    FormItem(
+                        modifier = Modifier.padding(8.dp),
+                        label = { Text("MCP Servers") },
+                        // todo: use string resource subagent_profile_mcp_servers_desc
+                        description = { Text("Select MCP servers available to this subagent") },
+                    )
+                    @OptIn(ExperimentalLayoutApi::class)
+                    FlowRow(
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        mcpServers.forEach { server ->
+                            FilterChip(
+                                selected = server.id in current.mcpServerIds,
+                                onClick = {
+                                    saveProfile {
+                                        it.copy(
+                                            mcpServerIds = if (server.id in it.mcpServerIds)
+                                                it.mcpServerIds - server.id
+                                            else
+                                                it.mcpServerIds + server.id
+                                        )
+                                    }
+                                },
+                                label = { Text(server.commonOptions.name.ifBlank { "Unnamed" }) },
+                            )
+                        }
+                    }
+                }
+                HorizontalDivider()
+            }
 
             // streamOutput —— Switch
             FormItem(

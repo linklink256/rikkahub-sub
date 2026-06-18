@@ -267,8 +267,10 @@ class SubagentHost(
         val localTools = buildList {
             if (profile.inheritTools) {
                 addAll(parent.localTools)
+                addAll(profile.extraLocalTools)  // 继承时 additive
+            } else {
+                addAll(profile.localTools)        // 不继承时用显式选择
             }
-            addAll(profile.extraLocalTools)
             // ask_user 在子代理中无意义（不应打断用户），默认排除
             removeAll { it == LocalToolOption.AskUser }
         }.distinct()
@@ -294,8 +296,8 @@ class SubagentHost(
             // 子代理的工具以 generateText(tools=...) 为准；这里保留 localTools 仅供
             // GenerationHandler 内部 memory 工具判断，真正工具集由 buildChildTools 注入。
             localTools = localTools,
-            mcpServers = emptySet(), // 子代理不直接挂 MCP（避免重复 / 权限问题）
-            enabledSkills = emptySet(), // 子代理不自动启用 skills（如需可由 buildChildTools 注入）
+            mcpServers = if (profile.inheritTools) parent.mcpServers else profile.mcpServerIds,
+            enabledSkills = if (profile.inheritTools) parent.enabledSkills else profile.enabledSkills,
             presetMessages = emptyList(),
             quickMessageIds = emptySet(),
             regexes = emptyList(),

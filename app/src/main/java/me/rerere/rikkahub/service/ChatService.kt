@@ -878,6 +878,10 @@ class ChatService(
                     it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9'
                 }
             }
+            .filter { (serverId, _, _) ->
+                // 按子代理配置的 MCP 服务器过滤；空集 = 不限制（继承父代理的场景）
+                assistant.mcpServers.isEmpty() || serverId in assistant.mcpServers
+            }
             .forEach { (serverId, serverName, tool) ->
                 add(
                     Tool(
