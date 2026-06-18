@@ -48,7 +48,7 @@ data class Assistant(
     val allowConversationSystemPrompt: Boolean = false, // 允许对话单独重写 system prompt
     val allowConversationPromptInjection: Boolean = false, // 允许对话单独绑定提示词注入
     // ---- Subagent (子代理) ---- 移植自 kimi-code 的 subagent 体系
-    val enableSubagents: Boolean = false,              // 是否启用子代理委派能力
+    val enableSubagents: Boolean = true,               // 是否启用子代理委派能力（默认开启）
     val subagentMaxDepth: Int = 2,                     // 子代理最大嵌套深度
     val subagentProfiles: List<SubagentProfile> = emptyList(), // 自定义子代理配置档（与内置合并）
 )
