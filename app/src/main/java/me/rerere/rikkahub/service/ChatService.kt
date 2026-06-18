@@ -34,8 +34,10 @@ import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.ReasoningLevel
@@ -59,6 +61,7 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.ai.GenerationChunk
 import me.rerere.rikkahub.data.ai.GenerationHandler
+import me.rerere.rikkahub.data.ai.currentToolCallId
 import me.rerere.rikkahub.data.ai.mcp.McpManager
 import me.rerere.rikkahub.data.ai.subagent.SubagentHost
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
@@ -784,6 +787,9 @@ class ChatService(
                     } else {
                         val parentModel = settings.findModelById(assistant.chatModelId ?: settings.chatModelId)
                             ?: error("Model not found for subagent parent")
+                        // 读取当前 toolCallId（由 GenerationHandler.executeSingleTool 经协程上下文注入），
+                        // 供并行多子代理时把流式进度精确写到各自的 Tool part，避免互相覆盖。
+                        val toolCallId = currentToolCallId()
                         subagentHost.spawn(
                             profile = profile,
                             task = task,
@@ -806,9 +812,9 @@ class ChatService(
                             maxDepth = maxDepth,
                             onProgress = if (conversationId != null) { subMessages ->
                                 // 实时流式更新：把子代理当前的消息构建为部分 transcript，
-                                // 更新到对话中对应 spawn_subagent 工具的 output，
+                                // 按 toolCallId 精确更新到对话中对应的 spawn_subagent 工具 output，
                                 // 使 UI 上的 SubagentToolUI 能实时展示子代理的思维链 / 工具调用。
-                                updateSubagentProgress(conversationId, profileName, subMessages)
+                                updateSubagentProgress(conversationId, toolCallId, profileName, subMessages)
                             } else null,
                         )
                     }
@@ -872,6 +878,10 @@ class ChatService(
                     it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9'
                 }
             }
+            .filter { (serverId, _, _) ->
+                // 按子代理配置的 MCP 服务器过滤；空集 = 不限制（继承父代理的场景）
+                assistant.mcpServers.isEmpty() || serverId in assistant.mcpServers
+            }
             .forEach { (serverId, serverName, tool) ->
                 add(
                     Tool(
@@ -902,11 +912,14 @@ class ChatService(
      */
     private fun updateSubagentProgress(
         conversationId: Uuid,
+        toolCallId: String?,
         profileName: String,
         subMessages: List<UIMessage>,
     ) {
         runCatching {
-            val transcript = SubagentHost.buildTranscript(subMessages)
+            // 流式 partial transcript：截断工具输出（UI 本就只展示前 2000 字符），
+            // 避免逐 tick 序列化完整搜索结果等大体积输出，把每 tick 序列化体积降到 ~KB 级。
+            val transcript = SubagentHost.buildTranscript(subMessages, truncateToolOutput = 2000)
             if (transcript.isEmpty()) return@runCatching
 
             val listSerializer = kotlinx.serialization.builtins.ListSerializer(
@@ -931,16 +944,20 @@ class ChatService(
 
                 val updatedMessages = messages.mapIndexed { index, message ->
                     if (index != lastAssistantIndex) return@mapIndexed message
-                    val hasSpawnTool = message.parts.any { part ->
-                        part is UIMessagePart.Tool && part.toolName == "spawn_subagent" && (!part.isExecuted || isStreamingSubagent(part))
+                    // 精确匹配目标工具：
+                    // - 优先按 toolCallId（并行多子代理时各自隔离，互不覆盖）；
+                    // - toolCallId 为 null 时回退到任意未完成/流式中的 spawn_subagent。
+                    val matchesTool: (UIMessagePart.Tool) -> Boolean = { part ->
+                        part.toolName == "spawn_subagent" &&
+                            (!part.isExecuted || isStreamingSubagent(part)) &&
+                            (toolCallId == null || part.toolCallId == toolCallId)
                     }
-                    if (!hasSpawnTool) return@mapIndexed message
+                    if (!message.parts.any { it is UIMessagePart.Tool && matchesTool(it) }) {
+                        return@mapIndexed message
+                    }
 
                     message.copy(parts = message.parts.map { part ->
-                        if (part is UIMessagePart.Tool &&
-                            part.toolName == "spawn_subagent" &&
-                            (!part.isExecuted || isStreamingSubagent(part))
-                        ) {
+                        if (part is UIMessagePart.Tool && matchesTool(part)) {
                             part.copy(output = listOf(partialOutput))
                         } else {
                             part

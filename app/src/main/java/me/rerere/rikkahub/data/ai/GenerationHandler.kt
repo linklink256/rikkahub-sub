@@ -11,6 +11,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
@@ -58,6 +62,27 @@ import kotlin.uuid.Uuid
 private const val TAG = "GenerationHandler"
 private const val MAX_TOOL_OUTPUT_CHARS = 32 * 1024
 private const val TOOL_OUTPUT_PREVIEW_CHARS = 4 * 1024
+
+/**
+ * 通过协程上下文向工具执行体传递当前 toolCallId。
+ *
+ * 用途：spawn_subagent 在并行执行时，其 onProgress 回调需要知道自己是哪一个
+ * toolCallId，才能把流式进度写到父消息里正确的 Tool part（否则多个子代理并行时
+ * updateSubagentProgress 会把进度互相覆盖）。executeSingleTool 在调用 execute 前注入，
+ * 子代理 spawn 闭包（suspend）内通过 [currentToolCallId] 读出。
+ */
+private class ToolCallIdElement(
+    val toolCallId: String,
+) : AbstractCoroutineContextElement(Key) {
+    companion object Key : CoroutineContext.Key<ToolCallIdElement>
+}
+
+/** 读取当前协程上下文中的 toolCallId（由 [withToolCallId] 注入）；未注入时返回 null。 */
+suspend fun currentToolCallId(): String? = coroutineContext[ToolCallIdElement]?.toolCallId
+
+/** 在给定 toolCallId 的协程上下文中执行 [block]，使其内部可通过 [currentToolCallId] 取回。 */
+private suspend fun <T> withToolCallId(toolCallId: String, block: suspend () -> T): T =
+    withContext(ToolCallIdElement(toolCallId)) { block() }
 
 @Serializable
 sealed interface GenerationChunk {
@@ -245,8 +270,13 @@ class GenerationHandler(
             // Handle tools (execute approved tools, handle denied tools)
             // 当 assistant.parallelToolExecution 开启且本轮有多个工具时，并行执行，
             // 否则顺序执行（保持兼容）。结果按 toolCallId 回填，顺序无关。
-            val executedTools: List<UIMessagePart.Tool> = if (assistant.parallelToolExecution && toolsToProcess.size > 1) {
-                Log.i(TAG, "generateText: executing ${toolsToProcess.size} tools in parallel")
+            // 并行执行条件：开启 parallelToolExecution 且本轮多个工具，或本轮含 2+ 个
+            // spawn_subagent（子代理长耗时且相互独立，即使未开全局并行也优先并行）。
+            val subagentCount = toolsToProcess.count { it.toolName == "spawn_subagent" }
+            val runInParallel =
+                (assistant.parallelToolExecution && toolsToProcess.size > 1) || subagentCount > 1
+            val executedTools: List<UIMessagePart.Tool> = if (runInParallel) {
+                Log.i(TAG, "generateText: executing ${toolsToProcess.size} tools in parallel (subagents=$subagentCount)")
                 coroutineScope {
                     toolsToProcess.map { tool ->
                         async { executeSingleTool(tool, toolsInternal) }
@@ -342,7 +372,7 @@ class GenerationHandler(
                     error("Invalid tool arguments JSON for ${tool.toolName}: ${it.message}")
                 }
                 Log.i(TAG, "generateText: executing tool ${toolDef.name} with args: $args")
-                val result = toolDef.execute(args)
+                val result = withToolCallId(tool.toolCallId) { toolDef.execute(args) }
                 val hasShellAccess = toolsInternal.any { it.name == "workspace_shell" }
                 tool.copy(output = maybeTruncateToolOutput(tool.toolCallId, result, hasShellAccess))
             }.onFailure {

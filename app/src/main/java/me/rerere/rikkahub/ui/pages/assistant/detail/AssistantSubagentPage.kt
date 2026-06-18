@@ -1,36 +1,50 @@
 package me.rerere.rikkahub.ui.pages.assistant.detail
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.hugeicons.HugeIcons
+import me.rerere.hugeicons.stroke.Add01
 import me.rerere.hugeicons.stroke.ArrowRight01
 import me.rerere.hugeicons.stroke.Connect
+import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
+import me.rerere.rikkahub.data.ai.subagent.removeSubagentProfile
+import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
@@ -80,6 +94,9 @@ private fun AssistantSubagentContent(
     onOpenProfile: (String) -> Unit,
 ) {
     val profiles = mergeSubagentProfiles(assistant.subagentProfiles)
+    var showCreateDialog by remember { mutableStateOf(false) }
+    var newProfileName by remember { mutableStateOf("") }
+    var pendingDelete by remember { mutableStateOf<String?>(null) }
 
     LazyColumn(
         modifier = modifier.fillMaxSize(),
@@ -172,19 +189,30 @@ private fun AssistantSubagentContent(
             }
         }
         item {
-            Column(
-                modifier = Modifier.padding(horizontal = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.subagent_profiles_section),
-                    style = MaterialTheme.typography.titleMedium,
-                )
-                Text(
-                    text = stringResource(R.string.subagent_profiles_section_desc),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = stringResource(R.string.subagent_profiles_section),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = stringResource(R.string.subagent_profiles_section_desc),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                IconButton(
+                    onClick = { showCreateDialog = true },
+                    modifier = Modifier.align(Alignment.CenterEnd),
+                ) {
+                    Icon(HugeIcons.Add01, contentDescription = null)
+                }
             }
         }
 
@@ -206,9 +234,105 @@ private fun AssistantSubagentContent(
                             style = MaterialTheme.typography.labelSmall,
                         )
                     },
-                    trailingContent = { Icon(HugeIcons.ArrowRight01, null) },
+                    trailingContent = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            if (assistant.subagentProfiles.any { it.name == profile.name }) {
+                                IconButton(onClick = { pendingDelete = profile.name }) {
+                                    Icon(HugeIcons.Delete01, contentDescription = null)
+                                }
+                            }
+                            Icon(HugeIcons.ArrowRight01, null)
+                        }
+                    },
                 )
             }
         }
+    }
+
+    // ---- 新建子代理对话框 ----
+    if (showCreateDialog) {
+        val isValidName = newProfileName.matches(SubagentProfile.IdentifierRegex) &&
+            profiles.none { it.name == newProfileName }
+        AlertDialog(
+            onDismissRequest = {
+                showCreateDialog = false
+                newProfileName = ""
+            },
+            title = { Text("新建子代理") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    OutlinedTextField(
+                        value = newProfileName,
+                        onValueChange = { newProfileName = it },
+                        label = { Text("名称") },
+                        supportingText = { Text("小写字母/数字/下划线，字母开头") },
+                        singleLine = true,
+                        isError = newProfileName.isNotEmpty() && !isValidName,
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = isValidName,
+                    onClick = {
+                        val profile = SubagentProfile(name = newProfileName)
+                        onUpdate(
+                            assistant.copy(
+                                subagentProfiles = upsertSubagentProfile(
+                                    assistant.subagentProfiles,
+                                    profile,
+                                )
+                            )
+                        )
+                        onOpenProfile(newProfileName)
+                        newProfileName = ""
+                        showCreateDialog = false
+                    },
+                ) {
+                    Text("创建")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showCreateDialog = false
+                        newProfileName = ""
+                    },
+                ) {
+                    Text("取消")
+                }
+            },
+        )
+    }
+
+    // ---- 删除确认对话框 ----
+    if (pendingDelete != null) {
+        AlertDialog(
+            onDismissRequest = { pendingDelete = null },
+            title = { Text("删除子代理") },
+            text = { Text("确定删除该子代理配置吗？内置配置删除后将恢复默认。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onUpdate(
+                            assistant.copy(
+                                subagentProfiles = removeSubagentProfile(
+                                    assistant.subagentProfiles,
+                                    pendingDelete!!,
+                                )
+                            )
+                        )
+                        pendingDelete = null
+                    },
+                ) {
+                    Text("删除")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text("取消")
+                }
+            },
+        )
     }
 }
