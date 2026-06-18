@@ -67,6 +67,7 @@ import me.rerere.rikkahub.data.ai.subagent.SubagentHost
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.SubagentResult
 import me.rerere.rikkahub.data.ai.subagent.SubagentTranscriptStep
+import me.rerere.rikkahub.data.ai.subagent.createManageSubagentTool
 import me.rerere.rikkahub.data.ai.subagent.createSubagentTools
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
 import me.rerere.rikkahub.data.ai.subagent.removeSubagentProfile
@@ -758,7 +759,6 @@ class ChatService(
         @Suppress("UNUSED_PARAMETER") conversationId: Uuid? = null,
     ): List<Tool> {
         val profiles = mergeSubagentProfiles(assistant.subagentProfiles, assistant.disabledBuiltinSubagents)
-        if (profiles.isEmpty()) return emptyList()
 
         val result = mutableListOf<Tool>()
 
@@ -769,8 +769,8 @@ class ChatService(
             )
         }
 
-        // 2) 递归注入 spawn_subagent / ask_btw（受 maxDepth 约束）
-        if (depth + 1 < maxDepth) {
+        // 2) 递归注入 spawn_subagent / ask_btw（受 maxDepth 约束 + 需有可用 profile）
+        if (depth + 1 < maxDepth && profiles.isNotEmpty()) {
             result += createSubagentTools(
                 profiles = profiles,
                 json = json,
@@ -845,11 +845,20 @@ class ChatService(
                     )
                     if (r.succeeded) r.summary else "(side agent failed: ${r.error})"
                 },
-                // manage_subagent_profile 回调：仅根代理（depth==0）注入，让主代理自主增删改
-                // 子代理配置并持久化到当前 assistant。修改后立即生效（下一轮 spawn 可用）。
-                manage = if (depth == 0) { action, name, profile ->
+            )
+        }
+
+        // 3) manage_subagent_profile：根代理（depth==0）**无条件**注册——即使当前没有任何
+        // 子代理 profile（profiles 为空，如用户删光了内置子代理）也注册，这样模型才能从零
+        // 创建子代理。此前 manage 被夹在 profiles.isEmpty() 早返回和 depth+1<maxDepth 条件里，
+        // 导致 profiles 为空时 manage 未注册，模型调用即报 "Tool not found"。
+        if (depth == 0) {
+            result += createManageSubagentTool(
+                profiles = profiles,
+                json = json,
+                manage = { action, name, profile ->
                     manageSubagentProfile(assistant.id, action, name, profile)
-                } else null,
+                },
             )
         }
 

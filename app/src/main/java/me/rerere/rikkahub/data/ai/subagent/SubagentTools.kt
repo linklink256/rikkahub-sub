@@ -46,17 +46,8 @@ fun createSubagentTools(
     askBtw: suspend (question: String) -> String,
     delegateOnly: Boolean = false,
     includeAskBtw: Boolean = true,
-    /**
-     * 主代理管理子代理配置档的回调（create/update/delete/list）。
-     * 仅根代理传入（depth==0）；为 null 时不生成 manage_subagent_profile 工具。
-     * - action="create"/"update": [profile] 为待 upsert 的完整配置档；
-     * - action="delete": [profile] 为 null，用 [name] 标识要删除的 profile；
-     * - action="list": [profile] 为 null，[name] 为空，返回当前全部 profile 概览。
-     * 返回操作结果文本（会作为工具 output 返回给模型）。
-     */
-    manage: (suspend (action: String, name: String, profile: SubagentProfile?) -> String)? = null,
 ): List<Tool> {
-    if (profiles.isEmpty() && manage == null) return emptyList()
+    if (profiles.isEmpty()) return emptyList()
 
     val profileNames = profiles.map { it.name }
     val profileListText = profiles.joinToString("\n") { "  - ${it.name}: ${it.description}" }
@@ -240,127 +231,6 @@ $profileListText
     val tools = mutableListOf(spawnTool)
     if (includeAskBtw) tools.add(btwTool)
 
-    // manage_subagent_profile：让主代理自主增删改子代理配置（仅根代理）。
-    if (manage != null) {
-        tools.add(
-            Tool(
-                name = "manage_subagent_profile",
-                description = """
-                    Manage the subagent profiles available to you (create / update / delete / list).
-                    Use this to adapt your delegation toolkit to the task: add a specialized subagent,
-                    tweak an existing one's system prompt or tools, remove one you don't need, or list
-                    what's currently available.
-
-                    Actions:
-                    - "list": list all available subagent profiles with their name, description, and tool config. No other params needed.
-                    - "create": add a NEW profile. Requires "name" (lowercase, [a-z][a-z0-9_]*). Provide the fields you want to set; omitted optional fields use defaults.
-                    - "update": modify an EXISTING profile (built-in or custom). Provide "name" plus only the fields to change. You can update built-in profiles this way (creates a custom override).
-                    - "delete": remove a profile. Requires "name". Built-in profiles are disabled; custom ones are removed.
-
-                    Fields (optional for create/update, ignored for delete/list):
-                    - display_name: human-readable name shown in UI
-                    - description: what this subagent is good at (shown to you in spawn_subagent's profile list)
-                    - system_prompt: the subagent's system prompt
-                    - model_id: UUID of a chat model (omit to inherit parent's model)
-                    - inherit_tools: boolean — true = inherit all parent tools; false = use only the tools selected below
-                    - local_tools: array of local tool names, one of: "javascript_engine", "time_info", "clipboard", "tts", "ask_btw" (only when inherit_tools=false)
-                    - enabled_skills: array of skill names (only when inherit_tools=false)
-                    - mcp_server_ids: array of MCP server UUIDs (only when inherit_tools=false)
-                    - excluded_tools: array of tool names to exclude when inheriting
-                    - max_steps: max tool-call rounds (1-256)
-                    - stream_output: boolean, whether the subagent streams its output to UI
-                    - enable_memory: boolean
-                    - temperature, top_p, max_tokens: optional numeric overrides
-
-                    Changes persist to the assistant configuration and affect all future conversations with this assistant.
-                """.trimIndent(),
-                parameters = {
-                    InputSchema.Obj(
-                        properties = buildJsonObject {
-                            put("action", buildJsonObject {
-                                put("type", "string")
-                                put("enum", kotlinx.serialization.json.buildJsonArray {
-                                    listOf("list", "create", "update", "delete").forEach { add(it) }
-                                })
-                                put("description", "One of: list, create, update, delete")
-                            })
-                            put("name", buildJsonObject {
-                                put("type", "string")
-                                put("description", "Profile name (lowercase [a-z][a-z0-9_]*). Required for create/update/delete; ignored for list.")
-                            })
-                            put("display_name", buildJsonObject { put("type", "string") })
-                            put("description", buildJsonObject { put("type", "string") })
-                            put("system_prompt", buildJsonObject { put("type", "string") })
-                            put("model_id", buildJsonObject { put("type", "string") })
-                            put("inherit_tools", buildJsonObject { put("type", "boolean") })
-                            put("local_tools", buildJsonObject {
-                                put("type", "array")
-                                put("items", buildJsonObject {
-                                    put("type", "string")
-                                    put("enum", kotlinx.serialization.json.buildJsonArray {
-                                        listOf("javascript_engine", "time_info", "clipboard", "tts", "ask_btw").forEach { add(it) }
-                                    })
-                                })
-                            })
-                            put("enabled_skills", buildJsonObject {
-                                put("type", "array")
-                                put("items", buildJsonObject { put("type", "string") })
-                            })
-                            put("mcp_server_ids", buildJsonObject {
-                                put("type", "array")
-                                put("items", buildJsonObject { put("type", "string") })
-                            })
-                            put("excluded_tools", buildJsonObject {
-                                put("type", "array")
-                                put("items", buildJsonObject { put("type", "string") })
-                            })
-                            put("max_steps", buildJsonObject { put("type", "integer") })
-                            put("stream_output", buildJsonObject { put("type", "boolean") })
-                            put("enable_memory", buildJsonObject { put("type", "boolean") })
-                            put("temperature", buildJsonObject { put("type", "number") })
-                            put("top_p", buildJsonObject { put("type", "number") })
-                            put("max_tokens", buildJsonObject { put("type", "integer") })
-                        },
-                        required = listOf("action"),
-                    )
-                },
-                execute = { args ->
-                    val params = args.jsonObject
-                    val action = params["action"]?.jsonPrimitive?.contentOrNull
-                        ?: error("action is required")
-                    val name = params["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
-                    when (action) {
-                        "list" -> {
-                            val text = manage("list", "", null)
-                            listOf(UIMessagePart.Text(text))
-                        }
-                        "delete" -> {
-                            if (name.isBlank()) error("name is required for delete")
-                            val text = manage("delete", name, null)
-                            listOf(UIMessagePart.Text(text))
-                        }
-                        "create", "update" -> {
-                            if (name.isBlank()) error("name is required for $action")
-                            if (!name.matches(SubagentProfile.IdentifierRegex)) {
-                                error("name must be lowercase [a-z][a-z0-9_]*: $name")
-                            }
-                            val base = if (action == "update") {
-                                profiles.firstOrNull { it.name == name }
-                                    ?: error("profile '$name' not found; use create instead")
-                            } else {
-                                SubagentProfile(name = name)
-                            }
-                            val updated = base.applyPatch(params, json)
-                            val text = manage(action, name, updated)
-                            listOf(UIMessagePart.Text(text))
-                        }
-                        else -> error("unknown action: $action")
-                    }
-                },
-            )
-        )
-    }
-
     return tools
 }
 
@@ -368,6 +238,138 @@ $profileListText
  * 把工具参数 JSON 中的字段应用到 [SubagentProfile] 上（仅覆盖出现的字段）。
  * 供 manage_subagent_profile 的 create/update 使用。
  */
+
+/**
+ * 创建 manage_subagent_profile 工具：让主代理自主增删改子代理配置。
+ *
+ * 与 [createSubagentTools] 解耦——此工具在根代理（depth==0）**无条件注册**，
+ * 即使当前没有任何子代理 profile（profiles 为空）也注册，这样模型才能从零创建
+ * 子代理。否则 profiles 为空时模型调用 manage 会因工具未注册而报 "not found"。
+ *
+ * @param profiles 当前可用 profile 列表（用于 update 时查找已有 profile 作为 base）
+ * @param json     序列化用 Json
+ * @param manage   实际处理回调：(action, name, profile) -> 结果文本
+ */
+fun createManageSubagentTool(
+    profiles: List<SubagentProfile>,
+    json: Json,
+    manage: suspend (action: String, name: String, profile: SubagentProfile?) -> String,
+): Tool = Tool(
+    name = "manage_subagent_profile",
+    description = """
+        Manage the subagent profiles available to you (create / update / delete / list).
+        Use this to adapt your delegation toolkit to the task: add a specialized subagent,
+        tweak an existing one's system prompt or tools, remove one you don't need, or list
+        what's currently available.
+
+        Actions:
+        - "list": list all available subagent profiles with their name, description, and tool config. No other params needed.
+        - "create": add a NEW profile. Requires "name" (lowercase, [a-z][a-z0-9_]*). Provide the fields you want to set; omitted optional fields use defaults.
+        - "update": modify an EXISTING profile (built-in or custom). Provide "name" plus only the fields to change. You can update built-in profiles this way (creates a custom override).
+        - "delete": remove a profile. Requires "name". Built-in profiles are disabled; custom ones are removed.
+
+        Fields (optional for create/update, ignored for delete/list):
+        - display_name: human-readable name shown in UI
+        - description: what this subagent is good at (shown to you in spawn_subagent's profile list)
+        - system_prompt: the subagent's system prompt
+        - model_id: UUID of a chat model (omit to inherit parent's model)
+        - inherit_tools: boolean — true = inherit all parent tools; false = use only the tools selected below
+        - local_tools: array of local tool names, one of: "javascript_engine", "time_info", "clipboard", "tts", "ask_btw" (only when inherit_tools=false)
+        - enabled_skills: array of skill names (only when inherit_tools=false)
+        - mcp_server_ids: array of MCP server UUIDs (only when inherit_tools=false)
+        - excluded_tools: array of tool names to exclude when inheriting
+        - max_steps: max tool-call rounds (1-256)
+        - stream_output: boolean, whether the subagent streams its output to UI
+        - enable_memory: boolean
+        - temperature, top_p, max_tokens: optional numeric overrides
+
+        Changes persist to the assistant configuration and affect all future conversations with this assistant.
+    """.trimIndent(),
+    parameters = {
+        InputSchema.Obj(
+            properties = buildJsonObject {
+                put("action", buildJsonObject {
+                    put("type", "string")
+                    put("enum", kotlinx.serialization.json.buildJsonArray {
+                        listOf("list", "create", "update", "delete").forEach { add(it) }
+                    })
+                    put("description", "One of: list, create, update, delete")
+                })
+                put("name", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Profile name (lowercase [a-z][a-z0-9_]*). Required for create/update/delete; ignored for list.")
+                })
+                put("display_name", buildJsonObject { put("type", "string") })
+                put("description", buildJsonObject { put("type", "string") })
+                put("system_prompt", buildJsonObject { put("type", "string") })
+                put("model_id", buildJsonObject { put("type", "string") })
+                put("inherit_tools", buildJsonObject { put("type", "boolean") })
+                put("local_tools", buildJsonObject {
+                    put("type", "array")
+                    put("items", buildJsonObject {
+                        put("type", "string")
+                        put("enum", kotlinx.serialization.json.buildJsonArray {
+                            listOf("javascript_engine", "time_info", "clipboard", "tts", "ask_btw").forEach { add(it) }
+                        })
+                    })
+                })
+                put("enabled_skills", buildJsonObject {
+                    put("type", "array")
+                    put("items", buildJsonObject { put("type", "string") })
+                })
+                put("mcp_server_ids", buildJsonObject {
+                    put("type", "array")
+                    put("items", buildJsonObject { put("type", "string") })
+                })
+                put("excluded_tools", buildJsonObject {
+                    put("type", "array")
+                    put("items", buildJsonObject { put("type", "string") })
+                })
+                put("max_steps", buildJsonObject { put("type", "integer") })
+                put("stream_output", buildJsonObject { put("type", "boolean") })
+                put("enable_memory", buildJsonObject { put("type", "boolean") })
+                put("temperature", buildJsonObject { put("type", "number") })
+                put("top_p", buildJsonObject { put("type", "number") })
+                put("max_tokens", buildJsonObject { put("type", "integer") })
+            },
+            required = listOf("action"),
+        )
+    },
+    execute = { args ->
+        val params = args.jsonObject
+        val action = params["action"]?.jsonPrimitive?.contentOrNull
+            ?: error("action is required")
+        val name = params["name"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        when (action) {
+            "list" -> {
+                val text = manage("list", "", null)
+                listOf(UIMessagePart.Text(text))
+            }
+            "delete" -> {
+                if (name.isBlank()) error("name is required for delete")
+                val text = manage("delete", name, null)
+                listOf(UIMessagePart.Text(text))
+            }
+            "create", "update" -> {
+                if (name.isBlank()) error("name is required for $action")
+                if (!name.matches(SubagentProfile.IdentifierRegex)) {
+                    error("name must be lowercase [a-z][a-z0-9_]*: $name")
+                }
+                val base = if (action == "update") {
+                    profiles.firstOrNull { it.name == name }
+                        ?: error("profile '$name' not found; use create instead")
+                } else {
+                    SubagentProfile(name = name)
+                }
+                val updated = base.applyPatch(params, json)
+                val text = manage(action, name, updated)
+                listOf(UIMessagePart.Text(text))
+            }
+            else -> error("unknown action: $action")
+        }
+    },
+)
+
 private fun SubagentProfile.applyPatch(
     params: JsonObject,
     json: Json,
