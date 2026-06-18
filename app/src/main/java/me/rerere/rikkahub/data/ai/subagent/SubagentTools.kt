@@ -28,12 +28,15 @@ import me.rerere.ai.ui.UIMessagePart
  * @param json     用于序列化结果的 Json
  * @param spawn    派生子代理的回调：(profileName, task, description) -> [SubagentResult]
  * @param askBtw   轻量"顺便问一句"回调（无工具、纯文本，对应 kimi-code startBtw）
+ * @param delegateOnly 纯决策模式：主代理无任何执行类工具，所有执行必须委派给子代理。
+ *                     会强化提示词，要求主代理拆解任务、并行委派独立子任务、综合结果。
  */
 fun createSubagentTools(
     profiles: List<SubagentProfile>,
     json: Json,
     spawn: suspend (profileName: String, task: String, description: String) -> SubagentResult,
     askBtw: suspend (question: String) -> String,
+    delegateOnly: Boolean = false,
 ): List<Tool> {
     if (profiles.isEmpty()) return emptyList()
 
@@ -62,6 +65,11 @@ fun createSubagentTools(
             - A single quick search or calculation.
             - Answering from knowledge you already have.
 
+            **Parallel execution:** Multiple `spawn_subagent` calls made in the SAME response run
+            concurrently. For independent sub-tasks, batch them into one response rather than
+            spawning one at a time — this dramatically cuts total wait time. Only serialize when
+            one task depends on another's result.
+
             Available subagent profiles:
 $profileListText
 
@@ -71,17 +79,29 @@ $profileListText
             buildString {
                 appendLine()
                 appendLine("**Subagents — Delegation Guidance**")
-                appendLine("You have the `spawn_subagent` tool to delegate work to specialized subagents. Each subagent runs autonomously with its own tool loop and fresh context, then returns a summary.")
-                appendLine()
-                appendLine("**When to delegate (be proactive):**")
-                appendLine("- Use `spawn_subagent` for research or exploration that needs more than 2-3 searches/reads — delegate instead of cluttering your own context with intermediate steps.")
-                appendLine("- Use it for multi-step, self-contained tasks: writing code, reviewing documents, analyzing data, investigating a question across multiple sources.")
-                appendLine("- Use it to parallelize: if a task has independent parts, spawn multiple subagents rather than doing them one by one.")
-                appendLine("- Use it when a task would consume a lot of context with details you don't need to retain.")
-                appendLine()
-                appendLine("**When NOT to delegate:**")
-                appendLine("- Single file reads, one quick search, or simple calculations — just do them directly.")
-                appendLine("- Anything you can answer from context you already have.")
+                if (delegateOnly) {
+                    appendLine("You are operating in **delegation-only mode**: you have NO execution tools of your own (no search, no file access, no shell). Your ONLY way to perform real work is to delegate via `spawn_subagent`. Your role is that of an orchestrator: break the user's request into sub-tasks, delegate each to an appropriate subagent, then synthesize the subagents' results into a coherent answer.")
+                    appendLine()
+                    appendLine("**How to orchestrate well:**")
+                    appendLine("- Decompose the request into independent, self-contained sub-tasks. Each subagent starts with zero context, so every task prompt must contain the full goal, relevant facts, and specifics.")
+                    appendLine("- **Parallelize aggressively**: if sub-tasks are independent, issue multiple `spawn_subagent` calls in the SAME response. They will run concurrently — this is far faster than spawning them one at a time and waiting between each.")
+                    appendLine("- For dependent sub-tasks (B needs A's result), spawn A first, wait for its summary, then spawn B with A's findings included.")
+                    appendLine("- After all subagents return, synthesize their summaries into a single, coherent reply to the user. Don't just paste raw summaries — integrate, deduplicate, and resolve conflicts.")
+                    appendLine("- Use `ask_btw` only for quick knowledge-only sanity checks that need no tools.")
+                    appendLine("- Use `ask_user` (if available) only when you genuinely lack information needed to decompose the task and cannot reasonably proceed.")
+                } else {
+                    appendLine("You have the `spawn_subagent` tool to delegate work to specialized subagents. Each subagent runs autonomously with its own tool loop and fresh context, then returns a summary.")
+                    appendLine()
+                    appendLine("**When to delegate (be proactive):**")
+                    appendLine("- Use `spawn_subagent` for research or exploration that needs more than 2-3 searches/reads — delegate instead of cluttering your own context with intermediate steps.")
+                    appendLine("- Use it for multi-step, self-contained tasks: writing code, reviewing documents, analyzing data, investigating a question across multiple sources.")
+                    appendLine("- Use it to parallelize: if a task has independent parts, spawn multiple subagents rather than doing them one by one.")
+                    appendLine("- Use it when a task would consume a lot of context with details you don't need to retain.")
+                    appendLine()
+                    appendLine("**When NOT to delegate:**")
+                    appendLine("- Single file reads, one quick search, or simple calculations — just do them directly.")
+                    appendLine("- Anything you can answer from context you already have.")
+                }
                 appendLine()
                 appendLine("**How to delegate well:**")
                 appendLine("- The subagent sees NONE of your conversation. Include the goal, relevant context, and specifics (file paths, search terms, known facts) in the task prompt.")

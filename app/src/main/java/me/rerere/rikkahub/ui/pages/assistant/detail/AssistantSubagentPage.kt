@@ -138,11 +138,39 @@ private fun AssistantSubagentContent(
                             steps = 3,
                         )
                     }
+                    HorizontalDivider()
+                    FormItem(
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.subagent_delegate_only_title)) },
+                        description = { Text(stringResource(R.string.subagent_delegate_only_desc)) },
+                        tail = {
+                            Switch(
+                                checked = assistant.subagentDelegateOnly,
+                                enabled = assistant.enableSubagents,
+                                onCheckedChange = {
+                                    onUpdate(assistant.copy(subagentDelegateOnly = it))
+                                },
+                            )
+                        },
+                    )
+                    HorizontalDivider()
+                    FormItem(
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text(stringResource(R.string.subagent_parallel_execution_title)) },
+                        description = { Text(stringResource(R.string.subagent_parallel_execution_desc)) },
+                        tail = {
+                            Switch(
+                                checked = assistant.parallelToolExecution,
+                                enabled = assistant.enableSubagents,
+                                onCheckedChange = {
+                                    onUpdate(assistant.copy(parallelToolExecution = it))
+                                },
+                            )
+                        },
+                    )
                 }
             }
         }
-
-        // ---- profile 列表标题 ----
         item {
             Column(
                 modifier = Modifier.padding(horizontal = 8.dp),

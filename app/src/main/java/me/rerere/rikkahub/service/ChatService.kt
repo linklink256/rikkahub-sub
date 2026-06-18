@@ -61,6 +61,7 @@ import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.SubagentResult
 import me.rerere.rikkahub.data.ai.subagent.createSubagentTools
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
+import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import me.rerere.rikkahub.data.ai.tools.LocalTools
 import me.rerere.rikkahub.data.ai.tools.createSearchTools
 import me.rerere.rikkahub.data.ai.tools.createSkillTools
@@ -577,12 +578,22 @@ class ChatService(
                 },
                 outputTransformers = outputTransformers,
                 tools = buildList {
-                    if (settings.enableWebSearch) {
+                    val delegateOnly = assistant.enableSubagents && assistant.subagentDelegateOnly
+                    if (settings.enableWebSearch && !delegateOnly) {
                         addAll(createSearchTools(settings))
                     }
-                    addAll(localTools.getTools(assistant.localTools))
-                    addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
-                    if (assistant.enabledSkills.isNotEmpty()) {
+                    if (delegateOnly) {
+                        // 纯决策模式：主代理只保留 ask_user（用于与用户交互），
+                        // 实际执行类工具全部移除，交由子代理。memory 工具由 GenerationHandler
+                        // 根据 enableMemory 自动注入，无需在此处理。
+                        addAll(localTools.getTools(assistant.localTools.filter { it == LocalToolOption.AskUser }))
+                    } else {
+                        addAll(localTools.getTools(assistant.localTools))
+                    }
+                    if (!delegateOnly) {
+                        addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
+                    }
+                    if (assistant.enabledSkills.isNotEmpty() && !delegateOnly) {
                         addAll(
                             createSkillTools(
                                 enabledSkills = assistant.enabledSkills,
@@ -591,35 +602,37 @@ class ChatService(
                             )
                         )
                     }
-                    mcpManager.getAllAvailableTools().also { allTools ->
-                        val invalidNames = allTools
-                            .map { it.second }
-                            .distinct()
-                            .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
-                        if (invalidNames.isNotEmpty()) {
-                            addError(
-                                error = IllegalStateException(
-                                    context.getString(
-                                        R.string.error_mcp_invalid_server_name,
-                                        invalidNames.joinToString(", ")
-                                    )
-                                ),
-                                conversationId = conversationId,
+                    if (!delegateOnly) {
+                        mcpManager.getAllAvailableTools().also { allTools ->
+                            val invalidNames = allTools
+                                .map { it.second }
+                                .distinct()
+                                .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
+                            if (invalidNames.isNotEmpty()) {
+                                addError(
+                                    error = IllegalStateException(
+                                        context.getString(
+                                            R.string.error_mcp_invalid_server_name,
+                                            invalidNames.joinToString(", ")
+                                        )
+                                    ),
+                                    conversationId = conversationId,
+                                )
+                                return
+                            }
+                        }.forEach { (serverId, serverName, tool) ->
+                            add(
+                                Tool(
+                                    name = "mcp__${serverName}__${tool.name}",
+                                    description = tool.description ?: "",
+                                    parameters = { tool.inputSchema },
+                                    needsApproval = { tool.needsApproval },
+                                    execute = {
+                                        mcpManager.callTool(serverId, tool.name, it.jsonObject)
+                                    },
+                                )
                             )
-                            return
                         }
-                    }.forEach { (serverId, serverName, tool) ->
-                        add(
-                            Tool(
-                                name = "mcp__${serverName}__${tool.name}",
-                                description = tool.description ?: "",
-                                parameters = { tool.inputSchema },
-                                needsApproval = { tool.needsApproval },
-                                execute = {
-                                    mcpManager.callTool(serverId, tool.name, it.jsonObject)
-                                },
-                            )
-                        )
                     }
                     // subagent 委派工具（移植自 kimi-code subagent 体系）
                     addAll(subagentTools)
@@ -740,6 +753,7 @@ class ChatService(
             result += createSubagentTools(
                 profiles = profiles,
                 json = json,
+                delegateOnly = depth == 0 && assistant.enableSubagents && assistant.subagentDelegateOnly,
                 spawn = { profileName, task, _ ->
                     val profile = profiles.firstOrNull { it.name == profileName }
                     if (profile == null) {

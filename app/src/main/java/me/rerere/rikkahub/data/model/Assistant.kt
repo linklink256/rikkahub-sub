@@ -51,6 +51,18 @@ data class Assistant(
     val enableSubagents: Boolean = true,               // 是否启用子代理委派能力（默认开启）
     val subagentMaxDepth: Int = 2,                     // 子代理最大嵌套深度
     val subagentProfiles: List<SubagentProfile> = emptyList(), // 自定义子代理配置档（与内置合并）
+    /**
+     * 纯决策模式：启用子代理后，主代理只负责拆解任务 / 委派 / 综合结果，
+     * 不再直接持有执行类工具（搜索 / workspace / 本地 / skills / mcp），
+     * 仅保留 spawn_subagent / ask_btw（+ memory / ask_user）。所有实际执行交由子代理。
+     */
+    val subagentDelegateOnly: Boolean = false,
+    /**
+     * 同一轮内多个工具调用是否并行执行。
+     * 开启后，模型在一个 assistant turn 里发起的多个 tool call（如多个 spawn_subagent）
+     * 会并发执行而非顺序，显著缩短多子代理任务的总耗时。
+     */
+    val parallelToolExecution: Boolean = false,
 )
 
 @Serializable

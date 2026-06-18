@@ -4,6 +4,9 @@ import android.content.Context
 import android.util.Log
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
@@ -240,81 +243,18 @@ class GenerationHandler(
             }
 
             // Handle tools (execute approved tools, handle denied tools)
-            val executedTools = arrayListOf<UIMessagePart.Tool>()
-            toolsToProcess.forEach { tool ->
-                when (tool.approvalState) {
-                    is ToolApprovalState.Denied -> {
-                        // Tool was denied by user
-                        val reason = (tool.approvalState as ToolApprovalState.Denied).reason
-                        executedTools += tool.copy(
-                            output = listOf(
-                                UIMessagePart.Text(
-                                    json.encodeToString(
-                                        buildJsonObject {
-                                            put(
-                                                "error",
-                                                JsonPrimitive("Tool execution denied by user. Reason: ${reason.ifBlank { "No reason provided" }}")
-                                            )
-                                        }
-                                    )
-                                )
-                            )
-                        )
-                    }
-
-                    is ToolApprovalState.Answered -> {
-                        // Tool was answered by user (e.g., ask_user tool)
-                        val answer = (tool.approvalState as ToolApprovalState.Answered).answer
-                        executedTools += tool.copy(
-                            output = listOf(
-                                UIMessagePart.Text(answer)
-                            )
-                        )
-                    }
-
-                    is ToolApprovalState.Pending -> {
-                        // Should not reach here, but just in case
-                    }
-
-                    else -> {
-                        // Auto or Approved - execute the tool
-                        runCatching {
-                            val toolDef = toolsInternal.find { toolDef -> toolDef.name == tool.toolName }
-                                ?: error("Tool ${tool.toolName} not found")
-                            val args = runCatching {
-                                json.parseToJsonElement(tool.input.ifBlank { "{}" })
-                            }.getOrElse {
-                                error("Invalid tool arguments JSON for ${tool.toolName}: ${it.message}")
-                            }
-                            Log.i(TAG, "generateText: executing tool ${toolDef.name} with args: $args")
-                            val result = toolDef.execute(args)
-                            val hasShellAccess = toolsInternal.any { it.name == "workspace_shell" }
-                            executedTools += tool.copy(
-                                output = maybeTruncateToolOutput(tool.toolCallId, result, hasShellAccess)
-                            )
-                        }.onFailure {
-                            // 取消必须向上传播，否则停止生成会被误报为工具执行错误
-                            if (it is CancellationException) throw it
-                            it.printStackTrace()
-                            executedTools += tool.copy(
-                                output = listOf(
-                                    UIMessagePart.Text(
-                                        json.encodeToString(
-                                            buildJsonObject {
-                                                put(
-                                                    "error",
-                                                    JsonPrimitive(buildString {
-                                                        append("[${it.javaClass.name}] ${it.message}")
-                                                        append("\n${it.stackTraceToString()}")
-                                                    })
-                                                )
-                                            }
-                                        )
-                                    )
-                                )
-                            )
-                        }
-                    }
+            // 当 assistant.parallelToolExecution 开启且本轮有多个工具时，并行执行，
+            // 否则顺序执行（保持兼容）。结果按 toolCallId 回填，顺序无关。
+            val executedTools: List<UIMessagePart.Tool> = if (assistant.parallelToolExecution && toolsToProcess.size > 1) {
+                Log.i(TAG, "generateText: executing ${toolsToProcess.size} tools in parallel")
+                coroutineScope {
+                    toolsToProcess.map { tool ->
+                        async { executeSingleTool(tool, toolsInternal) }
+                    }.awaitAll().filterNotNull()
+                }
+            } else {
+                toolsToProcess.mapNotNull { tool ->
+                    executeSingleTool(tool, toolsInternal)
                 }
             }
 
@@ -345,6 +285,91 @@ class GenerationHandler(
         }
 
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * 执行单个工具调用并返回带 output 的 Tool（或 null 表示无需处理，如 Pending）。
+     *
+     * 抽取此方法使 [generateText] 的工具执行阶段可在 [coroutineScope] + [async] 中并行：
+     * 同一轮模型发起的多个 tool call（如多个 spawn_subagent）会并发执行，
+     * 结果按 toolCallId 回填到消息，顺序无关。
+     *
+     * 处理三类审批状态：
+     * - Denied：写入拒绝原因作为输出
+     * - Answered：写入用户回答作为输出（如 ask_user）
+     * - Pending：返回 null（本轮不处理，等待用户）
+     * - 其它（Auto/Approved）：实际执行工具
+     */
+    private suspend fun executeSingleTool(
+        tool: UIMessagePart.Tool,
+        toolsInternal: List<Tool>,
+    ): UIMessagePart.Tool? = when (tool.approvalState) {
+        is ToolApprovalState.Denied -> {
+            val reason = (tool.approvalState as ToolApprovalState.Denied).reason
+            tool.copy(
+                output = listOf(
+                    UIMessagePart.Text(
+                        json.encodeToString(
+                            buildJsonObject {
+                                put(
+                                    "error",
+                                    JsonPrimitive("Tool execution denied by user. Reason: ${reason.ifBlank { "No reason provided" }}")
+                                )
+                            }
+                        )
+                    )
+                )
+            )
+        }
+
+        is ToolApprovalState.Answered -> {
+            val answer = (tool.approvalState as ToolApprovalState.Answered).answer
+            tool.copy(output = listOf(UIMessagePart.Text(answer)))
+        }
+
+        is ToolApprovalState.Pending -> {
+            // 不应到达此处，保险起见跳过
+            null
+        }
+
+        else -> {
+            // Auto 或 Approved —— 实际执行工具
+            runCatching {
+                val toolDef = toolsInternal.find { it.name == tool.toolName }
+                    ?: error("Tool ${tool.toolName} not found")
+                val args = runCatching {
+                    json.parseToJsonElement(tool.input.ifBlank { "{}" })
+                }.getOrElse {
+                    error("Invalid tool arguments JSON for ${tool.toolName}: ${it.message}")
+                }
+                Log.i(TAG, "generateText: executing tool ${toolDef.name} with args: $args")
+                val result = toolDef.execute(args)
+                val hasShellAccess = toolsInternal.any { it.name == "workspace_shell" }
+                tool.copy(output = maybeTruncateToolOutput(tool.toolCallId, result, hasShellAccess))
+            }.onFailure {
+                // 取消必须向上传播，否则停止生成会被误报为工具执行错误
+                if (it is CancellationException) throw it
+                it.printStackTrace()
+            }.getOrElse {
+                tool.copy(
+                    output = listOf(
+                        UIMessagePart.Text(
+                            json.encodeToString(
+                                buildJsonObject {
+                                    put(
+                                        "error",
+                                        JsonPrimitive(buildString {
+                                            append("[${it.javaClass.name}] ${it.message}")
+                                            append("\n${it.stackTraceToString()}")
+                                        })
+                                    )
+                                }
+                            )
+                        )
+                    )
+                )
+            }
+        }
+    }
 
     private suspend fun generateInternal(
         assistant: Assistant,
