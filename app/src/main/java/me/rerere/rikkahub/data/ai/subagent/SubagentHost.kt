@@ -186,7 +186,7 @@ class SubagentHost(
      * 跑一次完整的 generation 循环到结束，返回最终消息列表 + 末条 assistant 文本 + 累计 usage。
      *
      * 注意：[GenerationHandler.generateText] 没有独立的 stream 开关，流式与否由
-     * [Assistant.streamOutput] 控制；子代理默认 streamOutput=false，结果一次性产出。
+     * [Assistant.streamOutput] 控制；子代理的 streamOutput 继承自父代理或由 profile.streamOutput 显式设置，开启后可实现逐 token 的流式 UI 反馈。
      */
     private suspend fun runToCompletion(
         profile: SubagentProfile,

@@ -931,15 +931,15 @@ class ChatService(
 
                 val updatedMessages = messages.mapIndexed { index, message ->
                     if (index != lastAssistantIndex) return@mapIndexed message
-                    val hasSpawnTool = message.parts.any {
-                        it is UIMessagePart.Tool && it.toolName == "spawn_subagent" && !it.isExecuted
+                    val hasSpawnTool = message.parts.any { part ->
+                        part is UIMessagePart.Tool && part.toolName == "spawn_subagent" && (!part.isExecuted || isStreamingSubagent(part))
                     }
                     if (!hasSpawnTool) return@mapIndexed message
 
                     message.copy(parts = message.parts.map { part ->
                         if (part is UIMessagePart.Tool &&
                             part.toolName == "spawn_subagent" &&
-                            !part.isExecuted
+                            (!part.isExecuted || isStreamingSubagent(part))
                         ) {
                             part.copy(output = listOf(partialOutput))
                         } else {
@@ -952,6 +952,12 @@ class ChatService(
         }.onFailure {
             Log.w(TAG, "updateSubagentProgress failed: ${it.message}")
         }
+    }
+
+    /** 检查 spawn_subagent 工具是否处于流式更新中（output 中已有 subagent_streaming 标记）。 */
+    private fun isStreamingSubagent(part: UIMessagePart.Tool): Boolean {
+        val textPart = part.output.filterIsInstance<UIMessagePart.Text>().firstOrNull()
+        return textPart?.metadata?.get("subagent_streaming")?.jsonPrimitive?.contentOrNull == "true"
     }
 
     private fun checkInvalidMessages(conversationId: Uuid) {
