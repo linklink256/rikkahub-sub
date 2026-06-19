@@ -432,7 +432,7 @@ private fun MiniMaxTTSConfiguration(
 
     // Emotion
     var emotionExpanded by remember { mutableStateOf(false) }
-    val emotions = listOf("calm", "happy", "sad", "angry", "fearful", "disgusted", "surprised")
+    val emotions = listOf("auto", "calm", "happy", "sad", "angry", "fearful", "disgusted", "surprised")
 
     FormItem(
         label = { Text(stringResource(R.string.setting_tts_page_emotion)) },
