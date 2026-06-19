@@ -368,6 +368,33 @@ object SkillFCToolUI : ToolUIRenderer {
 }
 
 /**
+ * URL 抓取: 标题显示"抓取网页", 摘要显示 URL
+ */
+object FetchToolUI : ToolUIRenderer {
+    override val toolName: String = "fetch"
+
+    override fun icon(context: ToolUIContext): ImageVector = HugeIcons.GlobalSearch
+
+    @Composable
+    override fun title(context: ToolUIContext): String =
+        stringResource(R.string.assistant_page_local_tools_fetch_title)
+
+    override fun hasSummary(context: ToolUIContext): Boolean =
+        context.arguments.getStringContent("url") != null
+
+    @Composable
+    override fun Summary(context: ToolUIContext) {
+        Text(
+            text = context.arguments.getStringContent("url") ?: "",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/**
  * 查看应用日志: 标题显示"查看日志"
  */
 object GetLogsToolUI : ToolUIRenderer {

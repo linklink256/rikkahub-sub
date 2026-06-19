@@ -419,6 +419,7 @@ private fun String.toLocalToolOption(): LocalToolOption? = when (this) {
     "tts" -> LocalToolOption.Tts
     "ask_user" -> LocalToolOption.AskUser
     "ask_btw" -> LocalToolOption.AskBtw
+    "fetch" -> LocalToolOption.Fetch
     "logs" -> LocalToolOption.Logs
     else -> null
 }

@@ -158,15 +158,15 @@ private fun AssistantLocalToolContent(
             )
             item(
                 headlineContent = {
-                    Text(stringResource(R.string.assistant_page_local_tools_ask_btw_title))
+                    Text(stringResource(R.string.assistant_page_local_tools_fetch_title))
                 },
                 supportingContent = {
-                    Text(stringResource(R.string.assistant_page_local_tools_ask_btw_desc))
+                    Text(stringResource(R.string.assistant_page_local_tools_fetch_desc))
                 },
                 trailingContent = {
                     Switch(
-                        checked = assistant.localTools.contains(LocalToolOption.AskBtw),
-                        onCheckedChange = { toggleLocalTool(LocalToolOption.AskBtw, it) }
+                        checked = assistant.localTools.contains(LocalToolOption.Fetch),
+                        onCheckedChange = { toggleLocalTool(LocalToolOption.Fetch, it) }
                     )
                 }
             )

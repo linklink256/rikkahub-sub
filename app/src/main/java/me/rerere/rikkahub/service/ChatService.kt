@@ -1001,6 +1001,7 @@ class ChatService(
         is LocalToolOption.Tts -> "tts"
         is LocalToolOption.AskUser -> "ask_user"
         is LocalToolOption.AskBtw -> "ask_btw"
+        is LocalToolOption.Fetch -> "fetch"
         is LocalToolOption.Logs -> "logs"
     }
 

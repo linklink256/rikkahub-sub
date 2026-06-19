@@ -99,6 +99,7 @@ object ToolUIRegistry {
         UseSkillToolUI,
         SkillFCToolUI,
         GetLogsToolUI,
+        FetchToolUI,
         EditFileToolUI,
         ReadFileToolUI,
         WriteFileToolUI,
