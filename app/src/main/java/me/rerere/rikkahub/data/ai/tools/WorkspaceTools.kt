@@ -228,6 +228,7 @@ private fun createShellTool(
     description = buildString {
         append("Run a shell command in the assistant's bound workspace Rootfs. The workspace files area is mounted at /workspace. ")
         append("Use cwd for a path relative to the workspace files root. ")
+        append("Do NOT execute scripts under /skills/ directly — use the skill's registered tools (skill__ prefix) instead. Reading/writing skill files (cat, ls, grep) is allowed. ")
         if (!defaultCwd.isNullOrBlank()) {
             append("Defaults to '$defaultCwd'. ")
         }
@@ -266,6 +267,23 @@ private fun createShellTool(
     execute = {
         val params = it.jsonObject
         val command = params.string("command") ?: error("command is required")
+        // Block execution of scripts under /skills/ from shell.
+        // Skill tools must be invoked via their registered function-calling
+        // tools (skill__ prefix), not by manually running skill scripts.
+        // Reading/writing skill files (cat, ls, grep, etc.) is still allowed.
+        val skillExecError = checkSkillScriptExecution(command)
+        if (skillExecError != null) {
+            return@Tool listOf(
+                UIMessagePart.Text(
+                    buildJsonObject {
+                        put("exitCode", -1)
+                        put("stdout", "")
+                        put("stderr", skillExecError)
+                        put("timedOut", false)
+                    }.toString()
+                )
+            )
+        }
         val cwd = (params.string("cwd") ?: defaultCwd.orEmpty())
             .removePrefix("/workspace/").removePrefix("/workspace")
         val timeoutMillis = params.string("timeout")?.toLongOrNull()
@@ -466,4 +484,66 @@ private fun WorkspaceFileEntry.toJson() = buildJsonObject {
     put("isDirectory", isDirectory)
     put("sizeBytes", sizeBytes)
     put("updatedAt", updatedAt)
+}
+
+/**
+ * Known script file extensions used by skill tools.
+ */
+private val SKILL_SCRIPT_EXTENSIONS = setOf(".sh", ".js", ".py", ".ts", ".rb")
+
+/**
+ * Interpreters that can execute script files.
+ */
+private val SCRIPT_INTERPRETERS = setOf("bash", "sh", "zsh", "python", "python3", "node", "deno", "ruby", "ts-node")
+
+/**
+ * Checks if a shell command attempts to execute a script file under /skills/.
+ *
+ * Returns an error message string if the command is blocked, or null if allowed.
+ *
+ * **Blocked**: running a script file located under /skills/ via an interpreter
+ * (e.g. `bash /skills/github-cli/tools/repo_list.sh`, `cd /skills/foo && sh run.sh`).
+ *
+ * **Allowed**: reading/writing skill files (e.g. `cat /skills/foo/SKILL.md`,
+ * `ls /skills/`, `grep -r pattern /skills/`).
+ */
+private fun checkSkillScriptExecution(command: String): String? {
+    // Quick check: if /skills is not mentioned at all, nothing to block.
+    if (!command.contains("/skills")) return null
+
+    // Split on shell operators to handle compound commands (&&, ||, ;, |)
+    val subCommands = command.split(Regex("&&|\\|\\||;|\\|"))
+    for (sub in subCommands) {
+        val tokens = sub.trim().split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) continue
+
+        // Check if any token is an interpreter (bash, sh, python, etc.)
+        val hasInterpreter = tokens.any { token ->
+            val base = token.substringAfterLast('/')
+            base in SCRIPT_INTERPRETERS
+        }
+
+        // Check if any token references a script file under /skills/
+        val hasSkillScript = tokens.any { token ->
+            token.contains("/skills/") &&
+                SKILL_SCRIPT_EXTENSIONS.any { token.endsWith(it) }
+        }
+
+        if (hasInterpreter && hasSkillScript) {
+            return "Execution of skill scripts via shell is blocked. " +
+                "Use the skill's registered function-calling tools (skill__ prefix) instead of " +
+                "running skill scripts directly. Reading/writing skill files (cat, ls, grep) is allowed."
+        }
+
+        // Also block direct execution of a script file under /skills/ via shebang
+        // (e.g. `/skills/github-cli/tools/repo_list.sh --arg`)
+        val firstToken = tokens.first()
+        if (firstToken.contains("/skills/") &&
+            SKILL_SCRIPT_EXTENSIONS.any { firstToken.endsWith(it) }
+        ) {
+            return "Direct execution of skill scripts via shell is blocked. " +
+                "Use the skill's registered function-calling tools (skill__ prefix) instead."
+        }
+    }
+    return null
 }
