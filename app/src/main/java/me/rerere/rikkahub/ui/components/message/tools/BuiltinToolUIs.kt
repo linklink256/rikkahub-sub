@@ -332,6 +332,42 @@ object UseSkillToolUI : ToolUIRenderer {
 }
 
 /**
+ * 技能可执行工具 (skill__ 前缀): 与 [UseSkillToolUI] 共享视觉风格,
+ * 标题格式 "Skill: {skillName} / {toolName}", 使用相同的魔杖图标。
+ *
+ * 工具名格式为 `skill__{skillName}-{toolName}`, 通过 [match] 进行前缀匹配。
+ */
+object SkillFCToolUI : ToolUIRenderer {
+    private const val SKILL_TOOL_PREFIX = "skill__"
+    override val toolName: String = ""  // 不按精确名注册, 通过 match() 匹配
+
+    /** 如果 [toolName] 以 skill__ 前缀开头, 返回此渲染器, 否则 null */
+    fun match(toolName: String): ToolUIRenderer? =
+        if (toolName.startsWith(SKILL_TOOL_PREFIX)) this else null
+
+    /** 从 `skill__{skillName}-{toolName}` 中解析出 (skillName, toolName) */
+    private fun parseSkillToolName(toolName: String): Pair<String, String> {
+        val rest = toolName.removePrefix(SKILL_TOOL_PREFIX)
+        // skillName 可能包含连字符 (如 github-cli), toolName 也可能包含下划线
+        // 第一个连字符分隔 skillName 和 toolName
+        val idx = rest.indexOf('-')
+        return if (idx > 0) {
+            rest.substring(0, idx) to rest.substring(idx + 1)
+        } else {
+            rest to ""
+        }
+    }
+
+    override fun icon(context: ToolUIContext): ImageVector = HugeIcons.MagicWand01
+
+    @Composable
+    override fun title(context: ToolUIContext): String {
+        val (skillName, toolName) = parseSkillToolName(context.tool.toolName)
+        return if (toolName.isNotEmpty()) "Skill: $skillName / $toolName" else "Skill: $skillName"
+    }
+}
+
+/**
  * 查看应用日志: 标题显示"查看日志"
  */
 object GetLogsToolUI : ToolUIRenderer {
