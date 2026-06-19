@@ -363,7 +363,7 @@ object SkillFCToolUI : ToolUIRenderer {
     @Composable
     override fun title(context: ToolUIContext): String {
         val (skillName, toolName) = parseSkillToolName(context.tool.toolName)
-        return if (toolName.isNotEmpty()) "Skill: $skillName / $toolName" else "Skill: $skillName"
+        return if (toolName.isNotEmpty()) "Skill: $skillName - $toolName" else "Skill: $skillName"
     }
 }
 
