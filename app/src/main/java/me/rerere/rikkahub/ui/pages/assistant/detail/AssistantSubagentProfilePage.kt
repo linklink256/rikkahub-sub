@@ -379,6 +379,7 @@ private fun AssistantSubagentProfileContent(
                     LocalToolOption.Clipboard,
                     LocalToolOption.Tts,
                     LocalToolOption.AskBtw,
+                    LocalToolOption.Logs,
                 )
                 FormItem(
                     modifier = Modifier.padding(8.dp),

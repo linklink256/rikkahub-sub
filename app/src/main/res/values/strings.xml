@@ -1254,6 +1254,8 @@
   <string name="subagent_tool_title">Subagent</string>
   <string name="assistant_page_local_tools_ask_btw_title">Ask By The Way</string>
   <string name="assistant_page_local_tools_ask_btw_desc">Lightweight side-question tool for quick second opinions without spawning a full subagent (requires subagents enabled)</string>
+  <string name="assistant_page_local_tools_logs_title">View Logs</string>
+  <string name="assistant_page_local_tools_logs_desc">Let the AI read the app\'s recent runtime logs (AI request logs and text logs) to help debug issues. Sensitive credentials are redacted.</string>
   <string name="subagent_profiles_section">Subagent Profiles</string>
   <string name="subagent_profiles_section_desc">Built-in profiles can be edited directly; changes override the defaults.</string>
   <string name="subagent_profile_name">Profile Name</string>

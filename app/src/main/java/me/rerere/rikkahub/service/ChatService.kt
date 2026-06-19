@@ -597,7 +597,7 @@ class ChatService(
                             addAll(createSearchTools(settings))
                         }
                         addAll(localTools.getTools(assistant.localTools.filter {
-                            it == LocalToolOption.AskUser || it == LocalToolOption.TimeInfo || it == LocalToolOption.Clipboard
+                            it == LocalToolOption.AskUser || it == LocalToolOption.TimeInfo || it == LocalToolOption.Clipboard || it == LocalToolOption.Logs
                         }))
                         addAll(createWorkspaceToolsIfReady(
                             assistant.workspaceId?.toString(),
@@ -1001,6 +1001,7 @@ class ChatService(
         is LocalToolOption.Tts -> "tts"
         is LocalToolOption.AskUser -> "ask_user"
         is LocalToolOption.AskBtw -> "ask_btw"
+        is LocalToolOption.Logs -> "logs"
     }
 
     /**

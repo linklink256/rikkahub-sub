@@ -97,6 +97,7 @@ object ToolUIRegistry {
         ClipboardToolUI,
         TextToSpeechToolUI,
         UseSkillToolUI,
+        GetLogsToolUI,
         EditFileToolUI,
         ReadFileToolUI,
         WriteFileToolUI,

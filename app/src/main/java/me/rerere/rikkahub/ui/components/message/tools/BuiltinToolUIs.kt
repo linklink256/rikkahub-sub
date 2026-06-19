@@ -45,6 +45,7 @@ import me.rerere.hugeicons.stroke.QuillWrite01
 import me.rerere.hugeicons.stroke.Refresh01
 import me.rerere.hugeicons.stroke.Search01
 import me.rerere.hugeicons.stroke.Time02
+import me.rerere.hugeicons.stroke.Tools
 import me.rerere.hugeicons.stroke.VolumeHigh
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.event.AppEvent
@@ -327,6 +328,34 @@ object UseSkillToolUI : ToolUIRenderer {
         val skillName = context.arguments.getStringContent("name") ?: ""
         val path = context.arguments.getStringContent("path")
         return if (path != null) "Skill: $skillName / $path" else "Skill: $skillName"
+    }
+}
+
+/**
+ * 查看应用日志: 标题显示"查看日志", 摘要显示返回的日志条数
+ */
+object GetLogsToolUI : ToolUIRenderer {
+    override val toolName: String = "get_logs"
+
+    override fun icon(context: ToolUIContext): ImageVector = HugeIcons.Tools
+
+    @Composable
+    override fun title(context: ToolUIContext): String =
+        stringResource(R.string.assistant_page_local_tools_logs_title)
+
+    override fun hasSummary(context: ToolUIContext): Boolean =
+        context.content?.jsonObjectOrNull?.get("count") != null
+
+    @Composable
+    override fun Summary(context: ToolUIContext) {
+        val count = context.content?.jsonObjectOrNull?.get("count")?.jsonPrimitive?.intOrNull
+        if (count != null) {
+            Text(
+                text = count.toString(),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
     }
 }
 

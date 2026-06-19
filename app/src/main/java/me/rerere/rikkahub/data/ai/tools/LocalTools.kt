@@ -5,9 +5,12 @@ import com.whl.quickjs.wrapper.QuickJSContext
 import com.whl.quickjs.wrapper.QuickJSObject
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.encodeToJsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
@@ -16,8 +19,12 @@ import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.common.android.LogEntry
+import me.rerere.common.android.Logging
+import me.rerere.common.android.redacted
 import me.rerere.rikkahub.data.event.AppEvent
 import me.rerere.rikkahub.data.event.AppEventBus
+import me.rerere.rikkahub.utils.JsonInstant
 import me.rerere.rikkahub.utils.readClipboardText
 import me.rerere.rikkahub.utils.writeClipboardText
 import java.time.ZonedDateTime
@@ -49,6 +56,10 @@ sealed class LocalToolOption {
     @Serializable
     @SerialName("ask_btw")
     data object AskBtw : LocalToolOption()
+
+    @Serializable
+    @SerialName("logs")
+    data object Logs : LocalToolOption()
 }
 
 class LocalTools(private val context: Context, private val eventBus: AppEventBus) {
@@ -308,6 +319,63 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
         )
     }
 
+    val logsTool by lazy {
+        Tool(
+            name = "get_logs",
+            description = """
+                Retrieve the app's recent runtime logs, including AI HTTP request logs and text logs.
+                Use this to inspect the requests the app made to AI providers (URL, method, status code,
+                duration, errors) and general app log messages — helpful for debugging issues the user
+                is experiencing. Sensitive headers (Authorization / API keys / cookies) are redacted.
+                Optional 'type' filters logs: "all" (default), "request", or "text".
+                Optional 'limit' caps the number of returned entries (default 20, max 100).
+            """.trimIndent().replace("\n", " "),
+            parameters = {
+                InputSchema.Obj(
+                    properties = buildJsonObject {
+                        put("type", buildJsonObject {
+                            put("type", "string")
+                            put("enum", buildJsonArray {
+                                add("all")
+                                add("request")
+                                add("text")
+                            })
+                            put("description", "Filter logs by type: all (default), request, or text")
+                        })
+                        put("limit", buildJsonObject {
+                            put("type", "integer")
+                            put("description", "Max number of log entries to return (default 20, max 100)")
+                        })
+                    }
+                )
+            },
+            execute = {
+                val params = it.jsonObject
+                val type = params["type"]?.jsonPrimitive?.contentOrNull ?: "all"
+                val limit = params["limit"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+                    ?.coerceIn(1, 100) ?: 20
+
+                val allLogs: List<LogEntry> = when (type) {
+                    "request" -> Logging.getRequestLogs()
+                    "text" -> Logging.getTextLogs()
+                    else -> Logging.getRecentLogs()
+                }
+                val selected = allLogs.take(limit).map { it.redacted() }
+
+                val payload = buildJsonObject {
+                    put("count", selected.size)
+                    put("totalAvailable", allLogs.size)
+                    put("requestLoggingEnabled", Logging.isRequestLoggingEnabled())
+                    put(
+                        "logs",
+                        JsonInstant.encodeToJsonElement(ListSerializer(LogEntry.serializer()), selected)
+                    )
+                }
+                listOf(UIMessagePart.Text(payload.toString()))
+            }
+        )
+    }
+
     fun getTools(options: List<LocalToolOption>): List<Tool> {
         val tools = mutableListOf<Tool>()
         if (options.contains(LocalToolOption.JavascriptEngine)) {
@@ -324,6 +392,9 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
         }
         if (options.contains(LocalToolOption.AskUser)) {
             tools.add(askUserTool)
+        }
+        if (options.contains(LocalToolOption.Logs)) {
+            tools.add(logsTool)
         }
         return tools
     }
