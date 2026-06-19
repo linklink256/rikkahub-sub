@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,8 +52,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import me.rerere.ai.provider.ProviderSetting
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Camera01
@@ -73,6 +76,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
+import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
@@ -112,6 +116,13 @@ internal fun FilesPicker(
     val navController = LocalNavController.current
     val workspaceRepository: WorkspaceRepository = koinInject()
     val workspaces by workspaceRepository.listFlow().collectAsState(initial = emptyList())
+    val skillManager: SkillManager = koinInject()
+    var installedSkillNames by remember { mutableStateOf<Set<String>>(emptySet()) }
+    LaunchedEffect(Unit) {
+        withContext(Dispatchers.IO) {
+            installedSkillNames = skillManager.listSkills().map { it.name }.toSet()
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -181,7 +192,7 @@ internal fun FilesPicker(
         val activeCount =
             assistant.quickMessageIds.size +
                 modeAndLorebookCount +
-                assistant.enabledSkills.size
+                assistant.enabledSkills.count { it in installedSkillNames }
         ListItem(
             leadingContent = {
                 Icon(
@@ -545,3 +556,4 @@ private fun BigIconTextButtonPreview() {
         }) {}
     }
 }
+
