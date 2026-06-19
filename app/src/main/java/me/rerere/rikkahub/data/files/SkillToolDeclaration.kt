@@ -1,8 +1,19 @@
 package me.rerere.rikkahub.data.files
 
 import com.charleskorn.kaml.Yaml
+import com.charleskorn.kaml.YamlConfiguration
+import com.charleskorn.kaml.YamlList
+import com.charleskorn.kaml.YamlMap
+import com.charleskorn.kaml.YamlNode
+import com.charleskorn.kaml.YamlScalar
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.decodeFromJsonElement
 import java.io.File
 
 /**
@@ -40,6 +51,16 @@ data class SkillToolFile(
 /**
  * Parses a `tools.yaml` text into a [SkillToolFile].
  *
+ * Uses a two-step approach: YAML → YamlNode tree → JsonElement tree → SkillToolFile.
+ *
+ * kaml cannot directly deserialize [JsonElement] fields from YAML because
+ * `JsonElement` is a sealed class and kaml's default tagged polymorphism expects
+ * a type tag (e.g. `!<JsonObject>`) in the YAML, which `tools.yaml` does not
+ * provide — this causes `DuplicateKeyException: Value is missing a type tag`.
+ * By converting the YamlNode tree to a JsonElement tree first, we bypass the
+ * polymorphism issue and let kotlinx-serialization-json handle `JsonElement`
+ * fields natively.
+ *
  * This is a pure function – no I/O, no Android dependencies – making it
  * directly testable on the JVM.
  *
@@ -47,18 +68,49 @@ data class SkillToolFile(
  *         on malformed YAML.
  */
 object SkillToolFileParser {
-    // Use a non-strict Yaml instance: tools.yaml may contain keys (like YAML
-    // comments, extension fields, or future schema additions) that are not
-    // mapped to SkillToolFile properties. With Yaml.default (strictMode=true),
-    // any unknown key throws UnknownPropertyException and the entire file is
-    // rejected — silently, because listToolDeclarations catches the exception.
-    // Using strictMode=false makes the parser ignore unknown keys gracefully.
-    private val yaml = com.charleskorn.kaml.Yaml(
-        configuration = com.charleskorn.kaml.YamlConfiguration(strictMode = false)
-    )
+    private val yaml = Yaml(configuration = YamlConfiguration(strictMode = false))
+    private val json = Json { ignoreUnknownKeys = true }
 
     fun parse(text: String): SkillToolFile {
-        return yaml.decodeFromString(SkillToolFile.serializer(), text)
+        val yamlNode = yaml.parseToYamlNode(text)
+        val jsonElement = yamlNodeToJsonElement(yamlNode)
+        return json.decodeFromJsonElement(SkillToolFile.serializer(), jsonElement)
+    }
+
+    /**
+     * Recursively converts a kaml [YamlNode] tree into a kotlinx-serialization
+     * [JsonElement] tree.
+     *
+     * Scalars are type-inferred: integers, longs, doubles, booleans and nulls
+     * are converted to their typed [JsonPrimitive] equivalents; everything else
+     * is kept as a string primitive.
+     */
+    private fun yamlNodeToJsonElement(node: YamlNode): JsonElement = when (node) {
+        is YamlMap -> {
+            val map = mutableMapOf<String, JsonElement>()
+            for ((key, value) in node.entries) {
+                val keyStr = (key as? YamlScalar)?.content ?: key.toString()
+                map[keyStr] = yamlNodeToJsonElement(value)
+            }
+            JsonObject(map)
+        }
+
+        is YamlList -> JsonArray(node.items.map { yamlNodeToJsonElement(it) })
+
+        is YamlScalar -> {
+            val content = node.content
+            when {
+                content.equals("null", ignoreCase = true) -> JsonNull
+                content.equals("true", ignoreCase = true) -> JsonPrimitive(true)
+                content.equals("false", ignoreCase = true) -> JsonPrimitive(false)
+                content.toIntOrNull() != null -> JsonPrimitive(content.toInt())
+                content.toLongOrNull() != null -> JsonPrimitive(content.toLong())
+                content.toDoubleOrNull() != null -> JsonPrimitive(content.toDouble())
+                else -> JsonPrimitive(content)
+            }
+        }
+
+        else -> JsonNull
     }
 }
 
