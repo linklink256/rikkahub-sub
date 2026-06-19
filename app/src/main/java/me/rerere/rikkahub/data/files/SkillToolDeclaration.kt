@@ -54,7 +54,7 @@ object SkillToolFileParser {
     // rejected — silently, because listToolDeclarations catches the exception.
     // Using strictMode=false makes the parser ignore unknown keys gracefully.
     private val yaml = com.charleskorn.kaml.Yaml(
-        com.charleskorn.kaml.YamlConfiguration(strictMode = false)
+        configuration = com.charleskorn.kaml.YamlConfiguration(strictMode = false)
     )
 
     fun parse(text: String): SkillToolFile {
