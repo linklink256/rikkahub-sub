@@ -579,7 +579,7 @@ class ChatCompletionsAPI(
                             put("type", "function")
                             put("function", buildJsonObject {
                                 put("name", tool.toolName)
-                                put("arguments", tool.input)
+                                put("arguments", tool.inputAsJson().toString())
                             })
                         })
                     }

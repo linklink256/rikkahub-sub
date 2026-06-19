@@ -47,8 +47,18 @@ data class SkillToolFile(
  *         on malformed YAML.
  */
 object SkillToolFileParser {
+    // Use a non-strict Yaml instance: tools.yaml may contain keys (like YAML
+    // comments, extension fields, or future schema additions) that are not
+    // mapped to SkillToolFile properties. With Yaml.default (strictMode=true),
+    // any unknown key throws UnknownPropertyException and the entire file is
+    // rejected — silently, because listToolDeclarations catches the exception.
+    // Using strictMode=false makes the parser ignore unknown keys gracefully.
+    private val yaml = com.charleskorn.kaml.Yaml(
+        com.charleskorn.kaml.YamlConfiguration(strictMode = false)
+    )
+
     fun parse(text: String): SkillToolFile {
-        return Yaml.default.decodeFromString(SkillToolFile.serializer(), text)
+        return yaml.decodeFromString(SkillToolFile.serializer(), text)
     }
 }
 

@@ -353,7 +353,7 @@ class ResponseAPI(
                             put("type", "function_call")
                             put("call_id", tool.toolCallId)
                             put("name", tool.toolName)
-                            put("arguments", tool.input)
+                            put("arguments", tool.inputAsJson().toString())
                         })
                         add(buildJsonObject {
                             put("type", "function_call_output")

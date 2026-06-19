@@ -49,10 +49,15 @@ fun isSafeName(name: String): Boolean =
  */
 fun jsonSchemaToInputSchema(json: JsonElement?): InputSchema? {
     if (json == null || json is JsonNull) return null
-    val obj = json.jsonObject ?: return null
-    if (obj["type"]?.jsonPrimitive?.content != "object") return null
+    // Use safe cast instead of jsonObject (which throws for non-JsonObject).
+    // jsonObject is non-nullable in kotlinx-serialization-json 1.11.0, so
+    // the previous `?: return null` was dead code that would let exceptions
+    // propagate instead of returning null.
+    val obj = json as? JsonObject ?: return null
+    val typeValue = obj["type"] as? JsonPrimitive
+    if (typeValue?.contentOrNull != "object") return null
 
-    val properties: JsonObject = obj["properties"]?.jsonObject ?: buildJsonObject { }
+    val properties: JsonObject = obj["properties"] as? JsonObject ?: buildJsonObject { }
     val required: List<String>? = parseRequired(obj["required"])
 
     return InputSchema.Obj(
@@ -73,9 +78,9 @@ fun jsonSchemaToInputSchema(json: JsonElement?): InputSchema? {
 private fun parseRequired(element: JsonElement?): List<String>? {
     if (element == null || element is JsonNull) return null
     return when (element) {
-        is JsonArray -> element.mapNotNull { it.jsonPrimitive.contentOrNull }
+        is JsonArray -> element.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
             .ifEmpty { null }
-        is JsonObject -> element.mapNotNull { (_, value) -> value.jsonPrimitive.contentOrNull }
+        is JsonObject -> element.mapNotNull { (_, value) -> (value as? JsonPrimitive)?.contentOrNull }
             .ifEmpty { null }
         else -> null
     }
@@ -265,6 +270,7 @@ fun createSkillTools(
                 continue
             }
             val declarations = skillManager.listToolDeclarations(skill.name)
+            android.util.Log.i(TAG, "createSkillTools: skill '${skill.name}' declared ${declarations.size} tool(s)")
             for (decl in declarations) {
                 if (!isSafeName(decl.name)) {
                     android.util.Log.w(TAG, "createSkillTools: skipping tool '${decl.name}' in skill '${skill.name}' — name contains unsafe characters")

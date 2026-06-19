@@ -332,7 +332,7 @@ object UseSkillToolUI : ToolUIRenderer {
 }
 
 /**
- * 查看应用日志: 标题显示"查看日志", 摘要显示返回的日志条数
+ * 查看应用日志: 标题显示"查看日志"
  */
 object GetLogsToolUI : ToolUIRenderer {
     override val toolName: String = "get_logs"
@@ -342,21 +342,6 @@ object GetLogsToolUI : ToolUIRenderer {
     @Composable
     override fun title(context: ToolUIContext): String =
         stringResource(R.string.assistant_page_local_tools_logs_title)
-
-    override fun hasSummary(context: ToolUIContext): Boolean =
-        context.content?.jsonObjectOrNull?.get("count") != null
-
-    @Composable
-    override fun Summary(context: ToolUIContext) {
-        val count = context.content?.jsonObjectOrNull?.get("count")?.jsonPrimitive?.intOrNull
-        if (count != null) {
-            Text(
-                text = count.toString(),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onPrimaryContainer,
-            )
-        }
-    }
 }
 
 @Composable
