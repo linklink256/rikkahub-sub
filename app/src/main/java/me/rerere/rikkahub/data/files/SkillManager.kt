@@ -147,6 +147,39 @@ class SkillManager(
         return SkillPaths.resolveSkillFile(skillDir, relativePath)
     }
 
+    /**
+     * Returns the list of tool declarations declared in this skill's
+     * `tools.yaml` file.
+     *
+     * If the file does not exist, or if its content is malformed YAML,
+     * an empty list is returned (and a warning is logged).
+     */
+    fun listToolDeclarations(skillName: String): List<SkillToolDeclaration> {
+        val file = resolveSkillFile(skillName, "tools.yaml") ?: return emptyList()
+        if (!file.exists()) return emptyList()
+        return try {
+            val text = file.readText()
+            SkillToolFileParser.parse(text).tools
+        } catch (e: Exception) {
+            Log.w(TAG, "listToolDeclarations: Failed to parse tools.yaml for skill $skillName", e)
+            emptyList()
+        }
+    }
+
+    /**
+     * Resolves a script path from a command string (e.g. `"bash tools/list_repos.sh"`)
+     * to a [File] inside the skill's directory, with path-traversal protection.
+     *
+     * If the command contains no identifiable script path, or if the resolved
+     * path escapes the skill directory, `null` is returned.
+     *
+     * @see resolveCommandPath for the path extraction rules.
+     */
+    fun resolveSkillScript(skillName: String, command: String): File? {
+        val skillDir = resolveSkillDir(skillName) ?: return null
+        return resolveCommandPath(skillDir, command)
+    }
+
     private fun resolveSkillDir(skillName: String): File? {
         return SkillPaths.resolveSkillDir(getSkillsDir(), skillName)
     }

@@ -247,6 +247,7 @@ dependencies {
 
     // serialization
     implementation(libs.kotlinx.serialization.json)
+    implementation(libs.kaml)
 
     // zxing
     implementation(libs.zxing.core)

@@ -616,6 +616,8 @@ class ChatService(
                                     enabledSkills = assistant.enabledSkills,
                                     allSkills = skillManager.listSkills(),
                                     skillManager = skillManager,
+                                    workspaceRepository = workspaceRepository,
+                                    workspaceId = assistant.workspaceId?.toString(),
                                 )
                             )
                         }
@@ -885,6 +887,8 @@ class ChatService(
                     enabledSkills = assistant.enabledSkills,
                     allSkills = skillManager.listSkills(),
                     skillManager = skillManager,
+                    workspaceRepository = workspaceRepository,
+                    workspaceId = assistant.workspaceId?.toString(),
                 )
             )
         }
