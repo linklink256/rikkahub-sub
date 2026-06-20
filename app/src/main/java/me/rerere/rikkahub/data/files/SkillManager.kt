@@ -161,6 +161,10 @@ class SkillManager(
             val text = file.readText()
             val parsed = SkillToolFileParser.parse(text)
             Log.i(TAG, "listToolDeclarations: parsed ${parsed.tools.size} tool(s) from tools.yaml for skill $skillName")
+            me.rerere.common.android.Logging.log(
+                TAG,
+                "listToolDeclarations: parsed ${parsed.tools.size} tool(s) from tools.yaml for skill $skillName"
+            )
             parsed.tools
         } catch (e: Exception) {
             Log.w(TAG, "listToolDeclarations: Failed to parse tools.yaml for skill $skillName", e)

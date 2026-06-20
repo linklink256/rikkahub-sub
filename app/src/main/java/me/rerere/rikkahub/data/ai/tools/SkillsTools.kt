@@ -196,6 +196,12 @@ fun createSkillTools(
     workspaceId: String? = null,
 ): List<Tool> {
     val available = allSkills.filter { it.name in enabledSkills }
+    me.rerere.common.android.Logging.log(
+        "SkillTools",
+        "createSkillTools: enabledSkills=${enabledSkills.size} (${enabledSkills.joinToString()}), " +
+            "allSkills=${allSkills.size} (${allSkills.joinToString { it.name }}), " +
+            "available=${available.size}, workspaceId=$workspaceId"
+    )
     if (available.isEmpty()) return emptyList()
 
     val tools = mutableListOf<Tool>()
@@ -271,6 +277,10 @@ fun createSkillTools(
             }
             val declarations = skillManager.listToolDeclarations(skill.name)
             android.util.Log.i(TAG, "createSkillTools: skill '${skill.name}' declared ${declarations.size} tool(s)")
+            me.rerere.common.android.Logging.log(
+                "SkillTools",
+                "createSkillTools: skill '${skill.name}' → ${declarations.size} tool declaration(s)"
+            )
             for (decl in declarations) {
                 if (!isSafeName(decl.name)) {
                     android.util.Log.w(TAG, "createSkillTools: skipping tool '${decl.name}' in skill '${skill.name}' — name contains unsafe characters")
