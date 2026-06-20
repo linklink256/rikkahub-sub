@@ -23,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.rikkahub.R
 import kotlinx.coroutines.launch
+import me.rerere.rikkahub.data.model.toggleSkill
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.ai.ExtensionEmptyState
 import me.rerere.rikkahub.ui.components.ai.LorebooksContent
@@ -197,9 +198,7 @@ fun AssistantExtensionsPage(id: String) {
                                     skills = skills,
                                     enabledSkills = assistant.enabledSkills,
                                     onToggle = { name, checked ->
-                                        val newSkills = if (checked) assistant.enabledSkills + name
-                                        else assistant.enabledSkills - name
-                                        vm.update(assistant.copy(enabledSkills = newSkills))
+                                        vm.update(assistant.toggleSkill(name, checked))
                                     },
                                 )
                                 TextButton(

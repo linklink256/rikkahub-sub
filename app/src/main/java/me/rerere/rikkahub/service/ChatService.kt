@@ -605,55 +605,20 @@ class ChatService(
                             readOnly = true,
                         ))
                     } else {
-                        if (settings.enableWebSearch) {
-                            addAll(createSearchTools(settings))
-                        }
-                        addAll(localTools.getTools(assistant.localTools))
-                        addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
-                        val allInstalledSkills = skillManager.listSkills()
-                        if (allInstalledSkills.isNotEmpty()) {
-                            val installedSkillNames = allInstalledSkills.map { it.name }.toSet()
-                            val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
-                            autoEnableNewSkills(assistant, cleanedSkills, installedSkillNames)
-                            addAll(
-                                createSkillTools(
-                                    enabledSkills = installedSkillNames,
-                                    allSkills = allInstalledSkills,
-                                    skillManager = skillManager,
-                                    workspaceRepository = workspaceRepository,
-                                    workspaceId = assistant.workspaceId?.toString(),
-                                )
-                            )
-                        }
-                        mcpManager.getAllAvailableTools().also { allTools ->
-                            val invalidNames = allTools
-                                .map { it.second }
-                                .distinct()
-                                .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
-                            if (invalidNames.isNotEmpty()) {
+                        when (val result = buildCommonTools(assistant, settings, conversation.workspaceCwd, McpErrorStrategy.STRICT)) {
+                            is CommonToolsResult.Ok -> addAll(result.tools)
+                            is CommonToolsResult.McpError -> {
                                 addError(
                                     error = IllegalStateException(
                                         context.getString(
                                             R.string.error_mcp_invalid_server_name,
-                                            invalidNames.joinToString(", ")
+                                            result.invalidNames.joinToString(", ")
                                         )
                                     ),
                                     conversationId = conversationId,
                                 )
                                 return
                             }
-                        }.forEach { (serverId, serverName, tool) ->
-                            add(
-                                Tool(
-                                    name = "mcp__${serverName}__${tool.name}",
-                                    description = tool.description ?: "",
-                                    parameters = { tool.inputSchema },
-                                    needsApproval = { tool.needsApproval },
-                                    execute = {
-                                        mcpManager.callTool(serverId, tool.name, it.jsonObject)
-                                    },
-                                )
-                            )
                         }
                     }
                     // subagent 委派工具（移植自 kimi-code subagent 体系）
@@ -712,6 +677,108 @@ class ChatService(
     }
 
     /**
+     * MCP 名非法时的处理策略。
+     */
+    private enum class McpErrorStrategy {
+        /** 主代理：检测到非法名时返回 [CommonToolsResult.McpError]，由调用方上报错误 */
+        STRICT,
+        /** 子代理：静默过滤非法名，不抛错、不打断，并按 [Assistant.mcpServers] 过滤 */
+        SOFT,
+    }
+
+    /**
+     * [buildCommonTools] 的返回类型。
+     */
+    private sealed class CommonToolsResult {
+        data class Ok(val tools: List<Tool>) : CommonToolsResult()
+        data class McpError(val invalidNames: List<String>) : CommonToolsResult()
+    }
+
+    /**
+     * 构建主代理/子代理共享的基础工具集（搜索 / 本地 / workspace / skills / mcp）。
+     *
+     * 提取自根代理 buildList 的非 delegateOnly 分支和 buildSubagentBaseTools，
+     * 消除两处几乎完全相同的工具装配代码。差异仅在 MCP 非法名称的处理方式：
+     * - [McpErrorStrategy.STRICT]：检测到非法名时返回 [CommonToolsResult.McpError]，
+     *   由调用方决定如何上报错误。
+     * - [McpErrorStrategy.SOFT]：静默过滤非法名，并额外按 [Assistant.mcpServers]
+     *   过滤（子代理场景）。
+     */
+    private suspend fun buildCommonTools(
+        assistant: Assistant,
+        settings: Settings,
+        workspaceCwd: String?,
+        mcpStrategy: McpErrorStrategy,
+    ): CommonToolsResult {
+        val allMcpTools = mcpManager.getAllAvailableTools()
+
+        if (mcpStrategy == McpErrorStrategy.STRICT) {
+            val invalidNames = allMcpTools
+                .map { it.second }
+                .distinct()
+                .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
+            if (invalidNames.isNotEmpty()) {
+                return CommonToolsResult.McpError(invalidNames)
+            }
+        }
+
+        val tools = buildList {
+            if (settings.enableWebSearch) {
+                addAll(createSearchTools(settings))
+            }
+            addAll(localTools.getTools(assistant.localTools))
+            addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
+
+            val allInstalledSkills = skillManager.listSkills()
+            if (allInstalledSkills.isNotEmpty()) {
+                val installedSkillNames = allInstalledSkills.map { it.name }.toSet()
+                val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
+                autoEnableNewSkills(assistant, cleanedSkills, installedSkillNames)
+                addAll(
+                    createSkillTools(
+                        enabledSkills = installedSkillNames,
+                        allSkills = allInstalledSkills,
+                        skillManager = skillManager,
+                        workspaceRepository = workspaceRepository,
+                        workspaceId = assistant.workspaceId?.toString(),
+                    )
+                )
+            }
+
+            val filteredMcpTools = if (mcpStrategy == McpErrorStrategy.SOFT) {
+                allMcpTools
+                    .filter { (_, serverName, _) ->
+                        serverName.isNotEmpty() && serverName.all {
+                            it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9'
+                        }
+                    }
+                    .filter { (serverId, _, _) ->
+                        // 按子代理配置的 MCP 服务器过滤；空集 = 不限制（继承父代理的场景）
+                        assistant.mcpServers.isEmpty() || serverId in assistant.mcpServers
+                    }
+            } else {
+                allMcpTools
+            }
+
+            filteredMcpTools.forEach { (serverId, serverName, tool) ->
+                add(
+                    Tool(
+                        name = "mcp__${serverName}__${tool.name}",
+                        description = tool.description ?: "",
+                        parameters = { tool.inputSchema },
+                        needsApproval = { tool.needsApproval },
+                        execute = {
+                            mcpManager.callTool(serverId, tool.name, it.jsonObject)
+                        },
+                    )
+                )
+            }
+        }
+
+        return CommonToolsResult.Ok(tools)
+    }
+
+    /**
      * 清理 [assistant] 的 [Assistant.enabledSkills] 中已不存在的技能名（幽灵技能）。
      *
      * 与 quickMessageIds / modeInjectionIds / lorebookIds / mcpServers 不同，
@@ -730,17 +797,7 @@ class ChatService(
         if (cleaned.size == assistant.enabledSkills.size) return assistant.enabledSkills
         // 异步回写清理后的值
         appScope.launch {
-            settingsStore.update { settings ->
-                settings.copy(
-                    assistants = settings.assistants.map { a ->
-                        if (a.id == assistant.id) {
-                            a.copy(enabledSkills = cleaned)
-                        } else {
-                            a
-                        }
-                    }
-                )
-            }
+            settingsStore.updateAssistantSkills(assistant.id) { cleaned }
         }
         Logging.log(TAG, "cleanStaleEnabledSkills: removed ${assistant.enabledSkills.size - cleaned.size} ghost skill(s) from assistant ${assistant.id}: ${assistant.enabledSkills - cleaned}")
         return cleaned
@@ -766,17 +823,7 @@ class ChatService(
         val newSkills = installedSkillNames - enabledSkills
         if (newSkills.isEmpty()) return
         appScope.launch {
-            settingsStore.update { settings ->
-                settings.copy(
-                    assistants = settings.assistants.map { a ->
-                        if (a.id == assistant.id) {
-                            a.copy(enabledSkills = a.enabledSkills + newSkills)
-                        } else {
-                            a
-                        }
-                    }
-                )
-            }
+            settingsStore.updateAssistantSkills(assistant.id) { it + newSkills }
         }
         Logging.log(TAG, "autoEnableNewSkills: enabled ${newSkills.size} new skill(s) for assistant ${assistant.id}: $newSkills")
     }
@@ -943,56 +990,17 @@ class ChatService(
 
     /**
      * 子代理的基础工具集（搜索 / 本地 / workspace / skills / mcp）。
-     * 与根代理外层 buildList 同源，但 MCP 名非法项做软过滤（子代理不抛错、不打断）。
+     *
+     * 委托给 [buildCommonTools]，使用 [McpErrorStrategy.SOFT]：MCP 名非法项
+     * 做软过滤（子代理不抛错、不打断），并按 [Assistant.mcpServers] 过滤。
      */
     private suspend fun buildSubagentBaseTools(
         assistant: Assistant,
         settings: Settings,
         workspaceCwd: String?,
-    ): List<Tool> = buildList {
-        if (settings.enableWebSearch) {
-            addAll(createSearchTools(settings))
-        }
-        addAll(localTools.getTools(assistant.localTools))
-        addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
-        val allInstalledSkills = skillManager.listSkills()
-        if (allInstalledSkills.isNotEmpty()) {
-            val installedSkillNames = allInstalledSkills.map { it.name }.toSet()
-            val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
-            autoEnableNewSkills(assistant, cleanedSkills, installedSkillNames)
-            addAll(
-                createSkillTools(
-                    enabledSkills = installedSkillNames,
-                    allSkills = allInstalledSkills,
-                    skillManager = skillManager,
-                    workspaceRepository = workspaceRepository,
-                    workspaceId = assistant.workspaceId?.toString(),
-                )
-            )
-        }
-        mcpManager.getAllAvailableTools()
-            .filter { (_, serverName, _) ->
-                serverName.isNotEmpty() && serverName.all {
-                    it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9'
-                }
-            }
-            .filter { (serverId, _, _) ->
-                // 按子代理配置的 MCP 服务器过滤；空集 = 不限制（继承父代理的场景）
-                assistant.mcpServers.isEmpty() || serverId in assistant.mcpServers
-            }
-            .forEach { (serverId, serverName, tool) ->
-                add(
-                    Tool(
-                        name = "mcp__${serverName}__${tool.name}",
-                        description = tool.description ?: "",
-                        parameters = { tool.inputSchema },
-                        needsApproval = { tool.needsApproval },
-                        execute = {
-                            mcpManager.callTool(serverId, tool.name, it.jsonObject)
-                        },
-                    )
-                )
-            }
+    ): List<Tool> = when (val result = buildCommonTools(assistant, settings, workspaceCwd, McpErrorStrategy.SOFT)) {
+        is CommonToolsResult.Ok -> result.tools
+        is CommonToolsResult.McpError -> emptyList() // SOFT 策略不会返回 Error
     }
 
     // ---- 检查无效消息 ----

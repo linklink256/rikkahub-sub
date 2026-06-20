@@ -59,17 +59,7 @@ class SkillManager(
         val skillDir = resolveSkillDir(name) ?: return@withContext false
         val deleted = skillDir.deleteRecursively()
         if (deleted) {
-            settingsStore.update { settings ->
-                settings.copy(
-                    assistants = settings.assistants.map { assistant ->
-                        if (assistant.enabledSkills.contains(name)) {
-                            assistant.copy(enabledSkills = assistant.enabledSkills - name)
-                        } else {
-                            assistant
-                        }
-                    }
-                )
-            }
+            settingsStore.updateAssistantSkills { it - name }
         }
         deleted
     }

@@ -115,7 +115,7 @@ object SkillToolFileParser {
 }
 
 // Known script file extensions used by resolveCommandPath()
-private val KNOWN_SCRIPT_EXTENSIONS = setOf(".sh", ".js", ".py", ".ts", ".rb")
+private val KNOWN_SCRIPT_EXTENSIONS = SkillConstants.SCRIPT_EXTENSIONS
 
 /**
  * Extracts a script file path from a command string and resolves it

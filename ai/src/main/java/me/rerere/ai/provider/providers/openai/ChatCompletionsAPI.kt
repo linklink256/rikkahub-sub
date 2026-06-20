@@ -304,9 +304,7 @@ class ChatCompletionsAPI(
 
                     "ark.cn-beijing.volces.com" -> {
                         // 豆包 (火山)
-                        put("thinking", buildJsonObject {
-                            put("type", if (!level.isEnabled) "disabled" else "enabled")
-                        })
+                        put("thinking", buildThinkingConfig(level))
                     }
 
                     "api.mistral.ai" -> {
@@ -359,21 +357,15 @@ class ChatCompletionsAPI(
                     }
 
                     "open.bigmodel.cn" -> {
-                        put("thinking", buildJsonObject {
-                            put("type", if (!level.isEnabled) "disabled" else "enabled")
-                        })
+                        put("thinking", buildThinkingConfig(level))
                     }
 
                     "api.moonshot.cn" -> {
-                        put("thinking", buildJsonObject {
-                            put("type", if (!level.isEnabled) "disabled" else "enabled")
-                        })
+                        put("thinking", buildThinkingConfig(level))
                     }
 
                     "api.deepseek.com" -> {
-                        put("thinking", buildJsonObject {
-                            put("type", if (!level.isEnabled) "disabled" else "enabled")
-                        })
+                        put("thinking", buildThinkingConfig(level))
                         if (level.isEnabled && level != ReasoningLevel.AUTO) {
                             put("reasoning_effort", level.effort)
                         }
@@ -728,5 +720,19 @@ class ChatCompletionsAPI(
         val gonnaSend = filter { it is UIMessagePart.Text || it is UIMessagePart.Image }.size
         val texts = filter { it is UIMessagePart.Text }.size
         return gonnaSend == texts && texts == 1
+    }
+
+    companion object {
+        /**
+         * 构建 `thinking` 配置 JSON 对象，供多个 provider host 分支复用。
+         *
+         * `{"type": "disabled" | "enabled"}` — 豆包/智谱/Moonshot/DeepSeek 等
+         * provider 共用此格式。DeepSeek 在此基础上额外追加 `reasoning_effort`，
+         * 由调用方在返回后自行 put。
+         */
+        internal fun buildThinkingConfig(level: ReasoningLevel): JsonObject =
+            buildJsonObject {
+                put("type", if (!level.isEnabled) "disabled" else "enabled")
+            }
     }
 }

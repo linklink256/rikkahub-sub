@@ -7,6 +7,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import me.rerere.rikkahub.data.files.FileFolders
+import me.rerere.rikkahub.data.files.SkillBackupUtils
 import me.rerere.rikkahub.data.files.SkillPaths
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
@@ -344,33 +345,7 @@ class S3Sync(
     }
 
     private fun restoreSkillEntry(zipIn: ZipInputStream, entryName: String) {
-        val relativePath = entryName.substringAfter("${FileFolders.SKILLS}/")
-        val skillName = relativePath.substringBefore('/', missingDelimiterValue = "")
-        val skillRelativePath = relativePath.substringAfter('/', missingDelimiterValue = "")
-
-        if (skillName.isBlank() || skillRelativePath.isBlank()) {
-            Log.w(TAG, "restoreFromBackupFile: Invalid skill entry $entryName")
-            return
-        }
-
-        val skillsRoot = File(context.filesDir, FileFolders.SKILLS).apply { mkdirs() }
-        val skillDir = SkillPaths.resolveSkillDir(skillsRoot, skillName)
-            ?: throw Exception("Invalid skill directory: $entryName")
-        val targetFile = SkillPaths.resolveSkillFile(skillDir, skillRelativePath)
-            ?: throw Exception("Invalid skill file path: $entryName")
-
-        skillDir.mkdirs()
-        targetFile.parentFile?.mkdirs()
-
-        try {
-            FileOutputStream(targetFile).use { outputStream ->
-                zipIn.copyTo(outputStream)
-            }
-            Log.i(TAG, "restoreFromBackupFile: Restored skill file $entryName (${targetFile.length()} bytes)")
-        } catch (e: Exception) {
-            Log.e(TAG, "restoreFromBackupFile: Failed to restore skill file $entryName", e)
-            throw Exception("Failed to restore skill file $entryName: ${e.message}")
-        }
+        SkillBackupUtils.restoreSkillEntry(context, zipIn, entryName)
     }
 
     private fun addVirtualFileToZip(zipOut: ZipOutputStream, name: String, content: String) {

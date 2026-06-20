@@ -45,19 +45,13 @@ class SkillsVM(
      * 技能导入/创建后, 仅写入磁盘是不够的——Assistant 的 enabledSkills
      * 是静态维护的, 不会自动发现新技能。此方法确保新技能立即可用,
      * 无需用户手动到每个 Assistant 的扩展设置中开启。
+     *
+     * 通过 [SettingsStore.updateAssistantSkills]（targetAssistantId = null）
+     * 对所有 Assistant 生效，与 ChatService.autoEnableNewSkills（仅当前
+     * Assistant）形成互补：UI 导入 → 全局启用；运行时发现 → 当前会话启用。
      */
     private suspend fun autoEnableSkill(skillName: String) {
-        settingsStore.update { settings ->
-            settings.copy(
-                assistants = settings.assistants.map { assistant ->
-                    if (skillName !in assistant.enabledSkills) {
-                        assistant.copy(enabledSkills = assistant.enabledSkills + skillName)
-                    } else {
-                        assistant
-                    }
-                }
-            )
-        }
+        settingsStore.updateAssistantSkills { it + skillName }
     }
 
     fun saveSkill(name: String, content: String, onResult: (Boolean) -> Unit) {

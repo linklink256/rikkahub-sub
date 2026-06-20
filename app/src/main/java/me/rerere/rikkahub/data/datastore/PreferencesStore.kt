@@ -488,6 +488,35 @@ class SettingsStore(
             )
         }
     }
+
+    /**
+     * Updates [Assistant.enabledSkills] for one or all assistants.
+     *
+     * @param targetAssistantId when `null`, the transform is applied to **all**
+     *   assistants; when non-null, only the matching assistant is updated.
+     * @param transform receives the current enabledSkills set and returns the
+     *   new set.
+     *
+     * Extracted from the duplicated `settingsStore.update { assistants.map { ... } }`
+     * pattern in SkillManager.deleteSkill, SkillsVM.autoEnableSkill,
+     * ChatService.cleanStaleEnabledSkills, and ChatService.autoEnableNewSkills.
+     */
+    suspend fun updateAssistantSkills(
+        targetAssistantId: Uuid? = null,
+        transform: (Set<String>) -> Set<String>,
+    ) {
+        update { settings ->
+            settings.copy(
+                assistants = settings.assistants.map { assistant ->
+                    if (targetAssistantId == null || assistant.id == targetAssistantId) {
+                        assistant.copy(enabledSkills = transform(assistant.enabledSkills))
+                    } else {
+                        assistant
+                    }
+                }
+            )
+        }
+    }
 }
 
 @Serializable

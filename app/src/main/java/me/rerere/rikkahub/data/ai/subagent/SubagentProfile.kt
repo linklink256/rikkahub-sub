@@ -170,6 +170,15 @@ fun removeSubagentProfile(
 ): List<SubagentProfile> = custom.filterNot { it.name == name }
 
 /**
+ * Returns a copy of this profile with [skillName] added to or removed from
+ * [SubagentProfile.enabledSkills], depending on [enabled].
+ *
+ * Mirrors [Assistant.toggleSkill] for use in subagent profile editing UI.
+ */
+fun SubagentProfile.toggleSkill(skillName: String, enabled: Boolean): SubagentProfile =
+    copy(enabledSkills = if (enabled) enabledSkills + skillName else enabledSkills - skillName)
+
+/**
  * Subagent 运行结果 —— 对应 kimi-code 的 SubagentCompletion / SubagentResult。
  *
  * @param profileName 触发时引用的配置档名

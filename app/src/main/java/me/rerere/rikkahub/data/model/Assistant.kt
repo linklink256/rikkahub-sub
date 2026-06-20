@@ -272,3 +272,13 @@ fun getTriggeredInjections(
         .filter { it.isTriggered(context) }
         .sortedByDescending { it.priority }
 }
+
+/**
+ * Returns a copy of this assistant with [skillName] added to or removed from
+ * [Assistant.enabledSkills], depending on [enabled].
+ *
+ * Extracted from the duplicated toggle logic in ExtensionSelector,
+ * AssistantExtensionsPage, and AssistantSubagentProfilePage.
+ */
+fun Assistant.toggleSkill(skillName: String, enabled: Boolean): Assistant =
+    copy(enabledSkills = if (enabled) enabledSkills + skillName else enabledSkills - skillName)

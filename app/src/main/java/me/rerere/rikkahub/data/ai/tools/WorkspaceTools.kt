@@ -12,6 +12,7 @@ import me.rerere.ai.ui.DiffMetadata
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.ai.ui.toMetadata
 import me.rerere.rikkahub.data.files.FilesManager
+import me.rerere.rikkahub.data.files.SkillConstants
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.utils.generateUnifiedDiff
 import me.rerere.workspace.WorkspaceCommandResult
@@ -489,12 +490,12 @@ private fun WorkspaceFileEntry.toJson() = buildJsonObject {
 /**
  * Known script file extensions used by skill tools.
  */
-private val SKILL_SCRIPT_EXTENSIONS = setOf(".sh", ".js", ".py", ".ts", ".rb")
+private val SKILL_SCRIPT_EXTENSIONS = SkillConstants.SCRIPT_EXTENSIONS
 
 /**
  * Interpreters that can execute script files.
  */
-private val SCRIPT_INTERPRETERS = setOf("bash", "sh", "zsh", "python", "python3", "node", "deno", "ruby", "ts-node")
+private val SCRIPT_INTERPRETERS = SkillConstants.SCRIPT_INTERPRETERS
 
 /**
  * Checks if a shell command attempts to execute a script file under /skills/.

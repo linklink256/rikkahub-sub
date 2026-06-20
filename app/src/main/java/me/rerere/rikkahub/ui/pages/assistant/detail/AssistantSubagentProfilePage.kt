@@ -42,6 +42,7 @@ import me.rerere.ai.provider.ModelType
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.ai.subagent.SubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.mergeSubagentProfiles
+import me.rerere.rikkahub.data.ai.subagent.toggleSkill
 import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import me.rerere.rikkahub.data.datastore.SettingsStore
@@ -433,12 +434,7 @@ private fun AssistantSubagentProfileContent(
                                 selected = skill.name in current.enabledSkills,
                                 onClick = {
                                     saveProfile {
-                                        it.copy(
-                                            enabledSkills = if (skill.name in it.enabledSkills)
-                                                it.enabledSkills - skill.name
-                                            else
-                                                it.enabledSkills + skill.name
-                                        )
+                                        it.toggleSkill(skill.name, skill.name !in it.enabledSkills)
                                     }
                                 },
                                 label = { Text(skill.name) },
