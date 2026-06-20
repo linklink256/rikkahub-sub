@@ -610,13 +610,15 @@ class ChatService(
                         }
                         addAll(localTools.getTools(assistant.localTools))
                         addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
-                        if (assistant.enabledSkills.isNotEmpty()) {
-                            val installedSkillNames = skillManager.listSkills().map { it.name }.toSet()
+                        val allInstalledSkills = skillManager.listSkills()
+                        if (allInstalledSkills.isNotEmpty()) {
+                            val installedSkillNames = allInstalledSkills.map { it.name }.toSet()
                             val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
+                            autoEnableNewSkills(assistant, cleanedSkills, installedSkillNames)
                             addAll(
                                 createSkillTools(
-                                    enabledSkills = cleanedSkills,
-                                    allSkills = skillManager.listSkills(),
+                                    enabledSkills = installedSkillNames,
+                                    allSkills = allInstalledSkills,
                                     skillManager = skillManager,
                                     workspaceRepository = workspaceRepository,
                                     workspaceId = assistant.workspaceId?.toString(),
@@ -742,6 +744,41 @@ class ChatService(
         }
         Logging.log(TAG, "cleanStaleEnabledSkills: removed ${assistant.enabledSkills.size - cleaned.size} ghost skill(s) from assistant ${assistant.id}: ${assistant.enabledSkills - cleaned}")
         return cleaned
+    }
+
+    /**
+     * 自动将磁盘上新安装的技能加入 [Assistant.enabledSkills]。
+     *
+     * 与 [cleanStaleEnabledSkills] 对称：后者清理已删除的幽灵技能，
+     * 本方法发现已安装但未启用的技能并异步回写，使新技能在下一轮消息即可用，
+     * 无需用户手动到 UI 中开启。这解决了通过 workspace_shell 直接写入
+     * /skills/ 目录的技能无法被发现的问题——autoEnableSkill() 仅在
+     * UI 层导入时触发，文件系统直写不走那条路径。
+     *
+     * @param enabledSkills 当前已启用的技能名集合（已清理幽灵）
+     * @param installedSkillNames 磁盘上实际安装的技能名集合
+     */
+    private fun autoEnableNewSkills(
+        assistant: Assistant,
+        enabledSkills: Set<String>,
+        installedSkillNames: Set<String>,
+    ) {
+        val newSkills = installedSkillNames - enabledSkills
+        if (newSkills.isEmpty()) return
+        appScope.launch {
+            settingsStore.update { settings ->
+                settings.copy(
+                    assistants = settings.assistants.map { a ->
+                        if (a.id == assistant.id) {
+                            a.copy(enabledSkills = a.enabledSkills + newSkills)
+                        } else {
+                            a
+                        }
+                    }
+                )
+            }
+        }
+        Logging.log(TAG, "autoEnableNewSkills: enabled ${newSkills.size} new skill(s) for assistant ${assistant.id}: $newSkills")
     }
 
     private suspend fun createWorkspaceToolsIfReady(
@@ -918,13 +955,15 @@ class ChatService(
         }
         addAll(localTools.getTools(assistant.localTools))
         addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
-        if (assistant.enabledSkills.isNotEmpty()) {
-            val installedSkillNames = skillManager.listSkills().map { it.name }.toSet()
+        val allInstalledSkills = skillManager.listSkills()
+        if (allInstalledSkills.isNotEmpty()) {
+            val installedSkillNames = allInstalledSkills.map { it.name }.toSet()
             val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
+            autoEnableNewSkills(assistant, cleanedSkills, installedSkillNames)
             addAll(
                 createSkillTools(
-                    enabledSkills = cleanedSkills,
-                    allSkills = skillManager.listSkills(),
+                    enabledSkills = installedSkillNames,
+                    allSkills = allInstalledSkills,
                     skillManager = skillManager,
                     workspaceRepository = workspaceRepository,
                     workspaceId = assistant.workspaceId?.toString(),

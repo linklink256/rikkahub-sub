@@ -195,7 +195,7 @@ fun createSkillTools(
     workspaceRepository: WorkspaceRepository? = null,
     workspaceId: String? = null,
 ): List<Tool> {
-    val available = allSkills.filter { it.name in enabledSkills }
+    val available = allSkills
     me.rerere.common.android.Logging.log(
         "SkillTools",
         "createSkillTools: enabledSkills=${enabledSkills.size} (${enabledSkills.joinToString()}), " +
@@ -250,9 +250,6 @@ fun createSkillTools(
             execute = {
                 val name = it.jsonObject["name"]?.jsonPrimitive?.content
                     ?: error("name is required")
-                if (name !in enabledSkills) {
-                    error("Skill '$name' is not available. Available skills: ${enabledSkills.joinToString()}")
-                }
                 val path = it.jsonObject["path"]?.jsonPrimitive?.content
                 val content = if (path.isNullOrBlank()) {
                     skillManager.readSkillBody(name)

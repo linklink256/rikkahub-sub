@@ -507,7 +507,7 @@ private val SCRIPT_INTERPRETERS = setOf("bash", "sh", "zsh", "python", "python3"
  * **Allowed**: reading/writing skill files (e.g. `cat /skills/foo/SKILL.md`,
  * `ls /skills/`, `grep -r pattern /skills/`).
  */
-private fun checkSkillScriptExecution(command: String): String? {
+internal fun checkSkillScriptExecution(command: String): String? {
     // Quick check: if /skills is not mentioned at all, nothing to block.
     if (!command.contains("/skills")) return null
 
