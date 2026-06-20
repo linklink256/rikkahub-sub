@@ -43,13 +43,14 @@ suspend fun createWorkspaceTools(
     if (workspaceId.isNullOrBlank()) return emptyList()
     val approvalOverrides = workspaceRepository.getById(workspaceId)?.toolApprovalOverrides().orEmpty()
     fun needsApproval(name: String) = resolveWorkspaceToolApproval(name, approvalOverrides)
+    fun isApprovalExplicitlyDisabled(name: String): Boolean = approvalOverrides[name] == false
 
     val shellCwd = cwd?.removePrefix("/workspace/")?.removePrefix("/workspace")
 
     return listOf(
         createReadFileTool(workspaceId, ::needsApproval, workspaceRepository),
-        createWriteFileTool(workspaceId, ::needsApproval, workspaceRepository),
-        createEditFileTool(workspaceId, ::needsApproval, workspaceRepository),
+        createWriteFileTool(workspaceId, ::needsApproval, ::isApprovalExplicitlyDisabled, workspaceRepository),
+        createEditFileTool(workspaceId, ::needsApproval, ::isApprovalExplicitlyDisabled, workspaceRepository),
         createShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
     )
 }
@@ -119,6 +120,7 @@ private fun createReadFileTool(
 private fun createWriteFileTool(
     workspaceId: String,
     needsApproval: (String) -> Boolean,
+    isApprovalExplicitlyDisabled: (String) -> Boolean,
     workspaceRepository: WorkspaceRepository,
 ) = Tool(
     name = "workspace_write_file",
@@ -142,7 +144,7 @@ private fun createWriteFileTool(
             required = listOf("path", "text"),
         )
     },
-    needsApproval = { needsApproval("workspace_write_file") || it.pathOutsideWorkspace("path") },
+    needsApproval = { needsApproval("workspace_write_file") || (!isApprovalExplicitlyDisabled("workspace_write_file") && it.pathOutsideWorkspace("path")) },
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
@@ -156,6 +158,7 @@ private fun createWriteFileTool(
 private fun createEditFileTool(
     workspaceId: String,
     needsApproval: (String) -> Boolean,
+    isApprovalExplicitlyDisabled: (String) -> Boolean,
     workspaceRepository: WorkspaceRepository,
 ) = Tool(
     name = "workspace_edit_file",
@@ -185,7 +188,7 @@ private fun createEditFileTool(
             required = listOf("path", "old_text", "new_text"),
         )
     },
-    needsApproval = { needsApproval("workspace_edit_file") || it.pathOutsideWorkspace("path") },
+    needsApproval = { needsApproval("workspace_edit_file") || (!isApprovalExplicitlyDisabled("workspace_edit_file") && it.pathOutsideWorkspace("path")) },
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
