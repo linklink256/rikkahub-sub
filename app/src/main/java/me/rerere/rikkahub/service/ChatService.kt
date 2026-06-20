@@ -611,9 +611,11 @@ class ChatService(
                         addAll(localTools.getTools(assistant.localTools))
                         addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), conversation.workspaceCwd))
                         if (assistant.enabledSkills.isNotEmpty()) {
+                            val installedSkillNames = skillManager.listSkills().map { it.name }.toSet()
+                            val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
                             addAll(
                                 createSkillTools(
-                                    enabledSkills = assistant.enabledSkills,
+                                    enabledSkills = cleanedSkills,
                                     allSkills = skillManager.listSkills(),
                                     skillManager = skillManager,
                                     workspaceRepository = workspaceRepository,
@@ -705,6 +707,41 @@ class ChatService(
                 generateSuggestion(conversationId, finalConversation)
             }
         }
+    }
+
+    /**
+     * 清理 [assistant] 的 [Assistant.enabledSkills] 中已不存在的技能名（幽灵技能）。
+     *
+     * 与 quickMessageIds / modeInjectionIds / lorebookIds / mcpServers 不同，
+     * enabledSkills 在迁移阶段没有被过滤（因为 SkillManager 在 app 层，
+     * PreferencesStore 无法访问磁盘上的技能列表）。此方法在每次构建工具前
+     * 检查并异步回写清理后的值，确保持久化数据与磁盘一致。
+     *
+     * @return 清理后的 enabledSkills（如果无变化则返回原值）
+     */
+    private fun cleanStaleEnabledSkills(
+        assistant: Assistant,
+        installedSkillNames: Set<String>,
+    ): Set<String> {
+        if (assistant.enabledSkills.isEmpty()) return assistant.enabledSkills
+        val cleaned = assistant.enabledSkills.filter { it in installedSkillNames }.toSet()
+        if (cleaned.size == assistant.enabledSkills.size) return assistant.enabledSkills
+        // 异步回写清理后的值
+        appScope.launch {
+            settingsStore.update { settings ->
+                settings.copy(
+                    assistants = settings.assistants.map { a ->
+                        if (a.id == assistant.id) {
+                            a.copy(enabledSkills = cleaned)
+                        } else {
+                            a
+                        }
+                    }
+                )
+            }
+        }
+        Logging.log(TAG, "cleanStaleEnabledSkills: removed ${assistant.enabledSkills.size - cleaned.size} ghost skill(s) from assistant ${assistant.id}: ${assistant.enabledSkills - cleaned}")
+        return cleaned
     }
 
     private suspend fun createWorkspaceToolsIfReady(
@@ -882,9 +919,11 @@ class ChatService(
         addAll(localTools.getTools(assistant.localTools))
         addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
         if (assistant.enabledSkills.isNotEmpty()) {
+            val installedSkillNames = skillManager.listSkills().map { it.name }.toSet()
+            val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
             addAll(
                 createSkillTools(
-                    enabledSkills = assistant.enabledSkills,
+                    enabledSkills = cleanedSkills,
                     allSkills = skillManager.listSkills(),
                     skillManager = skillManager,
                     workspaceRepository = workspaceRepository,
