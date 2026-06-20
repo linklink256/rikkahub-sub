@@ -14,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.files.FileUtils
 import me.rerere.rikkahub.data.files.SkillFrontmatterParser
 import me.rerere.rikkahub.data.files.SkillManager
@@ -23,6 +24,7 @@ import kotlin.collections.iterator
 
 class SkillsVM(
     private val skillManager: SkillManager,
+    private val settingsStore: SettingsStore,
 ) : ViewModel() {
     private val _skills = MutableStateFlow<List<SkillMetadata>>(emptyList())
     val skills = _skills.asStateFlow()
@@ -37,9 +39,33 @@ class SkillsVM(
         }
     }
 
+    /**
+     * 自动将技能加入所有 Assistant 的 enabledSkills 集合。
+     *
+     * 技能导入/创建后, 仅写入磁盘是不够的——Assistant 的 enabledSkills
+     * 是静态维护的, 不会自动发现新技能。此方法确保新技能立即可用,
+     * 无需用户手动到每个 Assistant 的扩展设置中开启。
+     */
+    private suspend fun autoEnableSkill(skillName: String) {
+        settingsStore.update { settings ->
+            settings.copy(
+                assistants = settings.assistants.map { assistant ->
+                    if (skillName !in assistant.enabledSkills) {
+                        assistant.copy(enabledSkills = assistant.enabledSkills + skillName)
+                    } else {
+                        assistant
+                    }
+                }
+            )
+        }
+    }
+
     fun saveSkill(name: String, content: String, onResult: (Boolean) -> Unit) {
         viewModelScope.launch(Dispatchers.IO) {
             val result = skillManager.saveSkill(name, content)
+            if (result != null) {
+                autoEnableSkill(result.name)
+            }
             _skills.value = skillManager.listSkills()
             withContext(Dispatchers.Main) {
                 onResult(result != null)
@@ -74,6 +100,7 @@ class SkillsVM(
                 }
 
                 _skills.value = skillManager.listSkills()
+                importedNames.forEach { autoEnableSkill(it) }
                 withContext(Dispatchers.Main) {
                     onResult(true, importedNames.joinToString())
                 }
@@ -133,6 +160,7 @@ class SkillsVM(
                 }
 
                 _skills.value = skillManager.listSkills()
+                autoEnableSkill(name)
                 withContext(Dispatchers.Main) { onResult(true, name) }
             } catch (e: Exception) {
                 e.printStackTrace()
