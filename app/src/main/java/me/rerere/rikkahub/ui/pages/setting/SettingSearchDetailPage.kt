@@ -128,7 +128,7 @@ fun SettingSearchDetailPage(
                     modifier = Modifier
                         .animateContentSize()
                         .fillMaxWidth(),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     CardGroup(
                         modifier = Modifier.fillMaxWidth(),

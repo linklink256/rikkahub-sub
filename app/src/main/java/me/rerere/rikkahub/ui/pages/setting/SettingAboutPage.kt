@@ -89,7 +89,7 @@ fun SettingAboutPage() {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = innerPadding + PaddingValues(8.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 item {
                     Column(

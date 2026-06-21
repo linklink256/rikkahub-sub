@@ -42,7 +42,7 @@ internal fun PromptSettingsPage(settings: Settings, vm: SettingVM, contentPaddin
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = contentPadding + PaddingValues(horizontal = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
             PromptSettingItem(

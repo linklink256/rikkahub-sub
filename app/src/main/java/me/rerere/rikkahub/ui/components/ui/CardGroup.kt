@@ -36,7 +36,7 @@ import androidx.compose.ui.util.fastForEachIndexed
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.ui.theme.Spacing
 
-private val CardGroupCorner = 16.dp
+private val CardGroupCorner = 12.dp
 private val CardGroupItemSpacing = Spacing.xs
 private val CardGroupInnerCorner = 4.dp
 
@@ -233,7 +233,7 @@ private fun CardGroupFormItem(
             )
     ) {
         FormItem(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
             label = item.label,
             description = item.description,
             tail = item.tail,
@@ -255,7 +255,7 @@ fun CardGroup(
         if (title != null) {
             CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) {
                 ProvideTextStyle(MaterialTheme.typography.titleSmallEmphasized) {
-                    Box(modifier = Modifier.padding(start = Spacing.xs, top = Spacing.sm, bottom = Spacing.sm)) {
+                    Box(modifier = Modifier.padding(start = Spacing.xs, top = Spacing.xs, bottom = Spacing.xs)) {
                         title()
                     }
                 }

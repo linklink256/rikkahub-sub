@@ -99,7 +99,7 @@ private fun AssistantSubagentContent(
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // ---- 总开关 + 最大深度 ----
         item {

@@ -41,7 +41,7 @@ fun ReminderTab(vm: BackupVM) {
             .verticalScroll(rememberScrollState())
             .padding(16.dp)
             .imePadding(),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         CardGroup(
             modifier = Modifier.fillMaxWidth(),
