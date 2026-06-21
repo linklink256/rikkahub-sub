@@ -483,7 +483,7 @@ private fun ModeInjectionEditSheet(
 }
 
 @Composable
-private fun InjectionPositionSelector(
+internal fun InjectionPositionSelector(
     position: InjectionPosition,
     onSelect: (InjectionPosition) -> Unit
 ) {
@@ -496,7 +496,7 @@ private fun InjectionPositionSelector(
     )
 }
 
-private fun InjectionPosition.usesStandaloneMessage(): Boolean = when (this) {
+internal fun InjectionPosition.usesStandaloneMessage(): Boolean = when (this) {
     InjectionPosition.BEFORE_SYSTEM_PROMPT,
     InjectionPosition.AFTER_SYSTEM_PROMPT -> false
 
@@ -506,7 +506,7 @@ private fun InjectionPosition.usesStandaloneMessage(): Boolean = when (this) {
 }
 
 @Composable
-private fun getPositionLabel(position: InjectionPosition): String = when (position) {
+internal fun getPositionLabel(position: InjectionPosition): String = when (position) {
     InjectionPosition.BEFORE_SYSTEM_PROMPT -> stringResource(R.string.prompt_page_position_before_system)
     InjectionPosition.AFTER_SYSTEM_PROMPT -> stringResource(R.string.prompt_page_position_after_system)
     InjectionPosition.TOP_OF_CHAT -> stringResource(R.string.prompt_page_position_top_of_chat)
@@ -515,7 +515,7 @@ private fun getPositionLabel(position: InjectionPosition): String = when (positi
 }
 
 @Composable
-private fun InjectionRoleSelector(
+internal fun InjectionRoleSelector(
     role: MessageRole,
     onSelect: (MessageRole) -> Unit
 ) {
@@ -529,7 +529,7 @@ private fun InjectionRoleSelector(
 }
 
 @Composable
-private fun getRoleLabel(role: MessageRole): String = when (role) {
+internal fun getRoleLabel(role: MessageRole): String = when (role) {
     MessageRole.USER -> stringResource(R.string.prompt_page_role_user)
     MessageRole.ASSISTANT -> stringResource(R.string.prompt_page_role_assistant)
     else -> role.name

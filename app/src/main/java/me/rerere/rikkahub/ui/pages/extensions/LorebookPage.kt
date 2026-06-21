@@ -127,7 +127,8 @@ fun LorebookPage(vm: PromptVM = koinViewModel()) {
 @Composable
 private fun LorebookTab(
     lorebooks: List<Lorebook>,
-    onUpdate: (List<Lorebook>) -> Unit
+    onUpdate: (List<Lorebook>) -> Unit,
+    contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     var expanded by rememberSaveable { mutableStateOf(true) }
     val lazyListState = rememberLazyListState()
