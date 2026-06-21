@@ -709,6 +709,8 @@
   <string name="setting_files_page_folder_upload">アップロード</string>
   <string name="setting_files_page_no_files">ファイルがありません</string>
   <string name="setting_files_page_title">ファイル管理</string>
+  <string name="upload_files_page_title"></string>
+  <string name="upload_files_page_desc"></string>
   <string name="setting_mcp_page_add_header">ヘッダーを追加</string>
   <string name="setting_mcp_page_add_one_to_get_started">1つ追加して始める</string>
   <string name="setting_mcp_page_basic_settings">基本設定</string>

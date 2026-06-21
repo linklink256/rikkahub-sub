@@ -709,6 +709,8 @@
   <string name="setting_files_page_folder_upload">Загрузить</string>
   <string name="setting_files_page_no_files">Нет файлов</string>
   <string name="setting_files_page_title">Управление файлами</string>
+  <string name="upload_files_page_title"></string>
+  <string name="upload_files_page_desc"></string>
   <string name="setting_mcp_page_add_header">Добавить заголовок</string>
   <string name="setting_mcp_page_add_one_to_get_started">Добавьте один, чтобы начать</string>
   <string name="setting_mcp_page_basic_settings">Основные настройки</string>

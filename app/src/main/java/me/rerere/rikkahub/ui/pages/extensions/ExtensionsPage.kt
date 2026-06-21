@@ -91,6 +91,12 @@ fun ExtensionsPage() {
                         headlineContent = { Text(stringResource(R.string.extensions_page_workspace)) },
                         supportingContent = { Text(stringResource(R.string.extensions_page_workspace_desc)) },
                     )
+                    item(
+                        onClick = { navController.navigate(Screen.UploadFiles) },
+                        leadingContent = { Icon(HugeIcons.File02, null) },
+                        headlineContent = { Text(stringResource(R.string.upload_files_page_title)) },
+                        supportingContent = { Text(stringResource(R.string.upload_files_page_desc)) },
+                    )
                 }
             }
 

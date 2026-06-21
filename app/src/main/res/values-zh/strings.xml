@@ -741,6 +741,8 @@
   <string name="setting_files_page_folder_upload">上传</string>
   <string name="setting_files_page_no_files">无文件</string>
   <string name="setting_files_page_title">文件管理</string>
+  <string name="upload_files_page_title">附件文件</string>
+  <string name="upload_files_page_desc">管理对话中上传的文件附件</string>
   <string name="setting_mcp_page_add_header">添加请求头</string>
   <string name="setting_mcp_page_add_one_to_get_started">添加一个即可开始使用</string>
   <string name="setting_mcp_page_basic_settings">基础设置</string>

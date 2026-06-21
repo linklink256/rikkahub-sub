@@ -114,7 +114,7 @@ import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesGeneralPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPreferencesUIPage
 import me.rerere.rikkahub.ui.pages.setting.SettingThemePage
 import me.rerere.rikkahub.ui.pages.setting.SettingDonatePage
-import me.rerere.rikkahub.ui.pages.setting.SettingFilesPage
+import me.rerere.rikkahub.ui.pages.extensions.UploadFilesPage
 import me.rerere.rikkahub.ui.pages.setting.SettingMcpPage
 import me.rerere.rikkahub.ui.pages.setting.SettingModelPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPage
@@ -466,8 +466,8 @@ class RouteActivity : ComponentActivity() {
                                 SettingDonatePage()
                             }
 
-                            entry<Screen.SettingFiles> {
-                                SettingFilesPage()
+                            entry<Screen.UploadFiles> {
+                                UploadFilesPage()
                             }
 
                             entry<Screen.Debug> {
@@ -683,7 +683,7 @@ sealed interface Screen : NavKey {
     data object SettingDonate : Screen
 
     @Serializable
-    data object SettingFiles : Screen
+    data object UploadFiles : Screen
 
     @Serializable
     data object Debug : Screen
@@ -723,4 +723,5 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object Stats : Screen
+}
 }
