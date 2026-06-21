@@ -157,7 +157,6 @@ fun SettingSearchDetailPage(
 }
 
 @Suppress("UNCHECKED_CAST")
-@Composable
 private fun CardGroupScope.SearchServiceOptionsEditor(
     options: SearchServiceOptions,
     onUpdateOptions: (SearchServiceOptions) -> Unit
@@ -336,7 +335,6 @@ private fun SearchTestSection(
     }
 }
 
-@Composable
 internal fun CardGroupScope.TavilyOptions(
     options: SearchServiceOptions.TavilyOptions,
     onUpdateOptions: (SearchServiceOptions.TavilyOptions) -> Unit
@@ -379,7 +377,6 @@ internal fun CardGroupScope.TavilyOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.ExaOptions(
     options: SearchServiceOptions.ExaOptions,
     onUpdateOptions: (SearchServiceOptions.ExaOptions) -> Unit
@@ -399,7 +396,6 @@ internal fun CardGroupScope.ExaOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.ZhipuOptions(
     options: SearchServiceOptions.ZhipuOptions,
     onUpdateOptions: (SearchServiceOptions.ZhipuOptions) -> Unit
@@ -419,7 +415,6 @@ internal fun CardGroupScope.ZhipuOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.SearXNGOptions(
     options: SearchServiceOptions.SearXNGOptions,
     onUpdateOptions: (SearchServiceOptions.SearXNGOptions) -> Unit
@@ -495,7 +490,6 @@ internal fun CardGroupScope.SearXNGOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.SearchLinkUpOptions(
     options: SearchServiceOptions.LinkUpOptions,
     onUpdateOptions: (SearchServiceOptions.LinkUpOptions) -> Unit
@@ -538,7 +532,6 @@ internal fun CardGroupScope.SearchLinkUpOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.BraveOptions(
     options: SearchServiceOptions.BraveOptions,
     onUpdateOptions: (SearchServiceOptions.BraveOptions) -> Unit
@@ -558,7 +551,6 @@ internal fun CardGroupScope.BraveOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.MetasoOptions(
     options: SearchServiceOptions.MetasoOptions,
     onUpdateOptions: (SearchServiceOptions.MetasoOptions) -> Unit
@@ -578,7 +570,6 @@ internal fun CardGroupScope.MetasoOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.OllamaOptions(
     options: SearchServiceOptions.OllamaOptions,
     onUpdateOptions: (SearchServiceOptions.OllamaOptions) -> Unit
@@ -598,7 +589,6 @@ internal fun CardGroupScope.OllamaOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.PerplexityOptions(
     options: SearchServiceOptions.PerplexityOptions,
     onUpdateOptions: (SearchServiceOptions.PerplexityOptions) -> Unit
@@ -648,7 +638,6 @@ internal fun CardGroupScope.PerplexityOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.FirecrawlOptions(
     options: SearchServiceOptions.FirecrawlOptions,
     onUpdateOptions: (SearchServiceOptions.FirecrawlOptions) -> Unit
@@ -668,7 +657,6 @@ internal fun CardGroupScope.FirecrawlOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.JinaOptions(
     options: SearchServiceOptions.JinaOptions,
     onUpdateOptions: (SearchServiceOptions.JinaOptions) -> Unit
@@ -722,7 +710,6 @@ internal fun CardGroupScope.JinaOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.BochaOptions(
     options: SearchServiceOptions.BochaOptions,
     onUpdateOptions: (SearchServiceOptions.BochaOptions) -> Unit
@@ -759,7 +746,6 @@ internal fun CardGroupScope.BochaOptions(
     )
 }
 
-@Composable
 internal fun CardGroupScope.RikkaHubOptions(
     options: SearchServiceOptions.RikkaHubOptions,
     onUpdateOptions: (SearchServiceOptions.RikkaHubOptions) -> Unit
@@ -802,7 +788,6 @@ internal fun CardGroupScope.RikkaHubOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.TinyfishOptions(
     options: SearchServiceOptions.TinyfishOptions,
     onUpdateOptions: (SearchServiceOptions.TinyfishOptions) -> Unit
@@ -822,7 +807,6 @@ internal fun CardGroupScope.TinyfishOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.GrokOptions(
     options: SearchServiceOptions.GrokOptions,
     onUpdateOptions: (SearchServiceOptions.GrokOptions) -> Unit
@@ -885,7 +869,6 @@ internal fun CardGroupScope.GrokOptions(
     }
 }
 
-@Composable
 internal fun CardGroupScope.CustomJsOptions(
     options: SearchServiceOptions.CustomJsOptions,
     onUpdateOptions: (SearchServiceOptions.CustomJsOptions) -> Unit
