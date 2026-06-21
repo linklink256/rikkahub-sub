@@ -90,12 +90,3 @@ val appModule = module {
         )
     }
 }
-   context = get(),
-            appScope = get(),
-            chatService = get(),
-            conversationRepo = get(),
-            settingsStore = get(),
-            filesManager = get()
-        )
-    }
-}
