@@ -51,7 +51,7 @@ internal fun PermissionRationaleDialog(
             modifier = modifier
                 .fillMaxWidth()
                 .padding(16.dp),
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.surface
             )
@@ -174,7 +174,7 @@ private fun PermissionItem(
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
         ),
-        shape = RoundedCornerShape(8.dp)
+        shape = MaterialTheme.shapes.small
     ) {
         Column(
             modifier = Modifier

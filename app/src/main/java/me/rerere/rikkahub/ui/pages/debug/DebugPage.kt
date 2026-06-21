@@ -376,7 +376,7 @@ private fun ColorsPage() {
 
 @Composable
 private fun ColorTokenItem(name: String, color: Color) {
-    val shape = RoundedCornerShape(8.dp)
+    val shape = MaterialTheme.shapes.small
     Row(
         modifier = Modifier
             .fillMaxWidth()

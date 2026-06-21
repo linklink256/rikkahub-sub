@@ -97,6 +97,7 @@ fun RikkahubTheme(
         MaterialExpressiveTheme(
             colorScheme = colorSchemeConverted,
             typography = Typography,
+            shapes = Shapes,
             content = content,
             motionScheme = MotionScheme.expressive()
         )

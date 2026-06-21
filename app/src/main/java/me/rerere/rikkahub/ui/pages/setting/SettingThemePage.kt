@@ -313,7 +313,7 @@ private fun CustomThemeItem(
     ListItem(
         modifier = Modifier
             .padding(horizontal = 8.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(MaterialTheme.shapes.large)
             .clickable { onSelect() },
         headlineContent = { Text(theme.name.ifEmpty { "Unnamed" }) },
         leadingContent = {
@@ -344,7 +344,7 @@ private fun CustomThemeItem(
                     Icon(
                         HugeIcons.Tick01,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = scheme.onPrimary,
                         modifier = Modifier.size(16.dp)
                     )
                 }
@@ -668,7 +668,7 @@ private fun ThemePreview(theme: CustomTheme) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(16.dp))
+                .clip(MaterialTheme.shapes.large)
                 .background(scheme.surface)
                 .padding(16.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,

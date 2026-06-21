@@ -558,7 +558,8 @@ private fun extractMatchingSnippet(
 private fun buildHighlightedText(
     text: String,
     query: String,
-    highlightColor: Color
+    highlightColor: Color,
+    textColor: Color,
 ): AnnotatedString {
     if (query.isBlank()) {
         return AnnotatedString(text)
@@ -576,7 +577,7 @@ private fun buildHighlightedText(
             withStyle(
                 style = SpanStyle(
                     background = highlightColor,
-                    color = Color.Black
+                    color = textColor
                 )
             ) {
                 append(text.substring(index, index + query.length))
@@ -687,6 +688,7 @@ private fun ChatListPreview(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             val highlightColor = MaterialTheme.colorScheme.tertiaryContainer
+                            val textColor = MaterialTheme.colorScheme.onTertiaryContainer
                             val highlightedText = remember(searchQuery, message) {
                                 val fullText = message.toText().trim().ifBlank { "[...]" }
                                 val messageText = extractMatchingSnippet(
@@ -696,7 +698,8 @@ private fun ChatListPreview(
                                 buildHighlightedText(
                                     text = messageText,
                                     query = searchQuery,
-                                    highlightColor = highlightColor
+                                    highlightColor = highlightColor,
+                                    textColor = textColor
                                 )
                             }
                             Text(

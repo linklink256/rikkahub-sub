@@ -82,7 +82,7 @@ fun EmojiPicker(
                     .height(height.dp)
                     .background(
                         MaterialTheme.colorScheme.surface,
-                        RoundedCornerShape(12.dp)
+                        MaterialTheme.shapes.medium
                     )
                     .padding(8.dp)
             ) {
@@ -245,7 +245,7 @@ private fun EmojiItem(
                 onClick = onClick,
                 onLongClick = onLongClick
             )
-            .clip(RoundedCornerShape(8.dp))
+            .clip(MaterialTheme.shapes.small)
             .background(
                 MaterialTheme.colorScheme.surfaceVariant.copy(
                     alpha = if (hasVariants) 0.5f else 0.3f
@@ -279,7 +279,7 @@ private fun EmojiModifierPicker(
             modifier = Modifier
                 .wrapContentSize()
                 .padding(16.dp),
-            shape = RoundedCornerShape(12.dp),
+            shape = MaterialTheme.shapes.medium,
             color = MaterialTheme.colorScheme.surface,
             shadowElevation = 8.dp,
             tonalElevation = 8.dp
@@ -301,7 +301,7 @@ private fun EmojiModifierPicker(
                             modifier = Modifier
                                 .size(48.dp)
                                 .clickable { onEmojiSelected(variant) }
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(MaterialTheme.shapes.small)
                                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)),
                             contentAlignment = Alignment.Center
                         ) {

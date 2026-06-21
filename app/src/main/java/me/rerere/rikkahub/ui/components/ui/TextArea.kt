@@ -234,7 +234,7 @@ private fun FullScreenTextEditor(
                         modifier = Modifier
                             .imePadding()
                             .fillMaxSize(),
-                        shape = RoundedCornerShape(16.dp),
+                        shape = MaterialTheme.shapes.large,
                         placeholder = if (placeholder.isNotEmpty()) {
                             { Text(placeholder) }
                         } else if (label.isNotEmpty()) {

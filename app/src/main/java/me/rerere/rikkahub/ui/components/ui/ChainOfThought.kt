@@ -86,7 +86,7 @@ fun <T> ChainOfThought(
         Card(
             modifier = modifier,
             colors = cardColors,
-            shape = RoundedCornerShape(16.dp),
+            shape = MaterialTheme.shapes.large,
         ) {
             Column(
                 modifier = Modifier

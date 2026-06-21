@@ -288,7 +288,7 @@ private fun ImageGenScreen(
                         modifier = Modifier
                             .weight(1f)
                             .aspectRatio(1f)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(MaterialTheme.shapes.small)
                             .clickable { showPreview = true },
                         contentScale = ContentScale.Crop
                     )
@@ -481,7 +481,7 @@ private fun ReferenceImagesRow(
         images.forEach { image ->
             Surface(
                 modifier = Modifier.size(56.dp),
-                shape = RoundedCornerShape(12.dp),
+                shape = MaterialTheme.shapes.medium,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f)),
                 color = MaterialTheme.colorScheme.surfaceContainerHigh,
             ) {

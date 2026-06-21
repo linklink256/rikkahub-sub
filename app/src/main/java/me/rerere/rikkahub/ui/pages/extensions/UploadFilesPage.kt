@@ -458,7 +458,7 @@ private fun UploadFileCard(
                     contentDescription = file.displayName,
                     modifier = Modifier
                         .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp)),
+                        .clip(MaterialTheme.shapes.small),
                 )
             } else {
                 Icon(

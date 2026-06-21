@@ -624,7 +624,7 @@ private fun ExportedChatMessage(
                                     contentDescription = "Image",
                                     modifier = Modifier
                                         .sizeIn(maxHeight = 300.dp)
-                                        .clip(RoundedCornerShape(12.dp)),
+                                        .clip(MaterialTheme.shapes.medium),
                                 )
                             }
 

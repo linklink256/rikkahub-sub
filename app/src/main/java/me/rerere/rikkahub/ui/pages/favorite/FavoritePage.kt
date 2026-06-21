@@ -154,7 +154,7 @@ private fun SwipeableFavoriteCard(
                     .fillMaxSize()
                     .background(
                         MaterialTheme.colorScheme.errorContainer,
-                        RoundedCornerShape(12.dp)
+                        MaterialTheme.shapes.medium
                     )
                     .padding(horizontal = 20.dp),
                 contentAlignment = Alignment.CenterEnd,

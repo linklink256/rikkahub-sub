@@ -171,7 +171,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                     }
                 },
                 singleLine = true,
-                shape = RoundedCornerShape(12.dp)
+                shape = MaterialTheme.shapes.medium
             )
 
             // 标签过滤器
