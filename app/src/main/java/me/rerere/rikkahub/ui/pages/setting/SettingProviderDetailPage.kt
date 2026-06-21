@@ -111,6 +111,7 @@ import me.rerere.rikkahub.ui.components.ai.ProviderBalanceText
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.ShareSheet
 import me.rerere.rikkahub.ui.components.ui.SiliconFlowPowerByIcon
 import me.rerere.rikkahub.ui.components.ui.Tag
@@ -1005,10 +1006,7 @@ private fun ModelTypeSelector(
     selectedType: ModelType,
     onTypeSelected: (ModelType) -> Unit
 ) {
-    Text(
-        stringResource(R.string.setting_provider_page_model_type),
-        style = MaterialTheme.typography.titleSmall
-    )
+    SectionHeader(stringResource(R.string.setting_provider_page_model_type))
     SingleChoiceSegmentedButtonRow(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -1042,10 +1040,7 @@ private fun ModelModalitySelector(
     onUpdateOutputModalities: (List<Modality>) -> Unit
 ) {
     if (model.type == ModelType.CHAT) {
-        Text(
-            stringResource(R.string.setting_provider_page_input_modality),
-            style = MaterialTheme.typography.titleSmall
-        )
+        SectionHeader(stringResource(R.string.setting_provider_page_input_modality))
         MultiChoiceSegmentedButtonRow(
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -1073,10 +1068,7 @@ private fun ModelModalitySelector(
             }
         }
 
-        Text(
-            stringResource(R.string.setting_provider_page_output_modality),
-            style = MaterialTheme.typography.titleSmall
-        )
+        SectionHeader(stringResource(R.string.setting_provider_page_output_modality))
         MultiChoiceSegmentedButtonRow(
             modifier = Modifier.fillMaxWidth(),
         ) {
@@ -1111,10 +1103,7 @@ fun ModalAbilitySelector(
     abilities: List<ModelAbility>,
     onUpdateAbilities: (List<ModelAbility>) -> Unit
 ) {
-    Text(
-        stringResource(R.string.setting_provider_page_abilities),
-        style = MaterialTheme.typography.titleSmall
-    )
+    SectionHeader(stringResource(R.string.setting_provider_page_abilities))
     MultiChoiceSegmentedButtonRow(
         modifier = Modifier.fillMaxWidth(),
     ) {
@@ -1426,10 +1415,7 @@ private fun ProviderOverrideSettings(
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = stringResource(R.string.setting_provider_page_provider_override),
-            style = MaterialTheme.typography.titleSmall
-        )
+        SectionHeader(stringResource(R.string.setting_provider_page_provider_override))
 
         Text(
             text = stringResource(R.string.setting_provider_page_provider_override_desc),

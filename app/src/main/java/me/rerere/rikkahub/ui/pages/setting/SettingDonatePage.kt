@@ -36,6 +36,7 @@ import me.rerere.rikkahub.data.api.SponsorAPI
 import me.rerere.rikkahub.data.model.Sponsor
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.UiState
 import me.rerere.rikkahub.utils.onError
@@ -71,11 +72,7 @@ fun SettingDonatePage() {
         ) {
             DonateMethodsCardGroup()
 
-            Text(
-                text = stringResource(R.string.donate_page_sponsor_list),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
+            SectionHeader(stringResource(R.string.donate_page_sponsor_list))
 
             Sponsors(
                 modifier = Modifier

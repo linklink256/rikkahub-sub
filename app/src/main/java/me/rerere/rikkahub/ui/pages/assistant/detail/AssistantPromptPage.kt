@@ -80,6 +80,7 @@ import me.rerere.rikkahub.data.model.toMessageNode
 import me.rerere.rikkahub.ui.components.message.ChatMessage
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TextArea
@@ -338,10 +339,7 @@ private fun AssistantPromptContent(
                     .padding(8.dp)
                     .fillMaxWidth()
             ) {
-                Text(
-                    text = stringResource(R.string.assistant_page_template_preview),
-                    style = MaterialTheme.typography.titleSmall
-                )
+                SectionHeader(stringResource(R.string.assistant_page_template_preview))
                 val rawMessages = listOf(
                     UIMessage.user("你好啊"),
                     UIMessage.assistant("你好，有什么我可以帮你的吗？"),

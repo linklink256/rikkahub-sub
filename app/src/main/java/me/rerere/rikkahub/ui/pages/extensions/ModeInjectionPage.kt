@@ -88,6 +88,7 @@ import me.rerere.rikkahub.data.model.PromptInjection
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
@@ -422,10 +423,7 @@ private fun ModeInjectionEditSheet(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
-                Text(
-                    stringResource(R.string.prompt_page_injection_position),
-                    style = MaterialTheme.typography.titleSmall
-                )
+                SectionHeader(stringResource(R.string.prompt_page_injection_position))
                 InjectionPositionSelector(
                     position = injection.position,
                     onSelect = { onEdit(injection.copy(position = it)) }
@@ -445,10 +443,7 @@ private fun ModeInjectionEditSheet(
 
                 AnimatedVisibility(visible = injection.position.usesStandaloneMessage()) {
                     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                        Text(
-                            stringResource(R.string.prompt_page_injection_role),
-                            style = MaterialTheme.typography.titleSmall
-                        )
+                        SectionHeader(stringResource(R.string.prompt_page_injection_role))
                         InjectionRoleSelector(
                             role = injection.role,
                             onSelect = { onEdit(injection.copy(role = it)) }

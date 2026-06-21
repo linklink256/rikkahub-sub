@@ -74,6 +74,7 @@ import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.pages.setting.components.PresetThemeButtonGroup
 import me.rerere.rikkahub.ui.theme.CustomColors
@@ -144,12 +145,7 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                     Column(
                         modifier = Modifier.padding(horizontal = 8.dp),
                     ) {
-                        Text(
-                            text = stringResource(R.string.setting_theme_page_preset_themes),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp)
-                        )
+                        SectionHeader(stringResource(R.string.setting_theme_page_preset_themes))
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -175,11 +171,7 @@ fun SettingThemePage(vm: SettingVM = koinViewModel()) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        Text(
-                            text = stringResource(R.string.setting_theme_page_custom_themes),
-                            style = MaterialTheme.typography.titleSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
+                        SectionHeader(stringResource(R.string.setting_theme_page_custom_themes))
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             FilledTonalButton(
                                 onClick = { showImportDialog = true }
@@ -423,10 +415,7 @@ private fun CustomThemeEditSheet(
                     singleLine = true,
                 )
 
-                Text(
-                    text = stringResource(R.string.setting_theme_page_primary_color),
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                SectionHeader(stringResource(R.string.setting_theme_page_primary_color))
                 ColorPickerRow(
                     color = Color(currentTheme.primaryColorArgb.toInt()),
                     onColorChange = {
@@ -434,10 +423,7 @@ private fun CustomThemeEditSheet(
                     }
                 )
 
-                Text(
-                    text = stringResource(R.string.setting_theme_page_secondary_color),
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                SectionHeader(stringResource(R.string.setting_theme_page_secondary_color))
                 ColorPickerRow(
                     color = if (currentTheme.secondaryColorArgb != null) {
                         Color(currentTheme.secondaryColorArgb!!.toInt())
@@ -449,10 +435,7 @@ private fun CustomThemeEditSheet(
                     }
                 )
 
-                Text(
-                    text = stringResource(R.string.setting_theme_page_tertiary_color),
-                    style = MaterialTheme.typography.titleSmall,
-                )
+                SectionHeader(stringResource(R.string.setting_theme_page_tertiary_color))
                 ColorPickerRow(
                     color = if (currentTheme.tertiaryColorArgb != null) {
                         Color(currentTheme.tertiaryColorArgb!!.toInt())
@@ -681,10 +664,7 @@ private fun ThemePreview(theme: CustomTheme) {
     Column(
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Text(
-            text = stringResource(R.string.setting_theme_page_preview),
-            style = MaterialTheme.typography.titleSmall,
-        )
+        SectionHeader(stringResource(R.string.setting_theme_page_preview))
         Row(
             modifier = Modifier
                 .fillMaxWidth()

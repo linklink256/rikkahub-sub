@@ -88,6 +88,7 @@ import me.rerere.rikkahub.data.model.PromptInjection
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
@@ -444,10 +445,7 @@ private fun LorebookEditSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        stringResource(R.string.prompt_page_entries_format, book.entries.size),
-                        style = MaterialTheme.typography.titleSmall
-                    )
+                    SectionHeader(stringResource(R.string.prompt_page_entries_format, book.entries.size))
                     IconButton(onClick = {
                         entryEditState.open(PromptInjection.RegexInjection())
                     }) {
@@ -591,10 +589,7 @@ private fun RegexInjectionEditDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
-                Text(
-                    stringResource(R.string.prompt_page_injection_position),
-                    style = MaterialTheme.typography.titleSmall
-                )
+                SectionHeader(stringResource(R.string.prompt_page_injection_position))
                 InjectionPositionSelector(
                     position = entry.position,
                     onSelect = { onEdit(entry.copy(position = it)) }
@@ -613,7 +608,7 @@ private fun RegexInjectionEditDialog(
                 }
 
                 // 关键词
-                Text(stringResource(R.string.prompt_page_keywords_label), style = MaterialTheme.typography.titleSmall)
+                SectionHeader(stringResource(R.string.prompt_page_keywords_label))
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -703,10 +698,7 @@ private fun RegexInjectionEditDialog(
 
                 AnimatedVisibility(visible = entry.position.usesStandaloneMessage()) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            stringResource(R.string.prompt_page_injection_role),
-                            style = MaterialTheme.typography.titleSmall
-                        )
+                        SectionHeader(stringResource(R.string.prompt_page_injection_role))
                         InjectionRoleSelector(
                             role = entry.role,
                             onSelect = { onEdit(entry.copy(role = it)) }
