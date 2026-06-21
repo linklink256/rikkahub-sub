@@ -150,7 +150,10 @@ private fun UploadFileItem(
                 AsyncImage(
                     model = fileOnDisk,
                     contentDescription = file.displayName,
-                    modifier = Modifier.padding(4.dp),
+                    modifier = Modifier
+                        .padding(4.dp)
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(8.dp)),
                 )
             } else {
                 Icon(
