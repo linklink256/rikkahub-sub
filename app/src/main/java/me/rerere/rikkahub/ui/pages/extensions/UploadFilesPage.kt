@@ -35,6 +35,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -371,7 +372,7 @@ fun UploadFilesPage(
             scope.launch {
                 val ids = selectedIds.toList()
                 var failed = 0
-                ids.forEach { id ->
+                for (id in ids) {
                     val ok = filesManager.delete(id, deleteFromDisk = true)
                     if (!ok) failed++
                 }
