@@ -33,7 +33,8 @@ import androidx.compose.material3.SwipeToDismissBoxState
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.LargeFlexibleTopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,7 @@ import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.context.LocalNavController
+import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.navigateToChatPage
 import me.rerere.rikkahub.utils.plus
 import me.rerere.rikkahub.utils.toLocalDateTime
@@ -66,10 +69,11 @@ fun HistoryPage(vm: HistoryVM = koinViewModel()) {
     var showDeleteAllDialog by remember { mutableStateOf(false) }
 
     val conversations by vm.conversations.collectAsStateWithLifecycle()
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
         topBar = {
-            TopAppBar(
+            LargeFlexibleTopAppBar(
                 title = {
                     Text(stringResource(R.string.history_page_title))
                 },
@@ -94,9 +98,13 @@ fun HistoryPage(vm: HistoryVM = koinViewModel()) {
                     ) {
                         Icon(HugeIcons.Delete01, contentDescription = stringResource(R.string.history_page_delete_all))
                     }
-                }
+                },
+                scrollBehavior = scrollBehavior,
+                colors = CustomColors.topBarColors,
             )
         },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        containerColor = CustomColors.topBarColors.containerColor,
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         }
@@ -265,6 +273,20 @@ private fun ConversationItem(
                 ) {
                     Icon(
                         if (conversation.isPinned) HugeIcons.PinOff else HugeIcons.Pin,
+                        contentDescription = if (conversation.isPinned) stringResource(R.string.history_page_unpin) else stringResource(
+                            R.string.history_page_pin
+                        )
+                    )
+                }
+            }
+        )
+    }
+}
+          }
+        )
+    }
+}
+in,
                         contentDescription = if (conversation.isPinned) stringResource(R.string.history_page_unpin) else stringResource(
                             R.string.history_page_pin
                         )

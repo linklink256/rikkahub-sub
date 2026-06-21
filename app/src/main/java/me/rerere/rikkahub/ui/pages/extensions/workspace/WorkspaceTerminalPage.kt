@@ -44,6 +44,7 @@ import com.termux.view.TerminalView
 import androidx.compose.ui.res.stringResource
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.ui.theme.ColorMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +72,8 @@ fun WorkspaceTerminalPage(id: String) {
                     navigationIcon = { BackButton() },
                 )
             },
+        containerColor = CustomColors.topBarColors.containerColor,
+        containerColor = CustomColors.topBarColors.containerColor,
         ) { innerPadding ->
             WorkspaceTerminalContent(
                 root = state.workspace?.root,
