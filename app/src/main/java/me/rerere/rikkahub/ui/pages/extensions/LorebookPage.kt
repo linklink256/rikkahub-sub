@@ -130,7 +130,7 @@ private fun LorebookTab(
     onUpdate: (List<Lorebook>) -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
-    var expanded by rememberSaveable { mutableStateOf(true) }
+    var expanded by rememberSaveable(key = "lorebook_expanded") { mutableStateOf(true) }
     val lazyListState = rememberLazyListState()
     val toaster = LocalToaster.current
     val currentLorebooks by rememberUpdatedState(lorebooks)

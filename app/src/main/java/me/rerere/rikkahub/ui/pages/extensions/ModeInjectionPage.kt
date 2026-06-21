@@ -130,7 +130,7 @@ private fun ModeInjectionTab(
     onUpdate: (List<PromptInjection.ModeInjection>) -> Unit,
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
-    var expanded by rememberSaveable { mutableStateOf(true) }
+    var expanded by rememberSaveable(key = "mode_injection_expanded") { mutableStateOf(true) }
     val lazyListState = rememberLazyListState()
     val toaster = LocalToaster.current
     val currentModeInjections by rememberUpdatedState(modeInjections)
