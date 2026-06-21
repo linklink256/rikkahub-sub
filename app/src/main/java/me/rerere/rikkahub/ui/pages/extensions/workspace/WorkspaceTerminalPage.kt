@@ -73,7 +73,6 @@ fun WorkspaceTerminalPage(id: String) {
                 )
             },
         containerColor = CustomColors.topBarColors.containerColor,
-        containerColor = CustomColors.topBarColors.containerColor,
         ) { innerPadding ->
             WorkspaceTerminalContent(
                 root = state.workspace?.root,

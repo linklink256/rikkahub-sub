@@ -69,8 +69,8 @@ fun HistoryPage(vm: HistoryVM = koinViewModel()) {
     var showDeleteAllDialog by remember { mutableStateOf(false) }
 
     val conversations by vm.conversations.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
@@ -273,20 +273,6 @@ private fun ConversationItem(
                 ) {
                     Icon(
                         if (conversation.isPinned) HugeIcons.PinOff else HugeIcons.Pin,
-                        contentDescription = if (conversation.isPinned) stringResource(R.string.history_page_unpin) else stringResource(
-                            R.string.history_page_pin
-                        )
-                    )
-                }
-            }
-        )
-    }
-}
-          }
-        )
-    }
-}
-in,
                         contentDescription = if (conversation.isPinned) stringResource(R.string.history_page_unpin) else stringResource(
                             R.string.history_page_pin
                         )
