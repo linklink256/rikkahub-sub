@@ -888,14 +888,13 @@ internal fun CardGroupScope.CustomJsOptions(
         )
     }
 
-    val highlighter = LocalHighlighter.current
-    val darkMode = LocalDarkMode.current
-
     formItem(
         label = {
             Text(stringResource(R.string.search_detail_search_script))
         }
     ) {
+        val highlighter = LocalHighlighter.current
+        val darkMode = LocalDarkMode.current
         OutlinedTextField(
             value = options.searchScript,
             onValueChange = {
@@ -921,6 +920,8 @@ internal fun CardGroupScope.CustomJsOptions(
             Text(stringResource(R.string.search_detail_scrape_script_desc))
         }
     ) {
+        val highlighter = LocalHighlighter.current
+        val darkMode = LocalDarkMode.current
         OutlinedTextField(
             value = options.scrapeScript,
             onValueChange = {
