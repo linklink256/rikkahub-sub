@@ -838,8 +838,6 @@
   <string name="setting_page_tts_service">音声サービス</string>
   <string name="setting_page_tts_service_desc">音声合成と音声認識のプロバイダーを設定</string>
   <string name="setting_page_tts_settings">TTS設定</string>
-ローカルアドレス: localhostを使用し、このデバイスのみでアクセス可能です。
-mDNSアドレス: .localホスト名を使用し、IPを知らなくても同じネットワーク上の他のデバイスから名前でアクセス可能です。</string>
   <string name="setting_provider_page_abilities">能力</string>
   <string name="setting_provider_page_add">追加</string>
   <string name="setting_provider_page_add_model">モデルを追加</string>

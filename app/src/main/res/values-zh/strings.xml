@@ -870,8 +870,6 @@
   <string name="setting_page_tts_service">语音服务</string>
   <string name="setting_page_tts_service_desc">配置语音合成与语音识别服务提供商</string>
   <string name="setting_page_tts_settings">TTS设置</string>
-本地地址：使用 localhost，仅限本设备访问。
-mDNS 地址：使用 .local 主机名，同一网络中的其他设备可通过名称访问，无需知道 IP。</string>
   <string name="setting_provider_page_abilities">能力</string>
   <string name="setting_provider_page_add">添加</string>
   <string name="setting_provider_page_add_model">添加模型</string>

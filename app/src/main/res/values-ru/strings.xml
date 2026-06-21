@@ -838,8 +838,6 @@
   <string name="setting_page_tts_service">Служба преобразования текста в речь</string>
   <string name="setting_page_tts_service_desc">Настроить поставщиков службы преобразования текста в речь</string>
   <string name="setting_page_tts_settings">Настройки TTS</string>
-Локальный адрес: использует localhost, доступен только на этом устройстве.
-Адрес mDNS: использует имя хоста .local, доступен по имени с других устройств в той же сети без знания IP-адреса.</string>
   <string name="setting_provider_page_abilities">Возможности</string>
   <string name="setting_provider_page_add">Добавить</string>
   <string name="setting_provider_page_add_model">Добавить модель</string>

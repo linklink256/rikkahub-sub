@@ -838,8 +838,6 @@
   <string name="setting_page_tts_service">음성 서비스</string>
   <string name="setting_page_tts_service_desc">텍스트-음성 및 음성 인식 제공업체 구성</string>
   <string name="setting_page_tts_settings">TTS 설정</string>
-로컬 주소: localhost를 사용하며, 이 기기에서만 접근할 수 있습니다.
-mDNS 주소: .local 호스트네임을 사용하며, IP를 몰라도 같은 네트워크의 다른 기기에서 이름으로 접근할 수 있습니다.</string>
   <string name="setting_provider_page_abilities">기능</string>
   <string name="setting_provider_page_add">추가</string>
   <string name="setting_provider_page_add_model">모델 추가</string>
