@@ -726,7 +726,7 @@
   <string name="upload_files_page_delete_selected_title">刪除 %1$d 個檔案？</string>
   <string name="upload_files_page_empty_title">暫無檔案</string>
   <string name="upload_files_page_empty_desc">在此匯入檔案，或在對話中上傳。</string>
-  <string name="upload_files_page_empty_import">匯入檔案</string>
+  <string name="upload_files_page_open">開啟</string>
   <string name="upload_files_page_stats">%1$d 個檔案 · %2$s</string>
   <string name="upload_files_page_open_failed">無法開啟檔案</string>
   <string name="setting_mcp_page_add_header">添加請求頭</string>

@@ -759,7 +759,7 @@
   <string name="upload_files_page_delete_selected_title">Delete %1$d file(s)?</string>
   <string name="upload_files_page_empty_title">No files yet</string>
   <string name="upload_files_page_empty_desc">Import files here, or upload them in a conversation.</string>
-  <string name="upload_files_page_empty_import">Import files</string>
+  <string name="upload_files_page_open">Open</string>
   <string name="upload_files_page_stats">%1$d files · %2$s</string>
   <string name="upload_files_page_open_failed">Cannot open file</string>
   <string name="setting_mcp_page_add_header">Add Header</string>

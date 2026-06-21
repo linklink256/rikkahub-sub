@@ -726,7 +726,7 @@
   <string name="upload_files_page_delete_selected_title">Удалить %1$d файл(ов)?</string>
   <string name="upload_files_page_empty_title">Пока нет файлов</string>
   <string name="upload_files_page_empty_desc">Импортируйте файлы сюда или загрузите их в диалоге.</string>
-  <string name="upload_files_page_empty_import">Импортировать файлы</string>
+  <string name="upload_files_page_open">Открыть</string>
   <string name="upload_files_page_stats">%1$d файлов · %2$s</string>
   <string name="upload_files_page_open_failed">Не удалось открыть файл</string>
   <string name="setting_mcp_page_add_header">Добавить заголовок</string>

@@ -758,7 +758,7 @@
   <string name="upload_files_page_delete_selected_title">删除 %1$d 个文件？</string>
   <string name="upload_files_page_empty_title">暂无文件</string>
   <string name="upload_files_page_empty_desc">在此处导入文件，或在对话中上传。</string>
-  <string name="upload_files_page_empty_import">导入文件</string>
+  <string name="upload_files_page_open">打开</string>
   <string name="upload_files_page_stats">%1$d 个文件 · %2$s</string>
   <string name="upload_files_page_open_failed">无法打开文件</string>
   <string name="setting_mcp_page_add_header">添加请求头</string>

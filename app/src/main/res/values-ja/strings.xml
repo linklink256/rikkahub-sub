@@ -726,7 +726,7 @@
   <string name="upload_files_page_delete_selected_title">%1$d 件のファイルを削除しますか？</string>
   <string name="upload_files_page_empty_title">ファイルがありません</string>
   <string name="upload_files_page_empty_desc">ここにファイルをインポートするか、会話でアップロードできます。</string>
-  <string name="upload_files_page_empty_import">ファイルをインポート</string>
+  <string name="upload_files_page_open">開く</string>
   <string name="upload_files_page_stats">%1$d 件 · %2$s</string>
   <string name="upload_files_page_open_failed">ファイルを開けません</string>
   <string name="setting_mcp_page_add_header">ヘッダーを追加</string>

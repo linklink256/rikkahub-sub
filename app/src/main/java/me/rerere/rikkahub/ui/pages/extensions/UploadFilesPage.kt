@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -15,29 +16,25 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -56,10 +53,12 @@ import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.File02
+import me.rerere.hugeicons.stroke.MoreVertical
 import me.rerere.hugeicons.stroke.Search01
 import me.rerere.hugeicons.stroke.Sorting01
 import me.rerere.hugeicons.stroke.Tick01
 import me.rerere.hugeicons.stroke.Upload02
+import me.rerere.hugeicons.stroke.View
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.db.entity.ManagedFileEntity
 import me.rerere.rikkahub.data.files.FileFolders
@@ -67,6 +66,7 @@ import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.files.saveUploadFromUri
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ImagePreviewDialog
+import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.theme.CustomColors
 import org.koin.compose.koinInject
@@ -94,19 +94,16 @@ fun UploadFilesPage(
 
     val allFiles by filesManager.observe(FileFolders.UPLOAD).collectAsState(initial = emptyList())
 
-    // Selection state
     var inSelection by remember { mutableStateOf(false) }
     val selectedIds = remember { mutableStateListOf<Long>() }
 
-    // Filter / sort state
     var query by remember { mutableStateOf("") }
     var sortMode by remember { mutableStateOf(SortMode.TIME) }
     var sortAsc by remember { mutableStateOf(false) }
     var showSortMenu by remember { mutableStateOf(false) }
 
-    // Dialogs
-    var pendingDeleteOne by remember { mutableStateOf<ManagedFileEntity?>(null) }
-    var pendingDeleteBatch by remember { mutableStateOf(false) }
+    var deleteTarget by remember { mutableStateOf<ManagedFileEntity?>(null) }
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
     var previewImages by remember { mutableStateOf<List<String>?>(null) }
 
     val visibleFiles by remember(allFiles, query, sortMode, sortAsc) {
@@ -114,9 +111,7 @@ fun UploadFilesPage(
             val filtered = if (query.isBlank()) {
                 allFiles
             } else {
-                allFiles.filter {
-                    it.displayName.contains(query, ignoreCase = true)
-                }
+                allFiles.filter { it.displayName.contains(query, ignoreCase = true) }
             }
             val cmp = Comparator<ManagedFileEntity> { a, b ->
                 val r = when (sortMode) {
@@ -131,11 +126,8 @@ fun UploadFilesPage(
     }
 
     val totalCount = allFiles.size
-    val totalSize = remember(allFiles) {
-        allFiles.sumOf { it.sizeBytes }
-    }
+    val totalSize = remember(allFiles) { allFiles.sumOf { it.sizeBytes } }
 
-    // File import launcher (any type)
     val importLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.GetMultipleContents()
     ) { uris ->
@@ -143,9 +135,7 @@ fun UploadFilesPage(
         scope.launch {
             var ok = 0
             uris.forEach { uri ->
-                runCatching {
-                    filesManager.saveUploadFromUri(uri)
-                }.onSuccess { ok++ }
+                runCatching { filesManager.saveUploadFromUri(uri) }.onSuccess { ok++ }
             }
             if (ok > 0) {
                 toaster.show(importSuccessToast.format(ok))
@@ -153,78 +143,6 @@ fun UploadFilesPage(
                 toaster.show(importFailedToast)
             }
         }
-    }
-
-    // --- Delete confirmations ---
-    pendingDeleteOne?.let { target ->
-        AlertDialog(
-            onDismissRequest = { pendingDeleteOne = null },
-            title = { Text(stringResource(R.string.setting_files_page_delete_file_title)) },
-            text = { Text(target.displayName) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            val ok = filesManager.delete(target.id, deleteFromDisk = true)
-                            if (ok) toaster.show(deletedToast) else toaster.show(deleteFailedToast)
-                            pendingDeleteOne = null
-                        }
-                    }
-                ) {
-                    Text(stringResource(R.string.setting_files_page_delete_action))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteOne = null }) {
-                    Text(stringResource(R.string.setting_files_page_cancel_action))
-                }
-            }
-        )
-    }
-
-    if (pendingDeleteBatch) {
-        val count = selectedIds.size
-        AlertDialog(
-            onDismissRequest = { pendingDeleteBatch = false },
-            title = { Text(stringResource(R.string.upload_files_page_delete_selected_title, count)) },
-            text = { Text(stringResource(R.string.upload_files_page_selected_count, count)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        scope.launch {
-                            val ids = selectedIds.toList()
-                            var failed = 0
-                            ids.forEach { id ->
-                                val ok = filesManager.delete(id, deleteFromDisk = true)
-                                if (!ok) failed++
-                            }
-                            if (failed == 0) {
-                                toaster.show(deletedToast)
-                            } else {
-                                toaster.show(deleteFailedToast)
-                            }
-                            selectedIds.clear()
-                            pendingDeleteBatch = false
-                            inSelection = false
-                        }
-                    }
-                ) {
-                    Text(stringResource(R.string.setting_files_page_delete_action))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { pendingDeleteBatch = false }) {
-                    Text(stringResource(R.string.setting_files_page_cancel_action))
-                }
-            }
-        )
-    }
-
-    previewImages?.let { images ->
-        ImagePreviewDialog(
-            images = images,
-            onDismissRequest = { previewImages = null }
-        )
     }
 
     Scaffold(
@@ -237,12 +155,12 @@ fun UploadFilesPage(
                             selectedIds.clear()
                             inSelection = false
                         }) {
-                            Icon(HugeIcons.Cancel01, stringResource(R.string.setting_files_page_cancel_action))
+                            Icon(HugeIcons.Cancel01, contentDescription = stringResource(R.string.cancel))
                         }
                     },
                     actions = {
-                        IconButton(onClick = { pendingDeleteBatch = true }) {
-                            Icon(HugeIcons.Delete01, stringResource(R.string.upload_files_page_delete_selected))
+                        IconButton(onClick = { showBatchDeleteDialog = true }) {
+                            Icon(HugeIcons.Delete01, contentDescription = stringResource(R.string.upload_files_page_delete_selected))
                         }
                     },
                     colors = CustomColors.topBarColors,
@@ -253,114 +171,131 @@ fun UploadFilesPage(
                     navigationIcon = { BackButton() },
                     actions = {
                         IconButton(onClick = { importLauncher.launch("*/*") }) {
-                            Icon(HugeIcons.Upload02, stringResource(R.string.upload_files_page_import_button))
+                            Icon(HugeIcons.Upload02, contentDescription = stringResource(R.string.upload_files_page_import_button))
                         }
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
-                                Icon(HugeIcons.Sorting01, stringResource(R.string.upload_files_page_sort_by))
+                                Icon(HugeIcons.Sorting01, contentDescription = stringResource(R.string.upload_files_page_sort_by))
                             }
                             DropdownMenu(
                                 expanded = showSortMenu,
                                 onDismissRequest = { showSortMenu = false }
                             ) {
-                                SortMenuEntry(
+                                SortMenuItem(
                                     label = stringResource(R.string.upload_files_page_sort_name),
                                     active = sortMode == SortMode.NAME,
                                     asc = sortAsc,
-                                    onClick = {
-                                        if (sortMode == SortMode.NAME) {
-                                            sortAsc = !sortAsc
-                                        } else {
-                                            sortMode = SortMode.NAME
-                                            sortAsc = true
-                                        }
-                                        showSortMenu = false
-                                    }
-                                )
-                                SortMenuEntry(
+                                ) {
+                                    if (sortMode == SortMode.NAME) sortAsc = !sortAsc
+                                    else { sortMode = SortMode.NAME; sortAsc = true }
+                                    showSortMenu = false
+                                }
+                                SortMenuItem(
                                     label = stringResource(R.string.upload_files_page_sort_size),
                                     active = sortMode == SortMode.SIZE,
                                     asc = sortAsc,
-                                    onClick = {
-                                        if (sortMode == SortMode.SIZE) {
-                                            sortAsc = !sortAsc
-                                        } else {
-                                            sortMode = SortMode.SIZE
-                                            sortAsc = false
-                                        }
-                                        showSortMenu = false
-                                    }
-                                )
-                                SortMenuEntry(
+                                ) {
+                                    if (sortMode == SortMode.SIZE) sortAsc = !sortAsc
+                                    else { sortMode = SortMode.SIZE; sortAsc = false }
+                                    showSortMenu = false
+                                }
+                                SortMenuItem(
                                     label = stringResource(R.string.upload_files_page_sort_time),
                                     active = sortMode == SortMode.TIME,
                                     asc = sortAsc,
-                                    onClick = {
-                                        if (sortMode == SortMode.TIME) {
-                                            sortAsc = !sortAsc
-                                        } else {
-                                            sortMode = SortMode.TIME
-                                            sortAsc = false
-                                        }
-                                        showSortMenu = false
-                                    }
-                                )
+                                ) {
+                                    if (sortMode == SortMode.TIME) sortAsc = !sortAsc
+                                    else { sortMode = SortMode.TIME; sortAsc = false }
+                                    showSortMenu = false
+                                }
                             }
                         }
                         IconButton(onClick = { inSelection = true }) {
-                            Icon(HugeIcons.Tick01, stringResource(R.string.upload_files_page_select))
+                            Icon(HugeIcons.Tick01, contentDescription = stringResource(R.string.upload_files_page_select))
                         }
                     },
                     scrollBehavior = scrollBehavior,
-                    colors = CustomColors.topBarColors
+                    colors = CustomColors.topBarColors,
                 )
             }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor
+        containerColor = CustomColors.topBarColors.containerColor,
     ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .padding(top = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // Stats + search (only in non-selection mode)
+            // 搜索框 (模仿 AssistantPage)
             if (!inSelection) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = { query = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    placeholder = { Text(stringResource(R.string.upload_files_page_search_hint)) },
+                    leadingIcon = { Icon(HugeIcons.Search01, contentDescription = null) },
+                    trailingIcon = {
+                        if (query.isNotBlank()) {
+                            IconButton(onClick = { query = "" }) {
+                                Icon(HugeIcons.Cancel01, contentDescription = null)
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                )
+
+                // 统计
                 Text(
                     text = stringResource(R.string.upload_files_page_stats, totalCount, formatBytes(totalSize)),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 24.dp, vertical = 8.dp)
+                    modifier = Modifier.padding(horizontal = 16.dp),
                 )
-
-                OutlinedTextField(
-                    value = query,
-                    onValueChange = { query = it },
-                    singleLine = true,
-                    placeholder = { Text(stringResource(R.string.upload_files_page_search_hint)) },
-                    leadingIcon = { Icon(HugeIcons.Search01, null) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp)
-                )
-                HorizontalDivider()
             }
 
             if (visibleFiles.isEmpty()) {
-                EmptyState(
-                    hasQuery = query.isNotBlank(),
-                    onImport = { importLauncher.launch("*/*") }
-                )
+                // 空状态 (模仿 SkillsPage / QuickMessagesPage)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Icon(
+                        imageVector = HugeIcons.File02,
+                        contentDescription = null,
+                        modifier = Modifier.size(48.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(
+                            if (query.isNotBlank()) R.string.setting_files_page_no_files
+                            else R.string.upload_files_page_empty_title
+                        ),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(R.string.upload_files_page_empty_desc),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                    contentPadding = PaddingValues(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     items(visibleFiles, key = { it.id }) { file ->
-                        UploadFileItem(
+                        UploadFileCard(
                             file = file,
                             fileOnDisk = filesManager.getFile(file),
                             inSelection = inSelection,
@@ -381,17 +316,70 @@ fun UploadFilesPage(
                                     onError = { toaster.show(openFailedToast) }
                                 )
                             },
-                            onDelete = { pendingDeleteOne = file }
+                            onDelete = { deleteTarget = file },
                         )
                     }
                 }
             }
         }
     }
+
+    // 单项删除确认 (模仿 SkillsPage / QuickMessagesPage 用 RikkaConfirmDialog)
+    RikkaConfirmDialog(
+        show = deleteTarget != null,
+        title = stringResource(R.string.setting_files_page_delete_file_title),
+        confirmText = stringResource(R.string.delete),
+        dismissText = stringResource(R.string.cancel),
+        onConfirm = {
+            deleteTarget?.let { target ->
+                scope.launch {
+                    val ok = filesManager.delete(target.id, deleteFromDisk = true)
+                    if (ok) toaster.show(deletedToast) else toaster.show(deleteFailedToast)
+                }
+            }
+            deleteTarget = null
+        },
+        onDismiss = { deleteTarget = null },
+    ) {
+        Text(deleteTarget?.displayName ?: "")
+    }
+
+    // 批量删除确认
+    RikkaConfirmDialog(
+        show = showBatchDeleteDialog,
+        title = stringResource(R.string.upload_files_page_delete_selected_title, selectedIds.size),
+        confirmText = stringResource(R.string.delete),
+        dismissText = stringResource(R.string.cancel),
+        onConfirm = {
+            scope.launch {
+                val ids = selectedIds.toList()
+                var failed = 0
+                ids.forEach { id ->
+                    val ok = filesManager.delete(id, deleteFromDisk = true)
+                    if (!ok) failed++
+                }
+                if (failed == 0) toaster.show(deletedToast) else toaster.show(deleteFailedToast)
+                selectedIds.clear()
+                inSelection = false
+            }
+            showBatchDeleteDialog = false
+        },
+        onDismiss = { showBatchDeleteDialog = false },
+    ) {
+        Text(stringResource(R.string.upload_files_page_selected_count, selectedIds.size))
+    }
+
+    // 图片预览
+    previewImages?.let { images ->
+        ImagePreviewDialog(
+            images = images,
+            onDismissRequest = { previewImages = null }
+        )
+    }
 }
 
 @Composable
-private fun SortMenuEntry(
+private fun SortMenuItem(
     label: String,
     active: Boolean,
     asc: Boolean,
@@ -402,59 +390,15 @@ private fun SortMenuEntry(
         trailingIcon = {
             Text(
                 text = if (active) (if (asc) "↑" else "↓") else "",
-                color = MaterialTheme.colorScheme.primary
+                color = MaterialTheme.colorScheme.primary,
             )
         },
-        onClick = onClick
+        onClick = onClick,
     )
 }
 
 @Composable
-private fun EmptyState(
-    hasQuery: Boolean,
-    onImport: () -> Unit,
-) {
-    Box(
-        modifier = Modifier.fillMaxSize(),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.padding(32.dp)
-        ) {
-            Icon(
-                imageVector = HugeIcons.File02,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(56.dp)
-            )
-            Text(
-                text = stringResource(
-                    if (hasQuery) R.string.setting_files_page_no_files
-                    else R.string.upload_files_page_empty_title
-                ),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            if (!hasQuery) {
-                Text(
-                    text = stringResource(R.string.upload_files_page_empty_desc),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                TextButton(onClick = onImport) {
-                    Icon(HugeIcons.Upload02, null, modifier = Modifier.size(18.dp))
-                    Spacer8()
-                    Text(stringResource(R.string.upload_files_page_empty_import))
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun UploadFileItem(
+private fun UploadFileCard(
     file: ManagedFileEntity,
     fileOnDisk: File,
     inSelection: Boolean,
@@ -464,63 +408,106 @@ private fun UploadFileItem(
     onDelete: () -> Unit,
 ) {
     val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+    var menuExpanded by remember { mutableStateOf(false) }
 
-    ListItem(
-        modifier = Modifier
-            .padding(horizontal = 8.dp)
-            .clickable {
-                if (inSelection) onToggleSelection() else onOpen()
-            },
-        colors = ListItemDefaults.colors(containerColor = CustomColors.listItemColors.containerColor),
-        leadingContent = {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CustomColors.cardColorsOnSurfaceContainer,
+        onClick = if (inSelection) onToggleSelection else onOpen,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 左侧：选择框 / 缩略图 / 文件图标
             if (inSelection) {
                 Checkbox(
                     checked = selected,
-                    onCheckedChange = { onToggleSelection() }
+                    onCheckedChange = { onToggleSelection() },
                 )
             } else if (file.mimeType.startsWith("image/")) {
                 AsyncImage(
                     model = fileOnDisk,
                     contentDescription = file.displayName,
                     modifier = Modifier
-                        .padding(4.dp)
-                        .size(48.dp)
+                        .size(40.dp)
                         .clip(RoundedCornerShape(8.dp)),
                 )
             } else {
                 Icon(
                     imageVector = HugeIcons.File02,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    modifier = Modifier.size(20.dp),
+                    tint = MaterialTheme.colorScheme.primary,
                 )
             }
-        },
-        headlineContent = {
-            Text(
-                text = file.displayName,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        },
-        supportingContent = {
-            Text(
-                text = "${file.mimeType} · ${formatBytes(file.sizeBytes)} · ${dateFormat.format(Date(file.createdAt))}",
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                style = MaterialTheme.typography.bodySmall
-            )
-        },
-        trailingContent = {
+
+            // 中间：文件名 + 信息
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(start = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = file.displayName,
+                    style = MaterialTheme.typography.titleSmallEmphasized,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = "${file.mimeType} · ${formatBytes(file.sizeBytes)} · ${dateFormat.format(Date(file.createdAt))}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+
+            // 右侧：操作菜单 (模仿 SkillsPage / QuickMessagesPage)
             if (!inSelection) {
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        HugeIcons.Delete01,
-                        contentDescription = stringResource(R.string.setting_files_page_delete_content_description)
-                    )
+                Box {
+                    IconButton(onClick = { menuExpanded = true }) {
+                        Icon(
+                            imageVector = HugeIcons.MoreVertical,
+                            contentDescription = stringResource(R.string.skills_page_more_actions),
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.upload_files_page_open)) },
+                            leadingIcon = {
+                                Icon(HugeIcons.View, contentDescription = null)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onOpen()
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
+                            leadingIcon = {
+                                Icon(
+                                    imageVector = HugeIcons.Delete01,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.error,
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onDelete()
+                            },
+                        )
+                    }
                 }
             }
         }
-    )
+    }
 }
 
 private fun openFile(
@@ -550,11 +537,6 @@ private fun openFile(
         val chooser = Intent.createChooser(intent, null)
         context.startActivity(chooser)
     }.onFailure { onError() }
-}
-
-@Composable
-private fun Spacer8() {
-    androidx.compose.foundation.layout.Spacer(modifier = Modifier.size(4.dp))
 }
 
 private fun formatBytes(bytes: Long): String {
