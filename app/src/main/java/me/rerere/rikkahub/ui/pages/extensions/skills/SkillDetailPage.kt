@@ -60,6 +60,7 @@ import com.composables.icons.lucide.Trash2
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.context.LocalToaster
+import me.rerere.rikkahub.ui.icons.HugeIcons
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
@@ -104,7 +105,7 @@ fun SkillDetailPage(skillName: String) {
                 exit = fadeOut() + scaleOut(),
             ) {
                 FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(Lucide.Plus, contentDescription = null)
+                    Icon(HugeIcons.Add01, contentDescription = null)
                 }
             }
         },
