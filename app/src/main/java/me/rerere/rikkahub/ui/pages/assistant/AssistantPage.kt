@@ -65,7 +65,7 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantMemory
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.components.ui.UIAvatar
@@ -341,20 +341,22 @@ private fun AssistantCreationSheet(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    FormItem(
-                        label = {
-                            Text(stringResource(R.string.assistant_page_name))
-                        },
-                    ) {
-                        OutlinedTextField(
-                            value = assistant.name, onValueChange = {
-                                update(
-                                    assistant.copy(
-                                        name = it
+                    CardGroup {
+                        formItem(
+                            label = {
+                                Text(stringResource(R.string.assistant_page_name))
+                            },
+                        ) {
+                            OutlinedTextField(
+                                value = assistant.name, onValueChange = {
+                                    update(
+                                        assistant.copy(
+                                            name = it
+                                        )
                                     )
-                                )
-                            }, modifier = Modifier.fillMaxWidth()
-                        )
+                                }, modifier = Modifier.fillMaxWidth()
+                            )
+                        }
                     }
 
                     AssistantImporter(

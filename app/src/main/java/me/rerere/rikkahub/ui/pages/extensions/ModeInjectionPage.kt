@@ -86,8 +86,8 @@ import me.rerere.rikkahub.data.model.InjectionPosition
 import me.rerere.rikkahub.data.model.Lorebook
 import me.rerere.rikkahub.data.model.PromptInjection
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
-import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
@@ -403,15 +403,17 @@ private fun ModeInjectionEditSheet(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                FormItem(
-                    label = { Text(stringResource(R.string.prompt_page_enabled)) },
-                    tail = {
-                        Switch(
-                            checked = injection.enabled,
-                            onCheckedChange = { onEdit(injection.copy(enabled = it)) }
-                        )
-                    }
-                )
+                CardGroup {
+                    formItem(
+                        label = { Text(stringResource(R.string.prompt_page_enabled)) },
+                        tail = {
+                            Switch(
+                                checked = injection.enabled,
+                                onCheckedChange = { onEdit(injection.copy(enabled = it)) }
+                            )
+                        }
+                    )
+                }
 
                 OutlinedTextField(
                     value = injection.priority.toString(),

@@ -106,7 +106,7 @@ import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.theme.CustomColors
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.ImagePreviewDialog
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
 import me.rerere.rikkahub.ui.context.LocalToaster
@@ -713,60 +713,62 @@ private fun SettingsBottomSheet(
                 fontWeight = FontWeight.Bold
             )
 
-            FormItem(
-                label = { Text(stringResource(R.string.imggen_page_model_selection)) },
-                description = { Text(stringResource(R.string.imggen_page_model_selection_desc)) }
-            ) {
-                ModelSelector(
-                    modelId = settings.imageGenerationModelId,
-                    providers = settings.providers,
-                    type = ModelType.IMAGE,
-                    onlyIcon = false,
-                    onSelect = { model ->
-                        scope.launch {
-                            vm.settingsStore.update { oldSettings ->
-                                oldSettings.copy(imageGenerationModelId = model.id)
+            CardGroup {
+                formItem(
+                    label = { Text(stringResource(R.string.imggen_page_model_selection)) },
+                    description = { Text(stringResource(R.string.imggen_page_model_selection_desc)) }
+                ) {
+                    ModelSelector(
+                        modelId = settings.imageGenerationModelId,
+                        providers = settings.providers,
+                        type = ModelType.IMAGE,
+                        onlyIcon = false,
+                        onSelect = { model ->
+                            scope.launch {
+                                vm.settingsStore.update { oldSettings ->
+                                    oldSettings.copy(imageGenerationModelId = model.id)
+                                }
                             }
                         }
-                    }
-                )
-            }
+                    )
+                }
 
-            FormItem(
-                label = { Text(stringResource(R.string.imggen_page_generation_count)) },
-                description = { Text(stringResource(R.string.imggen_page_generation_count_desc)) }
-            ) {
-                OutlinedNumberInput(
-                    value = numberOfImages,
-                    onValueChange = vm::updateNumberOfImages,
-                    modifier = Modifier.width(120.dp)
-                )
-            }
-
-            FormItem(
-                label = { Text(stringResource(R.string.imggen_page_aspect_ratio)) },
-                description = { Text(stringResource(R.string.imggen_page_aspect_ratio_desc)) }
-            ) {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                formItem(
+                    label = { Text(stringResource(R.string.imggen_page_generation_count)) },
+                    description = { Text(stringResource(R.string.imggen_page_generation_count_desc)) }
                 ) {
-                    ImageAspectRatio.entries.forEach { ratio ->
-                        FilterChip(
-                            selected = aspectRatio == ratio,
-                            onClick = { vm.updateAspectRatio(ratio) },
-                            label = {
-                                Text(
-                                    stringResource(
-                                        when (ratio) {
-                                            ImageAspectRatio.SQUARE -> R.string.imggen_page_aspect_ratio_square
-                                            ImageAspectRatio.LANDSCAPE -> R.string.imggen_page_aspect_ratio_landscape
-                                            ImageAspectRatio.PORTRAIT -> R.string.imggen_page_aspect_ratio_portrait
-                                        }
+                    OutlinedNumberInput(
+                        value = numberOfImages,
+                        onValueChange = vm::updateNumberOfImages,
+                        modifier = Modifier.width(120.dp)
+                    )
+                }
+
+                formItem(
+                    label = { Text(stringResource(R.string.imggen_page_aspect_ratio)) },
+                    description = { Text(stringResource(R.string.imggen_page_aspect_ratio_desc)) }
+                ) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        ImageAspectRatio.entries.forEach { ratio ->
+                            FilterChip(
+                                selected = aspectRatio == ratio,
+                                onClick = { vm.updateAspectRatio(ratio) },
+                                label = {
+                                    Text(
+                                        stringResource(
+                                            when (ratio) {
+                                                ImageAspectRatio.SQUARE -> R.string.imggen_page_aspect_ratio_square
+                                                ImageAspectRatio.LANDSCAPE -> R.string.imggen_page_aspect_ratio_landscape
+                                                ImageAspectRatio.PORTRAIT -> R.string.imggen_page_aspect_ratio_portrait
+                                            }
+                                        )
                                     )
-                                )
-                            }
-                        )
+                                }
+                            )
+                        }
                     }
                 }
             }

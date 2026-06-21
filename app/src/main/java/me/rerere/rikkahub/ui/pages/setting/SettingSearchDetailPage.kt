@@ -50,7 +50,8 @@ import me.rerere.highlight.LocalHighlighter
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.richtext.HighlightCodeVisualTransformation
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.CardGroupScope
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
@@ -123,31 +124,24 @@ fun SettingSearchDetailPage(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item("config") {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = CustomColors.listItemColors.containerColor
-                    )
+                Column(
+                    modifier = Modifier
+                        .animateContentSize()
+                        .fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    Column(
-                        modifier = Modifier
-                            .animateContentSize()
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    CardGroup(
+                        modifier = Modifier.fillMaxWidth(),
+                        title = { Text(stringResource(R.string.setting_page_search_config)) }
                     ) {
-                        Text(
-                            text = stringResource(R.string.setting_page_search_config),
-                            style = MaterialTheme.typography.titleMedium
-                        )
-
                         SearchServiceOptionsEditor(
                             options = options,
                             onUpdateOptions = { save(it) }
                         )
+                    }
 
-                        ProvideTextStyle(MaterialTheme.typography.labelMedium) {
-                            SearchService.getService(options).Description()
-                        }
+                    ProvideTextStyle(MaterialTheme.typography.labelMedium) {
+                        SearchService.getService(options).Description()
                     }
                 }
             }
@@ -164,7 +158,7 @@ fun SettingSearchDetailPage(
 
 @Suppress("UNCHECKED_CAST")
 @Composable
-private fun SearchServiceOptionsEditor(
+private fun CardGroupScope.SearchServiceOptionsEditor(
     options: SearchServiceOptions,
     onUpdateOptions: (SearchServiceOptions) -> Unit
 ) {
@@ -343,11 +337,11 @@ private fun SearchTestSection(
 }
 
 @Composable
-internal fun TavilyOptions(
+internal fun CardGroupScope.TavilyOptions(
     options: SearchServiceOptions.TavilyOptions,
     onUpdateOptions: (SearchServiceOptions.TavilyOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -361,7 +355,7 @@ internal fun TavilyOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_depth))
         }
@@ -386,11 +380,11 @@ internal fun TavilyOptions(
 }
 
 @Composable
-internal fun ExaOptions(
+internal fun CardGroupScope.ExaOptions(
     options: SearchServiceOptions.ExaOptions,
     onUpdateOptions: (SearchServiceOptions.ExaOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -406,11 +400,11 @@ internal fun ExaOptions(
 }
 
 @Composable
-internal fun ZhipuOptions(
+internal fun CardGroupScope.ZhipuOptions(
     options: SearchServiceOptions.ZhipuOptions,
     onUpdateOptions: (SearchServiceOptions.ZhipuOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -426,11 +420,11 @@ internal fun ZhipuOptions(
 }
 
 @Composable
-internal fun SearXNGOptions(
+internal fun CardGroupScope.SearXNGOptions(
     options: SearchServiceOptions.SearXNGOptions,
     onUpdateOptions: (SearchServiceOptions.SearXNGOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_url))
         }
@@ -444,7 +438,7 @@ internal fun SearXNGOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_engines))
         }
@@ -458,7 +452,7 @@ internal fun SearXNGOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_language))
         }
@@ -472,7 +466,7 @@ internal fun SearXNGOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_username))
         }
@@ -486,7 +480,7 @@ internal fun SearXNGOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_password))
         }
@@ -502,11 +496,11 @@ internal fun SearXNGOptions(
 }
 
 @Composable
-internal fun SearchLinkUpOptions(
+internal fun CardGroupScope.SearchLinkUpOptions(
     options: SearchServiceOptions.LinkUpOptions,
     onUpdateOptions: (SearchServiceOptions.LinkUpOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -520,7 +514,7 @@ internal fun SearchLinkUpOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_depth))
         }
@@ -545,11 +539,11 @@ internal fun SearchLinkUpOptions(
 }
 
 @Composable
-internal fun BraveOptions(
+internal fun CardGroupScope.BraveOptions(
     options: SearchServiceOptions.BraveOptions,
     onUpdateOptions: (SearchServiceOptions.BraveOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -565,11 +559,11 @@ internal fun BraveOptions(
 }
 
 @Composable
-internal fun MetasoOptions(
+internal fun CardGroupScope.MetasoOptions(
     options: SearchServiceOptions.MetasoOptions,
     onUpdateOptions: (SearchServiceOptions.MetasoOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -585,11 +579,11 @@ internal fun MetasoOptions(
 }
 
 @Composable
-internal fun OllamaOptions(
+internal fun CardGroupScope.OllamaOptions(
     options: SearchServiceOptions.OllamaOptions,
     onUpdateOptions: (SearchServiceOptions.OllamaOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -605,11 +599,11 @@ internal fun OllamaOptions(
 }
 
 @Composable
-internal fun PerplexityOptions(
+internal fun CardGroupScope.PerplexityOptions(
     options: SearchServiceOptions.PerplexityOptions,
     onUpdateOptions: (SearchServiceOptions.PerplexityOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -623,7 +617,7 @@ internal fun PerplexityOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_max_tokens))
         }
@@ -638,7 +632,7 @@ internal fun PerplexityOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_max_tokens_per_page))
         }
@@ -655,11 +649,11 @@ internal fun PerplexityOptions(
 }
 
 @Composable
-internal fun FirecrawlOptions(
+internal fun CardGroupScope.FirecrawlOptions(
     options: SearchServiceOptions.FirecrawlOptions,
     onUpdateOptions: (SearchServiceOptions.FirecrawlOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -675,11 +669,11 @@ internal fun FirecrawlOptions(
 }
 
 @Composable
-internal fun JinaOptions(
+internal fun CardGroupScope.JinaOptions(
     options: SearchServiceOptions.JinaOptions,
     onUpdateOptions: (SearchServiceOptions.JinaOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -693,7 +687,7 @@ internal fun JinaOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_search_url))
         }
@@ -710,7 +704,7 @@ internal fun JinaOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_scrape_url))
         }
@@ -729,11 +723,11 @@ internal fun JinaOptions(
 }
 
 @Composable
-internal fun BochaOptions(
+internal fun CardGroupScope.BochaOptions(
     options: SearchServiceOptions.BochaOptions,
     onUpdateOptions: (SearchServiceOptions.BochaOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -747,7 +741,7 @@ internal fun BochaOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_summary))
         },
@@ -766,11 +760,11 @@ internal fun BochaOptions(
 }
 
 @Composable
-internal fun RikkaHubOptions(
+internal fun CardGroupScope.RikkaHubOptions(
     options: SearchServiceOptions.RikkaHubOptions,
     onUpdateOptions: (SearchServiceOptions.RikkaHubOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -784,7 +778,7 @@ internal fun RikkaHubOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_depth))
         }
@@ -809,11 +803,11 @@ internal fun RikkaHubOptions(
 }
 
 @Composable
-internal fun TinyfishOptions(
+internal fun CardGroupScope.TinyfishOptions(
     options: SearchServiceOptions.TinyfishOptions,
     onUpdateOptions: (SearchServiceOptions.TinyfishOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -829,11 +823,11 @@ internal fun TinyfishOptions(
 }
 
 @Composable
-internal fun GrokOptions(
+internal fun CardGroupScope.GrokOptions(
     options: SearchServiceOptions.GrokOptions,
     onUpdateOptions: (SearchServiceOptions.GrokOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -847,7 +841,7 @@ internal fun GrokOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_model))
         }
@@ -861,7 +855,7 @@ internal fun GrokOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_custom_url))
         }
@@ -875,7 +869,7 @@ internal fun GrokOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_system_prompt))
         }
@@ -892,11 +886,11 @@ internal fun GrokOptions(
 }
 
 @Composable
-internal fun CustomJsOptions(
+internal fun CardGroupScope.CustomJsOptions(
     options: SearchServiceOptions.CustomJsOptions,
     onUpdateOptions: (SearchServiceOptions.CustomJsOptions) -> Unit
 ) {
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_name))
         }
@@ -914,7 +908,7 @@ internal fun CustomJsOptions(
     val highlighter = LocalHighlighter.current
     val darkMode = LocalDarkMode.current
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_search_script))
         }
@@ -936,7 +930,7 @@ internal fun CustomJsOptions(
         )
     }
 
-    FormItem(
+    formItem(
         label = {
             Text(stringResource(R.string.search_detail_scrape_script))
         },

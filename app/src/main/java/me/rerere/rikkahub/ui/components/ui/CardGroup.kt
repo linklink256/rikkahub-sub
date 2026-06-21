@@ -2,11 +2,13 @@ package me.rerere.rikkahub.ui.components.ui
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.LocalIndication
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -38,16 +40,30 @@ private val CardGroupCorner = 16.dp
 private val CardGroupItemSpacing = Spacing.xs
 private val CardGroupInnerCorner = 4.dp
 
-private data class CardGroupItem(
-    val onClick: (() -> Unit)?,
-    val modifier: Modifier,
+private sealed class CardGroupEntry {
+    abstract val onClick: (() -> Unit)?
+    abstract val modifier: Modifier
+}
+
+private data class CardGroupListItemEntry(
+    override val onClick: (() -> Unit)?,
+    override val modifier: Modifier,
     val overlineContent: (@Composable () -> Unit)?,
     val headlineContent: @Composable () -> Unit,
     val supportingContent: (@Composable () -> Unit)?,
     val leadingContent: (@Composable () -> Unit)?,
     val trailingContent: (@Composable () -> Unit)?,
     val colors: ListItemColors?,
-)
+) : CardGroupEntry()
+
+private data class CardGroupFormItemEntry(
+    override val onClick: (() -> Unit)?,
+    override val modifier: Modifier,
+    val label: @Composable () -> Unit,
+    val description: (@Composable () -> Unit)?,
+    val tail: @Composable () -> Unit,
+    val content: @Composable ColumnScope.() -> Unit,
+) : CardGroupEntry()
 
 @DslMarker
 private annotation class CardGroupDsl
@@ -64,10 +80,19 @@ interface CardGroupScope {
         colors: ListItemColors? = null,
         headlineContent: @Composable () -> Unit,
     )
+
+    fun formItem(
+        onClick: (() -> Unit)? = null,
+        modifier: Modifier = Modifier,
+        label: @Composable () -> Unit,
+        description: (@Composable () -> Unit)? = null,
+        tail: @Composable () -> Unit = {},
+        content: @Composable ColumnScope.() -> Unit = {},
+    )
 }
 
 private class CardGroupScopeImpl : CardGroupScope {
-    val items = mutableListOf<CardGroupItem>()
+    val entries = mutableListOf<CardGroupEntry>()
 
     override fun item(
         onClick: (() -> Unit)?,
@@ -79,8 +104,8 @@ private class CardGroupScopeImpl : CardGroupScope {
         colors: ListItemColors?,
         headlineContent: @Composable () -> Unit,
     ) {
-        items.add(
-            CardGroupItem(
+        entries.add(
+            CardGroupListItemEntry(
                 onClick = onClick,
                 modifier = modifier,
                 overlineContent = overlineContent,
@@ -92,11 +117,31 @@ private class CardGroupScopeImpl : CardGroupScope {
             )
         )
     }
+
+    override fun formItem(
+        onClick: (() -> Unit)?,
+        modifier: Modifier,
+        label: @Composable () -> Unit,
+        description: (@Composable () -> Unit)?,
+        tail: @Composable () -> Unit,
+        content: @Composable ColumnScope.() -> Unit,
+    ) {
+        entries.add(
+            CardGroupFormItemEntry(
+                onClick = onClick,
+                modifier = modifier,
+                label = label,
+                description = description,
+                tail = tail,
+                content = content,
+            )
+        )
+    }
 }
 
 @Composable
 private fun CardGroupListItem(
-    item: CardGroupItem,
+    item: CardGroupListItemEntry,
     count: Int,
     index: Int,
 ) {
@@ -145,6 +190,59 @@ private fun CardGroupListItem(
 }
 
 @Composable
+private fun CardGroupFormItem(
+    item: CardGroupFormItemEntry,
+    count: Int,
+    index: Int,
+) {
+    val isFirst = index == 0
+    val isLast = index == count - 1
+
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val topCorner by animateDpAsState(
+        targetValue = if (isPressed || count == 1 || isFirst) CardGroupCorner else CardGroupInnerCorner,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+    )
+    val bottomCorner by animateDpAsState(
+        targetValue = if (isPressed || count == 1 || isLast) CardGroupCorner else CardGroupInnerCorner,
+        animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
+    )
+
+    Box(
+        modifier = item.modifier
+            .fillMaxWidth()
+            .clip(
+                RoundedCornerShape(
+                    topStart = topCorner,
+                    topEnd = topCorner,
+                    bottomStart = bottomCorner,
+                    bottomEnd = bottomCorner,
+                )
+            )
+            .background(MaterialTheme.colorScheme.surfaceBright)
+            .then(
+                if (item.onClick != null) {
+                    Modifier.clickable(
+                        interactionSource = interactionSource,
+                        indication = LocalIndication.current,
+                        onClick = item.onClick,
+                    )
+                } else Modifier
+            )
+    ) {
+        FormItem(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            label = item.label,
+            description = item.description,
+            tail = item.tail,
+            content = item.content,
+        )
+    }
+}
+
+@Composable
 fun CardGroup(
     modifier: Modifier = Modifier,
     title: (@Composable () -> Unit)? = null,
@@ -163,9 +261,12 @@ fun CardGroup(
                 }
             }
         }
-        val count = scope.items.size
-        scope.items.fastForEachIndexed { index, item ->
-            CardGroupListItem(item = item, count = count, index = index)
+        val count = scope.entries.size
+        scope.entries.fastForEachIndexed { index, entry ->
+            when (entry) {
+                is CardGroupListItemEntry -> CardGroupListItem(item = entry, count = count, index = index)
+                is CardGroupFormItemEntry -> CardGroupFormItem(item = entry, count = count, index = index)
+            }
             if (index != count - 1) {
                 Spacer(modifier = Modifier.height(CardGroupItemSpacing))
             }

@@ -52,7 +52,7 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
@@ -373,36 +373,24 @@ private fun CommonOptions(
     var commonOptions by remember(settings.searchCommonOptions) {
         mutableStateOf(settings.searchCommonOptions)
     }
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = CustomColors.listItemColors.containerColor
-        )
+    CardGroup(
+        title = {
+            Text(stringResource(R.string.setting_page_search_common_options))
+        }
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            Text(
-                text = stringResource(R.string.setting_page_search_common_options),
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            FormItem(
-                label = {
-                    Text(stringResource(R.string.setting_page_search_result_size))
-                }
-            ) {
-                OutlinedNumberInput(
-                    value = commonOptions.resultSize,
-                    onValueChange = {
-                        commonOptions = commonOptions.copy(resultSize = it)
-                        onUpdate(commonOptions)
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+        formItem(
+            label = {
+                Text(stringResource(R.string.setting_page_search_result_size))
             }
+        ) {
+            OutlinedNumberInput(
+                value = commonOptions.resultSize,
+                onValueChange = {
+                    commonOptions = commonOptions.copy(resultSize = it)
+                    onUpdate(commonOptions)
+                },
+                modifier = Modifier.fillMaxWidth()
+            )
         }
     }
 }

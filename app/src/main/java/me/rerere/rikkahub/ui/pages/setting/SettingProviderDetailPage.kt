@@ -111,6 +111,7 @@ import me.rerere.rikkahub.ui.components.ai.ProviderBalanceText
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.ShareSheet
 import me.rerere.rikkahub.ui.components.ui.SiliconFlowPowerByIcon
@@ -1361,43 +1362,25 @@ private fun BuiltInToolsSettings(
             )
         )
 
-        availableTools.forEach { (tool, info) ->
-            val (title, description) = info
-            Card(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(
-                        modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Text(
-                            text = title,
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        Text(
-                            text = description,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+        CardGroup(modifier = Modifier.fillMaxWidth()) {
+            availableTools.forEach { (tool, info) ->
+                val (title, description) = info
+                formItem(
+                    label = { Text(text = title) },
+                    description = { Text(text = description) },
+                    tail = {
+                        Switch(
+                            checked = tool in tools,
+                            onCheckedChange = { checked ->
+                                if (checked) {
+                                    onUpdateTools(tools + tool)
+                                } else {
+                                    onUpdateTools(tools - tool)
+                                }
+                            }
                         )
                     }
-                    Switch(
-                        checked = tool in tools,
-                        onCheckedChange = { checked ->
-                            if (checked) {
-                                onUpdateTools(tools + tool)
-                            } else {
-                                onUpdateTools(tools - tool)
-                            }
-                        }
-                    )
-                }
+                )
             }
         }
     }

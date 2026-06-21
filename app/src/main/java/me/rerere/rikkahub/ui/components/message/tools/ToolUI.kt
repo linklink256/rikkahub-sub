@@ -29,7 +29,7 @@ import me.rerere.hugeicons.stroke.Tools
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.richtext.HighlightCodeBlock
 import me.rerere.rikkahub.ui.components.richtext.ZoomableAsyncImage
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.utils.JsonInstant
 import me.rerere.rikkahub.utils.JsonInstantPretty
 import me.rerere.rikkahub.utils.jsonPrimitiveOrNull
@@ -144,43 +144,45 @@ fun DefaultToolPreview(
             )
             headerActions?.invoke()
         }
-        FormItem(
-            label = {
-                Text(stringResource(R.string.chat_message_tool_call_label, context.tool.toolName))
-            }
-        ) {
-            HighlightCodeBlock(
-                code = JsonInstantPretty.encodeToString(context.arguments),
-                language = "json",
-                style = TextStyle(fontSize = 10.sp, lineHeight = 12.sp)
-            )
-        }
-        if (context.tool.output.isNotEmpty()) {
-            FormItem(
+        CardGroup {
+            formItem(
                 label = {
-                    Text(stringResource(R.string.chat_message_tool_call_result))
+                    Text(stringResource(R.string.chat_message_tool_call_label, context.tool.toolName))
                 }
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    context.tool.output.fastForEach { part ->
-                        when (part) {
-                            is UIMessagePart.Text -> HighlightCodeBlock(
-                                code = runCatching {
-                                    JsonInstantPretty.encodeToString(
-                                        JsonInstant.parseToJsonElement(part.text)
-                                    )
-                                }.getOrElse { part.text },
-                                language = "json",
-                                style = TextStyle(fontSize = 10.sp, lineHeight = 12.sp)
-                            )
+                HighlightCodeBlock(
+                    code = JsonInstantPretty.encodeToString(context.arguments),
+                    language = "json",
+                    style = TextStyle(fontSize = 10.sp, lineHeight = 12.sp)
+                )
+            }
+            if (context.tool.output.isNotEmpty()) {
+                formItem(
+                    label = {
+                        Text(stringResource(R.string.chat_message_tool_call_result))
+                    }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        context.tool.output.fastForEach { part ->
+                            when (part) {
+                                is UIMessagePart.Text -> HighlightCodeBlock(
+                                    code = runCatching {
+                                        JsonInstantPretty.encodeToString(
+                                            JsonInstant.parseToJsonElement(part.text)
+                                        )
+                                    }.getOrElse { part.text },
+                                    language = "json",
+                                    style = TextStyle(fontSize = 10.sp, lineHeight = 12.sp)
+                                )
 
-                            is UIMessagePart.Image -> ZoomableAsyncImage(
-                                model = part.url,
-                                contentDescription = null,
-                                modifier = Modifier.fillMaxWidth(),
-                            )
+                                is UIMessagePart.Image -> ZoomableAsyncImage(
+                                    model = part.url,
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
 
-                            else -> {}
+                                else -> {}
+                            }
                         }
                     }
                 }

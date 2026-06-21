@@ -12,9 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -51,7 +49,7 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.ai.ReasoningButton
 import me.rerere.rikkahub.ui.components.nav.BackButton
-import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.TextArea
 import me.rerere.rikkahub.ui.theme.CustomColors
 import org.koin.compose.koinInject
@@ -128,9 +126,8 @@ private fun AssistantSubagentProfileContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ---- 基本信息 ----
-        Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+        CardGroup {
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_name)) },
                 description = { Text(stringResource(R.string.subagent_profile_name_desc)) },
             ) {
@@ -141,9 +138,7 @@ private fun AssistantSubagentProfileContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            HorizontalDivider()
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_display_name)) },
             ) {
                 OutlinedTextField(
@@ -152,9 +147,7 @@ private fun AssistantSubagentProfileContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            HorizontalDivider()
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_description)) },
                 description = { Text(stringResource(R.string.subagent_profile_description_desc)) },
             ) {
@@ -168,36 +161,30 @@ private fun AssistantSubagentProfileContent(
         }
 
         // ---- 系统提示词 ----
-        Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
-            Column(
-                modifier = Modifier.padding(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+        CardGroup {
+            formItem(
+                label = { Text(stringResource(R.string.subagent_profile_system_prompt)) },
+                description = { Text(stringResource(R.string.subagent_profile_system_prompt_desc)) },
             ) {
-                FormItem(
-                    label = { Text(stringResource(R.string.subagent_profile_system_prompt)) },
-                    description = { Text(stringResource(R.string.subagent_profile_system_prompt_desc)) },
-                ) {
-                    val promptState = rememberTextFieldState(initialText = current.systemPrompt)
-                    LaunchedEffect(promptState) {
-                        snapshotFlow { promptState.text }.collect { text ->
-                            saveProfileLatest { it.copy(systemPrompt = text.toString()) }
-                        }
+                val promptState = rememberTextFieldState(initialText = current.systemPrompt)
+                LaunchedEffect(promptState) {
+                    snapshotFlow { promptState.text }.collect { text ->
+                        saveProfileLatest { it.copy(systemPrompt = text.toString()) }
                     }
-                    TextArea(
-                        state = promptState,
-                        label = stringResource(R.string.subagent_profile_system_prompt),
-                        minLines = 6,
-                        maxLines = 15,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
                 }
+                TextArea(
+                    state = promptState,
+                    label = stringResource(R.string.subagent_profile_system_prompt),
+                    minLines = 6,
+                    maxLines = 15,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
         }
 
         // ---- 模型与参数 ----
-        Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+        CardGroup {
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_model)) },
                 description = { Text(stringResource(R.string.subagent_profile_model_desc)) },
             ) {
@@ -211,11 +198,9 @@ private fun AssistantSubagentProfileContent(
                     },
                 )
             }
-            HorizontalDivider()
 
             // temperature —— Switch 开关控制（null = 继承父代理）
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_temperature)) },
                 description = { Text(stringResource(R.string.subagent_profile_temperature_desc)) },
                 tail = {
@@ -248,11 +233,9 @@ private fun AssistantSubagentProfileContent(
                     )
                 }
             }
-            HorizontalDivider()
 
             // topP —— Switch 开关控制（null = 继承父代理）
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_top_p)) },
                 description = { Text(stringResource(R.string.subagent_profile_top_p_desc)) },
                 tail = {
@@ -285,11 +268,9 @@ private fun AssistantSubagentProfileContent(
                     )
                 }
             }
-            HorizontalDivider()
 
             // maxTokens —— 直接 TextField（空 = 继承父代理）
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_max_tokens)) },
                 description = { Text(stringResource(R.string.subagent_profile_max_tokens_desc)) },
             ) {
@@ -318,11 +299,9 @@ private fun AssistantSubagentProfileContent(
                     },
                 )
             }
-            HorizontalDivider()
 
             // reasoningLevel
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_reasoning)) },
             ) {
                 ReasoningButton(
@@ -335,10 +314,9 @@ private fun AssistantSubagentProfileContent(
         }
 
         // ---- 行为参数 ----
-        Card(colors = CustomColors.cardColorsOnSurfaceContainer) {
+        CardGroup {
             // maxSteps —— Slider
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_max_steps)) },
                 description = { Text(stringResource(R.string.subagent_profile_max_steps_desc)) },
             ) {
@@ -357,11 +335,9 @@ private fun AssistantSubagentProfileContent(
                     color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.75f),
                 )
             }
-            HorizontalDivider()
 
             // inheritTools —— Switch
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_inherit_tools)) },
                 description = { Text(stringResource(R.string.subagent_profile_inherit_tools_desc)) },
                 tail = {
@@ -371,121 +347,126 @@ private fun AssistantSubagentProfileContent(
                     )
                 },
             )
-            // todo: 仅在 inheritTools=false 时显示工具/skills/MCP 选择
-            if (!current.inheritTools) {
-                // ---- 本地工具 ----
-                val allLocalToolOptions = listOf(
-                    LocalToolOption.JavascriptEngine,
-                    LocalToolOption.TimeInfo,
-                    LocalToolOption.Clipboard,
-                    LocalToolOption.Tts,
-                    LocalToolOption.AskBtw,
-                    LocalToolOption.Logs,
-                )
-                FormItem(
-                    modifier = Modifier.padding(8.dp),
+        }
+
+        // todo: 仅在 inheritTools=false 时显示工具/skills/MCP 选择
+        if (!current.inheritTools) {
+            // ---- 本地工具 ----
+            val allLocalToolOptions = listOf(
+                LocalToolOption.JavascriptEngine,
+                LocalToolOption.TimeInfo,
+                LocalToolOption.Clipboard,
+                LocalToolOption.Tts,
+                LocalToolOption.AskBtw,
+                LocalToolOption.Logs,
+            )
+            CardGroup {
+                formItem(
                     label = { Text("Local Tools") },
                     // todo: use string resource subagent_profile_local_tools_desc
                     description = { Text("Select local tools available to this subagent") },
-                )
-                @OptIn(ExperimentalLayoutApi::class)
-                FlowRow(
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    allLocalToolOptions.forEach { option ->
-                        FilterChip(
-                            selected = option in current.localTools,
-                            onClick = {
-                                saveProfile {
-                                    it.copy(
-                                        localTools = if (option in it.localTools)
-                                            it.localTools - option
-                                        else
-                                            it.localTools + option
-                                    )
-                                }
-                            },
-                            label = { Text(option::class.simpleName ?: "Unknown") },
-                        )
-                    }
-                }
-
-                // ---- Skills ----
-                val skillManager: SkillManager = koinInject()
-                val availableSkills = remember { skillManager.listSkills() }
-                if (availableSkills.isNotEmpty()) {
-                    HorizontalDivider()
-                    FormItem(
-                        modifier = Modifier.padding(8.dp),
-                        label = { Text("Skills") },
-                        // todo: use string resource subagent_profile_skills_desc
-                        description = { Text("Select skills to enable for this subagent") },
-                    )
                     @OptIn(ExperimentalLayoutApi::class)
                     FlowRow(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
-                        availableSkills.forEach { skill ->
+                        allLocalToolOptions.forEach { option ->
                             FilterChip(
-                                selected = skill.name in current.enabledSkills,
-                                onClick = {
-                                    saveProfile {
-                                        it.toggleSkill(skill.name, skill.name !in it.enabledSkills)
-                                    }
-                                },
-                                label = { Text(skill.name) },
-                            )
-                        }
-                    }
-                }
-
-                // ---- MCP 服务器 ----
-                val settingsStore: SettingsStore = koinInject()
-                val availableMcp by settingsStore.settingsFlow
-                    .collectAsStateWithLifecycle(initialValue = null)
-                val mcpServers = availableMcp?.mcpServers ?: emptyList()
-                if (mcpServers.isNotEmpty()) {
-                    HorizontalDivider()
-                    FormItem(
-                        modifier = Modifier.padding(8.dp),
-                        label = { Text("MCP Servers") },
-                        // todo: use string resource subagent_profile_mcp_servers_desc
-                        description = { Text("Select MCP servers available to this subagent") },
-                    )
-                    @OptIn(ExperimentalLayoutApi::class)
-                    FlowRow(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        mcpServers.forEach { server ->
-                            FilterChip(
-                                selected = server.id in current.mcpServerIds,
+                                selected = option in current.localTools,
                                 onClick = {
                                     saveProfile {
                                         it.copy(
-                                            mcpServerIds = if (server.id in it.mcpServerIds)
-                                                it.mcpServerIds - server.id
+                                            localTools = if (option in it.localTools)
+                                                it.localTools - option
                                             else
-                                                it.mcpServerIds + server.id
+                                                it.localTools + option
                                         )
                                     }
                                 },
-                                label = { Text(server.commonOptions.name.ifBlank { "Unnamed" }) },
+                                label = { Text(option::class.simpleName ?: "Unknown") },
                             )
                         }
                     }
                 }
-                HorizontalDivider()
             }
 
+            // ---- Skills ----
+            val skillManager: SkillManager = koinInject()
+            val availableSkills = remember { skillManager.listSkills() }
+            if (availableSkills.isNotEmpty()) {
+                CardGroup {
+                    formItem(
+                        label = { Text("Skills") },
+                        // todo: use string resource subagent_profile_skills_desc
+                        description = { Text("Select skills to enable for this subagent") },
+                    ) {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            availableSkills.forEach { skill ->
+                                FilterChip(
+                                    selected = skill.name in current.enabledSkills,
+                                    onClick = {
+                                        saveProfile {
+                                            it.toggleSkill(skill.name, skill.name !in it.enabledSkills)
+                                        }
+                                    },
+                                    label = { Text(skill.name) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ---- MCP 服务器 ----
+            val settingsStore: SettingsStore = koinInject()
+            val availableMcp by settingsStore.settingsFlow
+                .collectAsStateWithLifecycle(initialValue = null)
+            val mcpServers = availableMcp?.mcpServers ?: emptyList()
+            if (mcpServers.isNotEmpty()) {
+                CardGroup {
+                    formItem(
+                        label = { Text("MCP Servers") },
+                        // todo: use string resource subagent_profile_mcp_servers_desc
+                        description = { Text("Select MCP servers available to this subagent") },
+                    ) {
+                        @OptIn(ExperimentalLayoutApi::class)
+                        FlowRow(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
+                            mcpServers.forEach { server ->
+                                FilterChip(
+                                    selected = server.id in current.mcpServerIds,
+                                    onClick = {
+                                        saveProfile {
+                                            it.copy(
+                                                mcpServerIds = if (server.id in it.mcpServerIds)
+                                                    it.mcpServerIds - server.id
+                                                else
+                                                    it.mcpServerIds + server.id
+                                            )
+                                        }
+                                    },
+                                    label = { Text(server.commonOptions.name.ifBlank { "Unnamed" }) },
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        CardGroup {
             // streamOutput —— Switch
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_stream)) },
                 description = { Text(stringResource(R.string.subagent_profile_stream_desc)) },
                 tail = {
@@ -495,11 +476,9 @@ private fun AssistantSubagentProfileContent(
                     )
                 },
             )
-            HorizontalDivider()
 
             // enableMemory —— Switch
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_memory)) },
                 description = { Text(stringResource(R.string.subagent_profile_memory_desc)) },
                 tail = {
@@ -509,11 +488,9 @@ private fun AssistantSubagentProfileContent(
                     )
                 },
             )
-            HorizontalDivider()
 
             // summaryMinLength —— Slider
-            FormItem(
-                modifier = Modifier.padding(8.dp),
+            formItem(
                 label = { Text(stringResource(R.string.subagent_profile_summary_min_length)) },
                 description = { Text(stringResource(R.string.subagent_profile_summary_min_length_desc)) },
             ) {
