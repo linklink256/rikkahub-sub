@@ -60,6 +60,7 @@ import me.rerere.hugeicons.stroke.WavingHand01
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.isNotConfigured
+import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.Select
@@ -80,6 +81,7 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val navController = LocalNavController.current
     val settings by vm.settings.collectAsStateWithLifecycle()
+    val filesManager: FilesManager = koinInject()
 
     if (settings.launchCount > 100 && (settings.launchCount - settings.sponsorAlertDismissedAt) >= 50) {
         AlertDialog(
@@ -214,6 +216,9 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
             }
 
             item("dataSettings") {
+                val storageState by produceState(-1 to 0L) {
+                    value = filesManager.countChatFiles()
+                }
                 CardGroup(
                     modifier = Modifier.padding(horizontal = 8.dp),
                     title = { Text(stringResource(R.string.setting_page_data_settings)) },
@@ -223,6 +228,24 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                         leadingContent = { Icon(HugeIcons.Database02, null) },
                         supportingContent = { Text(stringResource(R.string.setting_page_data_backup_desc)) },
                         headlineContent = { Text(stringResource(R.string.setting_page_data_backup)) },
+                    )
+                    item(
+                        onClick = { navController.navigate(Screen.UploadFiles) },
+                        leadingContent = { Icon(HugeIcons.File02, null) },
+                        supportingContent = {
+                            if (storageState.first == -1) {
+                                Text(stringResource(R.string.calculating))
+                            } else {
+                                Text(
+                                    stringResource(
+                                        R.string.setting_page_chat_storage_desc,
+                                        storageState.first,
+                                        storageState.second / 1024 / 1024.0
+                                    )
+                                )
+                            }
+                        },
+                        headlineContent = { Text(stringResource(R.string.upload_files_page_title)) },
                     )
                 }
             }
