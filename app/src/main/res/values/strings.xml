@@ -745,7 +745,6 @@
   <string name="setting_files_page_title">File Management</string>
   <string name="upload_files_page_title">Upload Files</string>
   <string name="upload_files_page_desc">Manage files uploaded in conversations</string>
-  <string name="upload_files_page_import_button">Import</string>
   <string name="upload_files_page_import_success">Imported %1$d file(s)</string>
   <string name="upload_files_page_import_failed">Import failed</string>
   <string name="upload_files_page_search_hint">Search files</string>
@@ -753,9 +752,7 @@
   <string name="upload_files_page_sort_name">Name</string>
   <string name="upload_files_page_sort_size">Size</string>
   <string name="upload_files_page_sort_time">Time</string>
-  <string name="upload_files_page_select">Select</string>
   <string name="upload_files_page_selected_count">%1$d selected</string>
-  <string name="upload_files_page_delete_selected">Delete selected</string>
   <string name="upload_files_page_delete_selected_title">Delete %1$d file(s)?</string>
   <string name="upload_files_page_empty_title">No files yet</string>
   <string name="upload_files_page_empty_desc">Import files here, or upload them in a conversation.</string>

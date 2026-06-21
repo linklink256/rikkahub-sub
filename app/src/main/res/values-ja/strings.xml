@@ -712,7 +712,6 @@
   <string name="setting_files_page_title">ファイル管理</string>
   <string name="upload_files_page_title"></string>
   <string name="upload_files_page_desc"></string>
-  <string name="upload_files_page_import_button">インポート</string>
   <string name="upload_files_page_import_success">%1$d 件のファイルをインポートしました</string>
   <string name="upload_files_page_import_failed">インポートに失敗しました</string>
   <string name="upload_files_page_search_hint">ファイルを検索</string>
@@ -720,9 +719,7 @@
   <string name="upload_files_page_sort_name">名前</string>
   <string name="upload_files_page_sort_size">サイズ</string>
   <string name="upload_files_page_sort_time">時間</string>
-  <string name="upload_files_page_select">選択</string>
   <string name="upload_files_page_selected_count">%1$d 件選択中</string>
-  <string name="upload_files_page_delete_selected">選択項目を削除</string>
   <string name="upload_files_page_delete_selected_title">%1$d 件のファイルを削除しますか？</string>
   <string name="upload_files_page_empty_title">ファイルがありません</string>
   <string name="upload_files_page_empty_desc">ここにファイルをインポートするか、会話でアップロードできます。</string>

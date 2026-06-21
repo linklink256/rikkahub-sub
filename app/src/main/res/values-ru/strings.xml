@@ -712,7 +712,6 @@
   <string name="setting_files_page_title">Управление файлами</string>
   <string name="upload_files_page_title"></string>
   <string name="upload_files_page_desc"></string>
-  <string name="upload_files_page_import_button">Импорт</string>
   <string name="upload_files_page_import_success">Импортировано файлов: %1$d</string>
   <string name="upload_files_page_import_failed">Не удалось импортировать</string>
   <string name="upload_files_page_search_hint">Поиск файлов</string>
@@ -720,9 +719,7 @@
   <string name="upload_files_page_sort_name">Имя</string>
   <string name="upload_files_page_sort_size">Размер</string>
   <string name="upload_files_page_sort_time">Время</string>
-  <string name="upload_files_page_select">Выбрать</string>
   <string name="upload_files_page_selected_count">Выбрано: %1$d</string>
-  <string name="upload_files_page_delete_selected">Удалить выбранные</string>
   <string name="upload_files_page_delete_selected_title">Удалить %1$d файл(ов)?</string>
   <string name="upload_files_page_empty_title">Пока нет файлов</string>
   <string name="upload_files_page_empty_desc">Импортируйте файлы сюда или загрузите их в диалоге.</string>
