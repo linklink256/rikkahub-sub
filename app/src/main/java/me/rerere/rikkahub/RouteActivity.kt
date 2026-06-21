@@ -724,4 +724,3 @@ sealed interface Screen : NavKey {
     @Serializable
     data object Stats : Screen
 }
-}
