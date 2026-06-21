@@ -290,7 +290,6 @@
   <string name="chat_page_export_share_via">Поделиться через</string>
   <string name="chat_page_export_success">Экспортировано в %1$s</string>
   <string name="chat_page_history">История чата</string>
-  <string name="chat_page_menu_ai_translator">AI-переводчик</string>
   <string name="chat_page_menu_image_generation">Генерация изображений</string>
   <string name="chat_page_message_count">%d сообщений</string>
   <string name="chat_page_move_to_assistant">Перейти к ассистенту</string>
@@ -1061,11 +1060,6 @@
   <string name="translation_clear">Очистить перевод</string>
   <string name="translation_language_selection_title">Выберите язык перевода</string>
   <string name="translation_text">Перевод</string>
-  <string name="translator_page_cancel">Отмена</string>
-  <string name="translator_page_input_placeholder">Введите текст для перевода...</string>
-  <string name="translator_page_result_placeholder">Результат перевода будет показан здесь</string>
-  <string name="translator_page_title">Переводчик</string>
-  <string name="translator_page_translate">Перевести</string>
   <string name="tts">TTS</string>
   <string name="unpin_chat">Открепить чат</string>
   <string name="update_card_check_failed">Проверка обновления не удалась</string>

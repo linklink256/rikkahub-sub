@@ -20,7 +20,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -99,14 +98,14 @@ fun SkillsPage() {
             LargeFlexibleTopAppBar(
                 title = { Text(stringResource(R.string.skills_page_title)) },
                 navigationIcon = { BackButton() },
+                actions = {
+                    IconButton(onClick = { showImportSheet = true }) {
+                        Icon(HugeIcons.Add01, contentDescription = null)
+                    }
+                },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )
-        },
-        floatingActionButton = {
-            FloatingActionButton(onClick = { showImportSheet = true }) {
-                Icon(HugeIcons.Add01, contentDescription = null)
-            }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,

@@ -1,10 +1,6 @@
 package me.rerere.rikkahub.ui.pages.extensions.skills
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +14,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -31,9 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -55,7 +48,6 @@ import com.composables.icons.lucide.FileText
 import com.composables.icons.lucide.Folder
 import com.composables.icons.lucide.FolderOpen
 import com.composables.icons.lucide.Lucide
-import com.composables.icons.lucide.Plus
 import com.composables.icons.lucide.Trash2
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
@@ -81,34 +73,20 @@ fun SkillDetailPage(skillName: String) {
     val deleteFailedMsg = stringResource(R.string.skill_detail_page_delete_failed)
 
     val scrollState = rememberScrollState()
-    var previousScrollOffset by remember { mutableIntStateOf(0) }
-    val fabVisible by remember {
-        derivedStateOf {
-            val delta = scrollState.value - previousScrollOffset
-            previousScrollOffset = scrollState.value
-            delta <= 0
-        }
-    }
 
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
                 title = { Text(skillName) },
                 navigationIcon = { BackButton() },
+                actions = {
+                    IconButton(onClick = { showAddDialog = true }) {
+                        Icon(HugeIcons.Add01, contentDescription = null)
+                    }
+                },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )
-        },
-        floatingActionButton = {
-            AnimatedVisibility(
-                visible = fabVisible,
-                enter = fadeIn() + scaleIn(),
-                exit = fadeOut() + scaleOut(),
-            ) {
-                FloatingActionButton(onClick = { showAddDialog = true }) {
-                    Icon(HugeIcons.Add01, contentDescription = null)
-                }
-            }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,

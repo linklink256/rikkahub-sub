@@ -290,7 +290,6 @@
   <string name="chat_page_export_share_via">공유 방법</string>
   <string name="chat_page_export_success">%1$s(으)로 내보내기 완료</string>
   <string name="chat_page_history">채팅 기록</string>
-  <string name="chat_page_menu_ai_translator">AI 번역기</string>
   <string name="chat_page_menu_image_generation">이미지 생성</string>
   <string name="chat_page_message_count">%d개 메시지</string>
   <string name="chat_page_move_to_assistant">어시스턴트로 이동</string>
@@ -1061,11 +1060,6 @@
   <string name="translation_clear">번역 지우기</string>
   <string name="translation_language_selection_title">번역 언어 선택</string>
   <string name="translation_text">번역</string>
-  <string name="translator_page_cancel">취소</string>
-  <string name="translator_page_input_placeholder">번역할 텍스트를 입력하세요...</string>
-  <string name="translator_page_result_placeholder">번역 결과가 여기에 표시됩니다</string>
-  <string name="translator_page_title">번역기</string>
-  <string name="translator_page_translate">번역</string>
   <string name="tts">TTS</string>
   <string name="unpin_chat">채팅 고정 해제</string>
   <string name="update_card_check_failed">업데이트 확인 실패</string>

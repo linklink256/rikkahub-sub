@@ -294,7 +294,6 @@
   <string name="chat_page_export_share_via">Share via</string>
   <string name="chat_page_export_success">Exported to %1$s</string>
   <string name="chat_page_history">Chat History</string>
-  <string name="chat_page_menu_ai_translator">AI Translator</string>
   <string name="chat_page_menu_image_generation">Image Generation</string>
   <string name="chat_page_message_count">%d messages</string>
   <string name="chat_page_move_to_assistant">Move to Assistant</string>
@@ -1110,11 +1109,6 @@
   <string name="translation_clear">Clear Translation</string>
   <string name="translation_language_selection_title">Select Translation Language</string>
   <string name="translation_text">Translation</string>
-  <string name="translator_page_cancel">Cancel</string>
-  <string name="translator_page_input_placeholder">Enter text to translate...</string>
-  <string name="translator_page_result_placeholder">Translation result will be shown here</string>
-  <string name="translator_page_title">Translator</string>
-  <string name="translator_page_translate">Translate</string>
   <string name="tts">TTS</string>
   <string name="unpin_chat">Unpin the Chat</string>
   <string name="update_card_check_failed">Check update failed</string>

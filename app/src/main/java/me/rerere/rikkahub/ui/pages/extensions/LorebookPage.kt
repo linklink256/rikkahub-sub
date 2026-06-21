@@ -7,7 +7,6 @@ import me.rerere.hugeicons.stroke.ArrowDown01
 import me.rerere.hugeicons.stroke.Download01
 import me.rerere.hugeicons.stroke.FileDownload
 import me.rerere.hugeicons.stroke.FileImport
-import me.rerere.hugeicons.stroke.Add01
 import me.rerere.hugeicons.stroke.Tools
 import me.rerere.hugeicons.stroke.Share03
 import me.rerere.hugeicons.stroke.Delete01
@@ -41,7 +40,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
@@ -127,6 +125,9 @@ fun LorebookPage(vm: PromptVM = koinViewModel()) {
                 navigationIcon = { BackButton() },
                 title = { Text(stringResource(R.string.prompt_page_lorebook_tab)) },
                 actions = {
+                    IconButton(onClick = { editState.open(Lorebook()) }) {
+                        Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.add))
+                    }
                     IconButton(onClick = { importer.importFromFile() }) {
                         Icon(HugeIcons.FileImport, contentDescription = null)
                     }
@@ -137,11 +138,6 @@ fun LorebookPage(vm: PromptVM = koinViewModel()) {
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-        floatingActionButton = {
-            FloatingActionButton(onClick = { editState.open(Lorebook()) }) {
-                Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.add))
-            }
-        },
     ) { innerPadding ->
         LorebookTab(
             lorebooks = lorebooks,

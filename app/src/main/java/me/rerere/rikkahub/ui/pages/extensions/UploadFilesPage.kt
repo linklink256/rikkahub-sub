@@ -21,7 +21,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -173,6 +172,9 @@ fun UploadFilesPage(
                     title = { Text(stringResource(R.string.upload_files_page_title)) },
                     navigationIcon = { BackButton() },
                     actions = {
+                        IconButton(onClick = { importLauncher.launch("*/*") }) {
+                            Icon(HugeIcons.Add01, contentDescription = null)
+                        }
                         Box {
                             IconButton(onClick = { showSortMenu = true }) {
                                 Icon(HugeIcons.Sorting01, contentDescription = stringResource(R.string.upload_files_page_sort_by))
@@ -217,13 +219,6 @@ fun UploadFilesPage(
                     scrollBehavior = scrollBehavior,
                     colors = CustomColors.topBarColors,
                 )
-            }
-        },
-        floatingActionButton = {
-            if (!inSelection) {
-                FloatingActionButton(onClick = { importLauncher.launch("*/*") }) {
-                    Icon(HugeIcons.Add01, contentDescription = null)
-                }
             }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

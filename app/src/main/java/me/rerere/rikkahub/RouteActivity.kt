@@ -125,7 +125,6 @@ import me.rerere.rikkahub.ui.pages.setting.SettingSearchPage
 import me.rerere.rikkahub.ui.pages.setting.SettingSpeechPage
 import me.rerere.rikkahub.ui.pages.share.handler.ShareHandlerPage
 import me.rerere.rikkahub.ui.pages.stats.StatsPage
-import me.rerere.rikkahub.ui.pages.translator.TranslatorPage
 import me.rerere.rikkahub.ui.pages.webview.WebViewPage
 import me.rerere.rikkahub.ui.theme.LocalDarkMode
 import me.rerere.rikkahub.ui.theme.RikkahubTheme
@@ -384,10 +383,6 @@ class RouteActivity : ComponentActivity() {
                                 AssistantExtensionsPage(key.id)
                             }
 
-                            entry<Screen.Translator> {
-                                TranslatorPage()
-                            }
-
                             entry<Screen.Setting> {
                                 SettingPage()
                             }
@@ -621,9 +616,6 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data class AssistantInjections(val id: String) : Screen
-
-    @Serializable
-    data object Translator : Screen
 
     @Serializable
     data object Setting : Screen
