@@ -146,8 +146,7 @@ fun DefaultToolPreview(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text(
                 text = stringResource(R.string.chat_message_tool_call_label, context.tool.toolName),
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.titleMedium,
             )
             HighlightCodeBlock(
                 code = JsonInstantPretty.encodeToString(context.arguments),
@@ -157,8 +156,7 @@ fun DefaultToolPreview(
             if (context.tool.output.isNotEmpty()) {
                 Text(
                     text = stringResource(R.string.chat_message_tool_call_result),
-                    style = MaterialTheme.typography.titleSmall,
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     context.tool.output.fastForEach { part ->
