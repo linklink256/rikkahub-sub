@@ -20,6 +20,10 @@ import me.rerere.rikkahub.R
 import me.rerere.hugeicons.stroke.Book03
 import me.rerere.hugeicons.stroke.File02
 import me.rerere.hugeicons.stroke.Folder01
+import me.rerere.hugeicons.stroke.GlobalSearch
+import me.rerere.hugeicons.stroke.MagicWand01
+import me.rerere.hugeicons.stroke.McpServer
+import me.rerere.hugeicons.stroke.Megaphone01
 import me.rerere.hugeicons.stroke.Puzzle
 import me.rerere.hugeicons.stroke.Zap
 import me.rerere.rikkahub.Screen
@@ -54,19 +58,25 @@ fun ExtensionsPage() {
             item {
                 CardGroup(
                     modifier = Modifier.padding(horizontal = 8.dp),
-                    title = { Text(stringResource(R.string.extensions_page_section_extensions)) },
+                    title = { Text(stringResource(R.string.extensions_page_section_capability)) },
                 ) {
                     item(
-                        onClick = { navController.navigate(Screen.QuickMessages) },
-                        leadingContent = { Icon(HugeIcons.Zap, null) },
-                        headlineContent = { Text(stringResource(R.string.assistant_page_quick_messages)) },
-                        supportingContent = { Text(stringResource(R.string.extensions_page_quick_messages_desc)) },
+                        onClick = { navController.navigate(Screen.SettingMcp) },
+                        leadingContent = { Icon(HugeIcons.McpServer, null) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_mcp)) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_mcp_desc)) },
                     )
                     item(
-                        onClick = { navController.navigate(Screen.Prompts) },
-                        leadingContent = { Icon(HugeIcons.Book03, null) },
-                        headlineContent = { Text(stringResource(R.string.extensions_page_prompts)) },
-                        supportingContent = { Text(stringResource(R.string.extensions_page_prompts_desc)) },
+                        onClick = { navController.navigate(Screen.SettingSearch) },
+                        leadingContent = { Icon(HugeIcons.GlobalSearch, null) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_search_service)) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_search_service_desc)) },
+                    )
+                    item(
+                        onClick = { navController.navigate(Screen.SettingSpeech) },
+                        leadingContent = { Icon(HugeIcons.Megaphone01, null) },
+                        headlineContent = { Text(stringResource(R.string.setting_page_tts_service)) },
+                        supportingContent = { Text(stringResource(R.string.setting_page_tts_service_desc)) },
                     )
                     item(
                         onClick = { navController.navigate(Screen.Skills) },
@@ -79,6 +89,32 @@ fun ExtensionsPage() {
                         leadingContent = { Icon(HugeIcons.Folder01, null) },
                         headlineContent = { Text(stringResource(R.string.extensions_page_workspace)) },
                         supportingContent = { Text(stringResource(R.string.extensions_page_workspace_desc)) },
+                    )
+                }
+            }
+
+            item {
+                CardGroup(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    title = { Text(stringResource(R.string.extensions_page_section_content)) },
+                ) {
+                    item(
+                        onClick = { navController.navigate(Screen.QuickMessages) },
+                        leadingContent = { Icon(HugeIcons.Zap, null) },
+                        headlineContent = { Text(stringResource(R.string.assistant_page_quick_messages)) },
+                        supportingContent = { Text(stringResource(R.string.extensions_page_quick_messages_desc)) },
+                    )
+                    item(
+                        onClick = { navController.navigate(Screen.ModeInjections) },
+                        leadingContent = { Icon(HugeIcons.MagicWand01, null) },
+                        headlineContent = { Text(stringResource(R.string.extensions_page_mode_injection)) },
+                        supportingContent = { Text(stringResource(R.string.extensions_page_mode_injection_desc)) },
+                    )
+                    item(
+                        onClick = { navController.navigate(Screen.Lorebooks) },
+                        leadingContent = { Icon(HugeIcons.Book01, null) },
+                        headlineContent = { Text(stringResource(R.string.extensions_page_lorebook)) },
+                        supportingContent = { Text(stringResource(R.string.extensions_page_lorebook_desc)) },
                     )
                 }
             }

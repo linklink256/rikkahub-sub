@@ -47,7 +47,8 @@ fun ExtensionSelector(
     conversation: Conversation? = null,
     onUpdateConversation: ((Conversation) -> Unit)? = null,
     onNavigateToQuickMessages: () -> Unit = {},
-    onNavigateToPrompts: () -> Unit = {},
+    onNavigateToModeInjections: () -> Unit = {},
+    onNavigateToLorebooks: () -> Unit = {},
     onNavigateToSkills: () -> Unit = {},
 ) {
     val skillManager: SkillManager = koinInject()
@@ -162,13 +163,13 @@ fun ExtensionSelector(
                                     onUpdate(assistant.copy(modeInjectionIds = newIds))
                                 }
                             },
-                            onManage = onNavigateToPrompts,
+                            onManage = onNavigateToModeInjections,
                         )
                     } else {
                         ExtensionEmptyState(
                             message = stringResource(R.string.extension_selector_mode_injections_empty),
                             buttonText = stringResource(R.string.extension_selector_go_to_extensions),
-                            onAction = onNavigateToPrompts,
+                            onAction = onNavigateToModeInjections,
                         )
                     }
                 }
@@ -190,13 +191,13 @@ fun ExtensionSelector(
                                     onUpdate(assistant.copy(lorebookIds = newIds))
                                 }
                             },
-                            onManage = onNavigateToPrompts,
+                            onManage = onNavigateToLorebooks,
                         )
                     } else {
                         ExtensionEmptyState(
                             message = stringResource(R.string.extension_selector_lorebooks_empty),
                             buttonText = stringResource(R.string.extension_selector_go_to_extensions),
-                            onAction = onNavigateToPrompts,
+                            onAction = onNavigateToLorebooks,
                         )
                     }
                 }
@@ -219,6 +220,11 @@ fun ExtensionSelector(
                         )
                     }
                 }
+            }
+        }
+    }
+}
+             }
             }
         }
     }

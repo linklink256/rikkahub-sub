@@ -433,11 +433,18 @@ private fun InjectionQuickConfigSheet(
                         navController.navigate(Screen.QuickMessages)
                     }
                 },
-                onNavigateToPrompts = {
+                onNavigateToModeInjections = {
                     scope.launch {
                         sheetState.hide()
                         onDismiss()
-                        navController.navigate(Screen.Prompts)
+                        navController.navigate(Screen.ModeInjections)
+                    }
+                },
+                onNavigateToLorebooks = {
+                    scope.launch {
+                        sheetState.hide()
+                        onDismiss()
+                        navController.navigate(Screen.Lorebooks)
                     }
                 },
                 onNavigateToSkills = {

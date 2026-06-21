@@ -93,7 +93,8 @@ import me.rerere.rikkahub.ui.pages.backup.BackupPage
 import me.rerere.rikkahub.ui.pages.chat.ChatPage
 import me.rerere.rikkahub.ui.pages.debug.DebugPage
 import me.rerere.rikkahub.ui.pages.extensions.ExtensionsPage
-import me.rerere.rikkahub.ui.pages.extensions.PromptPage
+import me.rerere.rikkahub.ui.pages.extensions.LorebookPage
+import me.rerere.rikkahub.ui.pages.extensions.ModeInjectionPage
 import me.rerere.rikkahub.ui.pages.extensions.QuickMessagesPage
 import me.rerere.rikkahub.ui.pages.extensions.skills.SkillDetailPage
 import me.rerere.rikkahub.ui.pages.extensions.skills.SkillsPage
@@ -122,7 +123,6 @@ import me.rerere.rikkahub.ui.pages.setting.SettingProviderPage
 import me.rerere.rikkahub.ui.pages.setting.SettingSearchDetailPage
 import me.rerere.rikkahub.ui.pages.setting.SettingSearchPage
 import me.rerere.rikkahub.ui.pages.setting.SettingSpeechPage
-import me.rerere.rikkahub.ui.pages.setting.SettingWebPage
 import me.rerere.rikkahub.ui.pages.share.handler.ShareHandlerPage
 import me.rerere.rikkahub.ui.pages.stats.StatsPage
 import me.rerere.rikkahub.ui.pages.translator.TranslatorPage
@@ -470,10 +470,6 @@ class RouteActivity : ComponentActivity() {
                                 SettingFilesPage()
                             }
 
-                            entry<Screen.SettingWeb> {
-                                SettingWebPage()
-                            }
-
                             entry<Screen.Debug> {
                                 DebugPage()
                             }
@@ -490,8 +486,12 @@ class RouteActivity : ComponentActivity() {
                                 QuickMessagesPage()
                             }
 
-                            entry<Screen.Prompts> {
-                                PromptPage()
+                            entry<Screen.ModeInjections> {
+                                ModeInjectionPage()
+                            }
+
+                            entry<Screen.Lorebooks> {
+                                LorebookPage()
                             }
 
                             entry<Screen.Skills> {
@@ -686,9 +686,6 @@ sealed interface Screen : NavKey {
     data object SettingFiles : Screen
 
     @Serializable
-    data object SettingWeb : Screen
-
-    @Serializable
     data object Debug : Screen
 
     @Serializable
@@ -701,7 +698,10 @@ sealed interface Screen : NavKey {
     data object QuickMessages : Screen
 
     @Serializable
-    data object Prompts : Screen
+    data object ModeInjections : Screen
+
+    @Serializable
+    data object Lorebooks : Screen
 
     @Serializable
     data object Skills : Screen

@@ -1,4 +1,4 @@
-package me.rerere.rikkahub.web
+package me.rerere.rikkahub.service
 
 import io.ktor.http.HttpStatusCode
 
