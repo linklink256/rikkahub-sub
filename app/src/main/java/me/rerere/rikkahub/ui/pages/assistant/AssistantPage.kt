@@ -20,7 +20,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -65,6 +64,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.AssistantMemory
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
@@ -555,25 +555,17 @@ private fun AssistantActionSheet(
         }
     }
 
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = { Text(stringResource(R.string.assistant_page_delete)) },
-            text = { Text(stringResource(R.string.assistant_page_delete_dialog_text)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        onDelete()
-                    }) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
+    RikkaConfirmDialog(
+        show = showDeleteDialog,
+        title = stringResource(R.string.assistant_page_delete),
+        confirmText = stringResource(R.string.confirm),
+        dismissText = stringResource(R.string.cancel),
+        onConfirm = {
+            showDeleteDialog = false
+            onDelete()
+        },
+        onDismiss = { showDeleteDialog = false },
+    ) {
+        Text(stringResource(R.string.assistant_page_delete_dialog_text))
     }
 }

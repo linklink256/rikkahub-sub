@@ -35,7 +35,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
@@ -110,6 +109,7 @@ import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.ai.ModelTypeTag
 import me.rerere.rikkahub.ui.components.ai.ProviderBalanceText
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.ShareSheet
 import me.rerere.rikkahub.ui.components.ui.SiliconFlowPowerByIcon
@@ -345,32 +345,18 @@ private fun SettingProviderConfigPage(
         }
     }
 
-    // Delete confirmation dialog
-    if (showDeleteDialog) {
-        AlertDialog(
-            onDismissRequest = { showDeleteDialog = false },
-            title = {
-                Text(stringResource(R.string.confirm_delete))
-            },
-            text = {
-                Text(stringResource(R.string.setting_provider_page_delete_dialog_text))
-            },
-            dismissButton = {
-                TextButton(onClick = { showDeleteDialog = false }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDeleteDialog = false
-                        onDelete()
-                    }
-                ) {
-                    Text(stringResource(R.string.delete))
-                }
-            }
-        )
+    RikkaConfirmDialog(
+        show = showDeleteDialog,
+        title = stringResource(R.string.confirm_delete),
+        confirmText = stringResource(R.string.delete),
+        dismissText = stringResource(R.string.cancel),
+        onConfirm = {
+            showDeleteDialog = false
+            onDelete()
+        },
+        onDismiss = { showDeleteDialog = false },
+    ) {
+        Text(stringResource(R.string.setting_provider_page_delete_dialog_text))
     }
 }
 
