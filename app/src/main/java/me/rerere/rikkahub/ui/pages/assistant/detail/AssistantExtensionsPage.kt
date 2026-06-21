@@ -130,7 +130,7 @@ fun AssistantExtensionsPage(id: String) {
                         if (settings.modeInjections.isEmpty()) {
                             ExtensionEmptyState(
                                 message = stringResource(R.string.assistant_extensions_page_empty_mode_injections),
-                                buttonText = stringResource(R.string.assistant_extensions_page_goto_prompts),
+                                buttonText = stringResource(R.string.assistant_extensions_page_goto_mode_injections),
                                 onAction = { navController.navigate(Screen.ModeInjections) },
                             )
                         } else {
@@ -149,7 +149,7 @@ fun AssistantExtensionsPage(id: String) {
                                     onClick = { navController.navigate(Screen.ModeInjections) },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text(stringResource(R.string.assistant_extensions_page_goto_prompts))
+                                    Text(stringResource(R.string.assistant_extensions_page_goto_mode_injections))
                                 }
                             }
                         }
@@ -159,7 +159,7 @@ fun AssistantExtensionsPage(id: String) {
                         if (settings.lorebooks.isEmpty()) {
                             ExtensionEmptyState(
                                 message = stringResource(R.string.assistant_extensions_page_empty_lorebooks),
-                                buttonText = stringResource(R.string.assistant_extensions_page_goto_prompts),
+                                buttonText = stringResource(R.string.assistant_extensions_page_goto_lorebooks),
                                 onAction = { navController.navigate(Screen.Lorebooks) },
                             )
                         } else {
@@ -178,7 +178,7 @@ fun AssistantExtensionsPage(id: String) {
                                     onClick = { navController.navigate(Screen.Lorebooks) },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text(stringResource(R.string.assistant_extensions_page_goto_prompts))
+                                    Text(stringResource(R.string.assistant_extensions_page_goto_lorebooks))
                                 }
                             }
                         }

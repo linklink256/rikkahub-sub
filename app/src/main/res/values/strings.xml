@@ -18,12 +18,14 @@
   <string name="assistant_detail_memory_desc">Manage assistant memory and recent chat references</string>
   <string name="assistant_detail_prompt_desc">Set system prompts, message templates, and regex rules</string>
   <string name="assistant_detail_request_desc">Configure custom request headers and body parameters</string>
-  <string name="assistant_extensions_page_empty_lorebooks">No lorebooks available, create one in Prompts</string>
-  <string name="assistant_extensions_page_empty_mode_injections">No mode injections available, create one in Prompts</string>
+  <string name="assistant_extensions_page_empty_lorebooks">No lorebooks available, create one in Lorebooks</string>
+  <string name="assistant_extensions_page_empty_mode_injections">No mode injections available, create one in Mode Injections</string>
   <string name="assistant_extensions_page_empty_quick_messages">No quick messages available, create one in Extensions</string>
   <string name="assistant_extensions_page_empty_skills">No skills available, install one in Extensions</string>
   <string name="assistant_extensions_page_goto_extensions">Go to Extensions</string>
   <string name="assistant_extensions_page_goto_prompts">Go to Prompts</string>
+  <string name="assistant_extensions_page_goto_mode_injections">Go to Mode Injections</string>
+  <string name="assistant_extensions_page_goto_lorebooks">Go to Lorebooks</string>
   <string name="assistant_extensions_page_tab_lorebooks">Lorebooks</string>
   <string name="assistant_extensions_page_tab_mode_injections">Mode Injections</string>
   <string name="assistant_extensions_page_tab_quick_messages">Quick Messages</string>
