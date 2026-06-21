@@ -74,21 +74,19 @@ fun DebugPage(vm: DebugVM = koinViewModel()) {
                 title = {
                     Text("Debug Mode")
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-    ) { contentPadding ->
+    ) { innerPadding ->
         val state = rememberPagerState { 3 }
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPadding)
+                .padding(innerPadding)
         ) {
             SecondaryTabRow(
                 selectedTabIndex = state.currentPage,

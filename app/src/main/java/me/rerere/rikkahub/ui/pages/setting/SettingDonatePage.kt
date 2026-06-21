@@ -54,19 +54,17 @@ fun SettingDonatePage() {
                 title = {
                     Text(text = stringResource(R.string.donate_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-    ) { paddings ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
-                .padding(paddings)
+                .padding(innerPadding)
                 .padding(16.dp)
                 .fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)

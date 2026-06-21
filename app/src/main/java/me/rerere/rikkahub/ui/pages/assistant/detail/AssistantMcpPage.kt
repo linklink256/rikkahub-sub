@@ -37,9 +37,7 @@ fun AssistantMcpPage(id: String) {
                 title = {
                     Text(stringResource(R.string.assistant_page_tab_mcp))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

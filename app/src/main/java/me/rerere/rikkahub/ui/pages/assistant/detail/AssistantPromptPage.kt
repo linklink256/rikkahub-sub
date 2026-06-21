@@ -112,9 +112,7 @@ fun AssistantPromptPage(id: String) {
                 title = {
                     Text(stringResource(R.string.assistant_page_tab_prompt))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

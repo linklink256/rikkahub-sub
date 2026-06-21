@@ -47,20 +47,18 @@ fun BackupPage(vm: BackupVM = koinViewModel()) {
                 title = {
                     Text(stringResource(R.string.backup_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor
-    ) { contentPadding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPadding)
+                .padding(innerPadding)
         ) {
             SecondaryScrollableTabRow(
                 selectedTabIndex = pagerState.currentPage,

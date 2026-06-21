@@ -69,12 +69,12 @@ fun StatsPage(vm: StatsVM = koinViewModel()) {
             )
         },
         containerColor = CustomColors.topBarColors.containerColor,
-    ) { padding ->
+    ) { innerPadding ->
         if (stats.isLoading) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(padding),
+                    .padding(innerPadding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
@@ -82,7 +82,7 @@ fun StatsPage(vm: StatsVM = koinViewModel()) {
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = padding + PaddingValues(8.dp),
+                contentPadding = innerPadding + PaddingValues(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 item {

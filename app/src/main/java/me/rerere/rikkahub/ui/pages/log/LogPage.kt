@@ -77,7 +77,7 @@ fun LogPage() {
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-    ) { contentPadding ->
+    ) { innerPadding ->
         UnifiedLogList(
             logs = logs,
             requestLoggingEnabled = requestLoggingEnabled,
@@ -87,7 +87,7 @@ fun LogPage() {
             },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPadding)
+                .padding(innerPadding)
         )
     }
 }

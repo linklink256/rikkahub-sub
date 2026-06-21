@@ -73,9 +73,7 @@ fun SettingAboutPage() {
                 title = {
                     Text(stringResource(R.string.about_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

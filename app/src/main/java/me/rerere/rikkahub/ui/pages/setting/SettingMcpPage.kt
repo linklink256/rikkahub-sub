@@ -53,8 +53,7 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SwipeToDismissBox
-import me.rerere.rikkahub.ui.components.ui.Switch
-import me.rerere.rikkahub.ui.components.ui.SwitchSize
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -136,9 +135,7 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
                 title = {
                     Text(stringResource(R.string.setting_mcp_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     IconButton(
                         onClick = {
@@ -850,8 +847,7 @@ private fun McpToolCard(
                     )
                     Switch(
                         checked = tool.needsApproval,
-                        onCheckedChange = onNeedsApprovalChange,
-                        size = SwitchSize.Small
+                        onCheckedChange = onNeedsApprovalChange
                     )
                 }
                 // 启用开关
@@ -865,8 +861,7 @@ private fun McpToolCard(
                     )
                     Switch(
                         checked = tool.enable,
-                        onCheckedChange = onEnableChange,
-                        size = SwitchSize.Small
+                        onCheckedChange = onEnableChange
                     )
                 }
                 // 展开/收起按钮

@@ -73,9 +73,7 @@ fun AssistantBasicPage(id: String) {
                 title = {
                     Text(stringResource(R.string.assistant_page_tab_basic))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

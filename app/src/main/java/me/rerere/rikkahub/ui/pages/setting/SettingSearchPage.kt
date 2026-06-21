@@ -82,9 +82,7 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                 title = {
                     Text(stringResource(R.string.setting_page_search_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     IconButton(
                         onClick = { showAddDialog = true }
@@ -101,7 +99,7 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor
-    ) {
+    ) { innerPadding ->
         val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
             val fromIndex = from.index
             val toIndex = to.index
@@ -121,7 +119,7 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding(),
-            contentPadding = it + PaddingValues(16.dp),
+            contentPadding = innerPadding + PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
             state = lazyListState
         ) {

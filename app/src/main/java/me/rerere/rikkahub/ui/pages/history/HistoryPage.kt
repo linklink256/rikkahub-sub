@@ -77,9 +77,7 @@ fun HistoryPage(vm: HistoryVM = koinViewModel()) {
                 title = {
                     Text(stringResource(R.string.history_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     IconButton(
                         onClick = {
@@ -108,11 +106,11 @@ fun HistoryPage(vm: HistoryVM = koinViewModel()) {
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState)
         }
-    ) { contentPadding ->
+    ) { innerPadding ->
         val snackMessageDeleted = stringResource(R.string.history_page_conversation_deleted)
         val snackMessageUndo = stringResource(R.string.history_page_undo)
         LazyColumn(
-            contentPadding = contentPadding + PaddingValues(16.dp),
+            contentPadding = innerPadding + PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             items(conversations, key = { it.id }) { conversation ->

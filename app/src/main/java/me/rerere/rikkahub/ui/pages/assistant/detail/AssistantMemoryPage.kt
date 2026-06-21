@@ -70,9 +70,7 @@ fun AssistantMemoryPage(id: String) {
                 title = {
                     Text(stringResource(R.string.assistant_page_tab_memory))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

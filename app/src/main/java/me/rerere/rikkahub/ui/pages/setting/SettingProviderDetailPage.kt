@@ -172,9 +172,7 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
         containerColor = CustomColors.topBarColors.containerColor,
         topBar = {
             LargeFlexibleTopAppBar(
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 colors = CustomColors.topBarColors,
                 scrollBehavior = scrollBehavior,
                 title = {
@@ -225,12 +223,12 @@ fun SettingProviderDetailPage(id: Uuid, vm: SettingVM = koinViewModel()) {
                 )
             }
         }
-    ) {
+    ) { innerPadding ->
         HorizontalPager(
             state = pager,
             modifier = Modifier
-                .padding(it)
-                .consumeWindowInsets(it)
+                .padding(innerPadding)
+                .consumeWindowInsets(innerPadding)
         ) { page ->
             when (page) {
                 0 -> {

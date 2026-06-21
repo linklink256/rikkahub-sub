@@ -116,9 +116,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                 title = {
                     Text(stringResource(R.string.assistant_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     IconButton(
                         onClick = {
@@ -133,13 +131,13 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-    ) {
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it)
+                .padding(innerPadding)
                 .padding(top = 16.dp)
-                .consumeWindowInsets(it),
+                .consumeWindowInsets(innerPadding),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             val lazyListState = rememberLazyListState()

@@ -63,9 +63,7 @@ fun FavoritePage(vm: FavoriteVM = koinViewModel()) {
     Scaffold(
         topBar = {
             LargeFlexibleTopAppBar(
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 title = {
                     Text(stringResource(R.string.favorite_page_title))
                 },

@@ -90,9 +90,7 @@ fun TranslatorPage(vm: TranslatorVM = koinViewModel()) {
                 title = {
                     Text(stringResource(R.string.translator_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     ModelSelector(
                         modelId = settings.translateModeId,
@@ -125,10 +123,10 @@ fun TranslatorPage(vm: TranslatorVM = koinViewModel()) {
                 targetLanguage = targetLanguage
             )
         }
-    ) { paddingValues ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
-                .padding(paddingValues)
+                .padding(innerPadding)
                 .fillMaxSize()
                 .padding(16.dp)
                 .verticalScroll(rememberScrollState()),

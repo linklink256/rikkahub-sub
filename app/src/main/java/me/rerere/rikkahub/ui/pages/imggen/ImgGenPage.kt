@@ -146,9 +146,7 @@ fun ImageGenPage(
                 title = {
                     Text(stringResource(R.string.imggen_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     IconButton(onClick = vm::startNewSession) {
                         Icon(

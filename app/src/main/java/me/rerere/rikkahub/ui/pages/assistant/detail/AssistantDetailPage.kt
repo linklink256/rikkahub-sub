@@ -68,9 +68,7 @@ fun AssistantDetailPage(id: String) {
                         maxLines = 1,
                     )
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors
             )

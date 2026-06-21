@@ -118,9 +118,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                 title = {
                     Text(text = stringResource(R.string.setting_provider_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     if(Locale.getDefault().language == "zh") {
                         IconButton(

@@ -42,9 +42,7 @@ fun AssistantRequestPage(id: String) {
                 title = {
                     Text(stringResource(R.string.assistant_page_tab_request))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

@@ -44,9 +44,7 @@ fun AssistantLocalToolPage(id: String) {
                 title = {
                     Text(stringResource(R.string.assistant_page_tab_local_tools))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors,
             )

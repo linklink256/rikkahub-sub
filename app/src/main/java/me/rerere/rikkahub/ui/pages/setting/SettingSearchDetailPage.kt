@@ -90,9 +90,7 @@ fun SettingSearchDetailPage(
                 title = {
                     Text(options.displayName)
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     if (settings.searchServices.size > 1) {
                         IconButton(
@@ -116,12 +114,12 @@ fun SettingSearchDetailPage(
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor
-    ) { padding ->
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .imePadding(),
-            contentPadding = padding + PaddingValues(16.dp),
+            contentPadding = innerPadding + PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item("config") {

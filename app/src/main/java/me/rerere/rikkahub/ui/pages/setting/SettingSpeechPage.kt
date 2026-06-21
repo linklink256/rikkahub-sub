@@ -92,9 +92,7 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
                 title = {
                     Text(text = stringResource(R.string.speech_page_title))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     if (selectedPage == 0) {
                         AddTTSProviderButton {

@@ -118,9 +118,7 @@ fun SettingPage(vm: SettingVM = koinViewModel()) {
                 title = {
                     Text(text = stringResource(R.string.settings))
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 scrollBehavior = scrollBehavior,
                 colors = CustomColors.topBarColors
             )

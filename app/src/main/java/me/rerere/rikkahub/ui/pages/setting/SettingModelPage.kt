@@ -86,14 +86,14 @@ fun SettingModelPage(vm: SettingVM = koinViewModel()) {
             }
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-    ) { contentPadding ->
+    ) { innerPadding ->
         HorizontalPager(
             state = pagerState,
             modifier = Modifier.fillMaxSize(),
         ) { page ->
             when (page) {
-                0 -> ModelSettingsPage(settings = settings, vm = vm, contentPadding = contentPadding)
-                1 -> PromptSettingsPage(settings = settings, vm = vm, contentPadding = contentPadding)
+                0 -> ModelSettingsPage(settings = settings, vm = vm, contentPadding = innerPadding)
+                1 -> PromptSettingsPage(settings = settings, vm = vm, contentPadding = innerPadding)
             }
         }
     }

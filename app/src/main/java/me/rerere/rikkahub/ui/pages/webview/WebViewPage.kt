@@ -86,9 +86,7 @@ fun WebViewPage(url: String, content: String) {
                         style = MaterialTheme.typography.titleSmall
                     )
                 },
-                navigationIcon = {
-                    BackButton()
-                },
+                navigationIcon = { BackButton() },
                 actions = {
                     IconButton(onClick = { state.reload() }) {
                         Icon(HugeIcons.Refresh01, contentDescription = "Refresh")
@@ -136,12 +134,12 @@ fun WebViewPage(url: String, content: String) {
                 }
             )
         }
-    ) {
+    ) { innerPadding ->
         WebView(
             state = state,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(it),
+                .padding(innerPadding),
         )
     }
 

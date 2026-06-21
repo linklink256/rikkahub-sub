@@ -113,11 +113,11 @@ fun SearchPage(vm: SearchVM = koinViewModel()) {
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-    ) { contentPadding ->
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(contentPadding)
+                .padding(innerPadding)
         ) {
             OutlinedTextField(
                 value = vm.searchQuery,
