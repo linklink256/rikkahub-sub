@@ -48,6 +48,7 @@ import com.dokar.sonner.ToastType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.uuid.Uuid
+import me.rerere.asr.ASRProviderSetting
 import me.rerere.common.android.Logging
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
@@ -101,9 +102,18 @@ fun VoiceCallPage(conversationId: String) {
     LaunchedEffect(state.status) {
         if (state.status == VoiceCallStatus.LISTENING) {
             Logging.log("VoiceCall", "Entering LISTENING, starting ASR")
-            asr.start { transcript ->
-                vm.updateUserTranscript(transcript)
-            }
+            asr.start(
+                onTranscriptChange = { transcript ->
+                    vm.updateUserTranscript(transcript)
+                },
+                onTranscriptComplete = { finalTranscript ->
+                    Logging.log("VoiceCall", "ASR transcript complete: $finalTranscript")
+                    if (finalTranscript.isNotBlank() && vm.state.value.status == VoiceCallStatus.LISTENING) {
+                        vm.updateUserTranscript(finalTranscript)
+                        vm.sendUserMessage(finalTranscript)
+                    }
+                }
+            )
         } else {
             Logging.log("VoiceCall", "Leaving LISTENING, stopping ASR")
             asr.stop()
@@ -172,19 +182,34 @@ fun VoiceCallPage(conversationId: String) {
     // ASR 错误提示
     LaunchedEffect(asrState.errorMessage) {
         if (!asrState.errorMessage.isNullOrBlank()) {
+            val asrProvider = setting.getSelectedASRProvider()
+            val isSystemASR = asrProvider is ASRProviderSetting.SystemASR
+            val message = if (isSystemASR) {
+                "系统语音识别不可用: ${asrState.errorMessage}\n建议在设置中配置云端 ASR（如 DashScope）"
+            } else {
+                "语音识别出错: ${asrState.errorMessage}"
+            }
             toaster.show(
-                message = "语音识别出错: ${asrState.errorMessage}",
+                message = message,
                 type = ToastType.Error,
             )
+            Logging.log("VoiceCall", "ASR error, resetting to IDLE: ${asrState.errorMessage}")
+            vm.updateStatus(VoiceCallStatus.IDLE)
         }
     }
 
     // ---- 按钮动作 ----
 
     val startCall: () -> Unit = {
+        val asrProvider = setting.getSelectedASRProvider()
         when {
-            setting.getSelectedASRProvider() == null -> toaster.show(
+            asrProvider == null -> toaster.show(
                 message = "语音识别未就绪, 请先在设置中配置 ASR",
+                type = ToastType.Warning,
+            )
+
+            asrProvider is ASRProviderSetting.SystemASR && !asrState.isAvailable -> toaster.show(
+                message = "系统语音识别在此设备上不可用，建议配置云端 ASR（如 DashScope）",
                 type = ToastType.Warning,
             )
 
@@ -204,10 +229,16 @@ fun VoiceCallPage(conversationId: String) {
 
     val stopAndSend: () -> Unit = {
         Logging.log("VoiceCall", "Stop and send")
-        asr.stop()
         val text = vm.state.value.userTranscript
         if (text.isNotBlank()) {
+            asr.stop()
             vm.sendUserMessage(text)
+        } else {
+            Logging.log("VoiceCall", "Stop and send with empty transcript, ignoring")
+            toaster.show(
+                message = "没有听到声音，请再说一次",
+                type = ToastType.Warning,
+            )
         }
     }
 
