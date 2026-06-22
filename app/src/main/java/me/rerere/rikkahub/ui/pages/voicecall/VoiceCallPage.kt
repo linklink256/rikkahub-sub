@@ -32,7 +32,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +55,7 @@ import me.rerere.common.android.Logging
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.Voice
+import me.rerere.ai.core.MessageRole
 import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
 import me.rerere.rikkahub.data.datastore.getSelectedTTSProvider
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionManager
@@ -93,6 +96,10 @@ fun VoiceCallPage(conversationId: String) {
 
     val conversationUuid = remember { Uuid.parse(conversationId) }
 
+    // 流式 TTS 状态
+    var streamCycle by remember { mutableStateOf(0) }
+    val generationDone = remember { mutableStateOf(false) }
+
     val asrPermission = rememberPermissionState(PermissionRecordAudio)
     PermissionManager(permissionState = asrPermission)
 
@@ -120,41 +127,62 @@ fun VoiceCallPage(conversationId: String) {
         }
     }
 
-    // 长驻收集器 — 从进入 composition 就订阅, 不会丢失 generationDoneFlow 事件
+    // 长驻收集器 — 标记生成完成
     LaunchedEffect(Unit) {
         vm.generationDoneFlow.collect { doneUuid ->
-            if (doneUuid == conversationUuid && vm.state.value.status == VoiceCallStatus.THINKING) {
-                Logging.log("VoiceCall", "Generation done (from long-lived collector)")
-                val text = vm.getLatestAssistantText()
-                if (!text.isNullOrBlank()) {
-                    Logging.log("VoiceCall", "Assistant text: $text")
+            if (doneUuid == conversationUuid) {
+                generationDone.value = true
+                Logging.log("VoiceCall", "Generation done flag set")
+            }
+        }
+    }
+
+    // 流式 TTS: 实时监听对话更新, 将 AI 回复逐块送入 TTS
+    LaunchedEffect(streamCycle) {
+        val thisCycle = streamCycle
+        var lastTextLength = 0
+        Logging.log("VoiceCall", "Streaming TTS started, cycle=$thisCycle")
+
+        vm.conversation.collect { conv ->
+            // 只有同一个 cycle 且处于思考或播报状态才处理
+            if (streamCycle != thisCycle) return@collect
+            val s = vm.state.value.status
+            if (s != VoiceCallStatus.THINKING && s != VoiceCallStatus.SPEAKING) return@collect
+
+            val text = conv.currentMessages
+                .lastOrNull { it.role == MessageRole.ASSISTANT }
+                ?.toText().orEmpty()
+
+            if (text.length > lastTextLength) {
+                val delta = text.substring(lastTextLength)
+                lastTextLength = text.length
+                if (delta.isNotBlank()) {
+                    val isFirst = s == VoiceCallStatus.THINKING
+                    Logging.log(
+                        "VoiceCall",
+                        "TTS delta (${delta.length}c, flush=$isFirst): ${delta.take(40)}..."
+                    )
+                    tts.speak(delta, flushCalled = isFirst)
                     vm.updateAssistantText(text)
-                    tts.speak(text)
-                    vm.updateStatus(VoiceCallStatus.SPEAKING)
-                } else {
-                    // 无新回复, 可能是生成失败 — 检查错误并提示
-                    val error = vm.errors.value.lastOrNull { it.conversationId == conversationUuid }
-                    if (error != null) {
-                        toaster.show(
-                            message = error.title ?: "生成回复出错",
-                            type = ToastType.Error,
-                        )
+                    if (isFirst) {
+                        vm.updateStatus(VoiceCallStatus.SPEAKING)
                     }
-                    vm.updateStatus(VoiceCallStatus.LISTENING)
                 }
             }
         }
     }
 
-    // THINKING 超时保护: 若 120 秒内状态未从 THINKING 切走, 提示超时
+    // THINKING 处理: 启动流式 TTS + 超时保护
     LaunchedEffect(state.status) {
         if (state.status == VoiceCallStatus.THINKING) {
-            Logging.log("VoiceCall", "Entering THINKING, waiting for generation")
+            Logging.log("VoiceCall", "Entering THINKING, starting streaming cycle")
+            generationDone.value = false
+            streamCycle++  // 触发新的流式 TTS 周期
+
+            // 超时保护: 若 120 秒内状态未从 THINKING 切走
             withTimeoutOrNull(120_000L) {
-                // 等待状态从 THINKING 切走 (由长驻收集器或打断触发)
                 vm.state.first { it.status != VoiceCallStatus.THINKING }
             } ?: run {
-                // 超时 — 状态仍然是 THINKING
                 if (vm.state.value.status == VoiceCallStatus.THINKING) {
                     Logging.log("VoiceCall", "Generation timeout (120s)")
                     toaster.show(
@@ -172,8 +200,11 @@ fun VoiceCallPage(conversationId: String) {
         if (state.status == VoiceCallStatus.SPEAKING) {
             when (ttsPlaybackState.status) {
                 PlaybackStatus.Ended -> {
-                    Logging.log("VoiceCall", "TTS playback ended, back to LISTENING")
-                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                    Logging.log("VoiceCall", "TTS playback ended, generationDone=${generationDone.value}")
+                    // 只有生成完成才回到聆听, 否则继续等待流式 TTS 的新数据
+                    if (generationDone.value) {
+                        vm.updateStatus(VoiceCallStatus.LISTENING)
+                    }
                 }
                 PlaybackStatus.Error -> {
                     Logging.log("VoiceCall", "TTS error, back to LISTENING")
