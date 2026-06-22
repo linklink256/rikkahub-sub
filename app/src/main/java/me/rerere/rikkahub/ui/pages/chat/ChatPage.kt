@@ -63,7 +63,9 @@ import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.LeftToRightListBullet
 import me.rerere.hugeicons.stroke.Menu03
 import me.rerere.hugeicons.stroke.MessageAdd01
+import me.rerere.hugeicons.stroke.Voice
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.findProvider
 import me.rerere.rikkahub.data.datastore.getCurrentAssistant
@@ -312,6 +314,11 @@ private fun ChatPageContent(
                     previewMode = previewMode,
                     onNewChat = {
                         navigateToChatPage(navController)
+                    },
+                    onVoiceCall = {
+                        navController.navigate(
+                            Screen.VoiceCall(conversationId = conversation.id.toString())
+                        )
                     },
                     onClickMenu = {
                         previewMode = !previewMode
@@ -695,6 +702,7 @@ private fun TopBar(
     previewMode: Boolean,
     onClickMenu: () -> Unit,
     onNewChat: () -> Unit,
+    onVoiceCall: () -> Unit,
     onUpdateTitle: (String) -> Unit
 ) {
     val scope = rememberCoroutineScope()
@@ -759,6 +767,14 @@ private fun TopBar(
                 }
             ) {
                 Icon(if (previewMode) HugeIcons.Cancel01 else HugeIcons.LeftToRightListBullet, "Chat Options")
+            }
+
+            IconButton(
+                onClick = {
+                    onVoiceCall()
+                }
+            ) {
+                Icon(HugeIcons.Voice, "Voice Call")
             }
 
             IconButton(
