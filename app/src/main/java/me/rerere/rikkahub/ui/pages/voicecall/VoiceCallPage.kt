@@ -155,10 +155,10 @@ fun VoiceCallPage(conversationId: String) {
             val assistantIndex = conv.currentMessages.indexOfLast { it.role == MessageRole.ASSISTANT }
             val text = if (assistantIndex >= 0) conv.currentMessages[assistantIndex].toText() else ""
 
-            // 新消息出现 → 重置追踪 (避免把上一轮的旧回复当新 delta)
+            // 新消息出现 → 重置追踪 (跳过已有文本, 只追踪后续增长)
             if (assistantIndex != lastAssistantIndex) {
                 lastAssistantIndex = assistantIndex
-                lastTextLength = 0
+                lastTextLength = text.length  // 把当前文本标记为"已处理", 只追踪新增的
                 pendingBuffer.clear()
             }
 
