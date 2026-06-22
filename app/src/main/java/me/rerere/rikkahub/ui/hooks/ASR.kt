@@ -21,6 +21,7 @@ import me.rerere.asr.providers.OpenAIRealtimeASRController
 import me.rerere.asr.providers.StepASRController
 import me.rerere.asr.providers.SystemASRController
 import me.rerere.asr.providers.VolcengineASRController
+import me.rerere.common.android.Logging
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
 import okhttp3.OkHttpClient
@@ -81,20 +82,31 @@ private class CustomAsrStateImpl(
 
     fun updateProvider(provider: ASRProviderSetting?) {
         controller?.dispose()
-        controller = provider?.let { createController(it) }
+        if (provider == null) {
+            Logging.log("ASRHook", "Provider is null, no controller created")
+            controller = null
+        } else {
+            controller = createController(provider)
+            Logging.log("ASRHook", "Provider updated: ${provider::class.simpleName}")
+        }
         if (controller == null) {
             idleState.value = ASRState()
         }
     }
 
     override fun start(onTranscriptChange: (String) -> Unit, onTranscriptComplete: ((String) -> Unit)?) {
+        Logging.log("ASRHook", "start() called, controller exists: ${controller != null}")
         val result = audioManager.requestAudioFocus(audioFocusRequest)
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
+            Logging.log("ASRHook", "Audio focus granted, starting controller")
             controller?.start(onTranscriptChange, onTranscriptComplete)
+        } else {
+            Logging.log("ASRHook", "Audio focus DENIED")
         }
     }
 
     override fun stop() {
+        Logging.log("ASRHook", "stop() called")
         controller?.stop()
         audioManager.abandonAudioFocusRequest(audioFocusRequest)
     }
@@ -108,31 +120,52 @@ private class CustomAsrStateImpl(
     private fun createController(provider: ASRProviderSetting): ASRController? {
         return when (provider) {
             is ASRProviderSetting.OpenAIRealtime -> {
-                if (provider.apiKey.isBlank()) return null
+                if (provider.apiKey.isBlank()) {
+                    Logging.log("ASRHook", "OpenAIRealtime apiKey is blank, returning null controller")
+                    return null
+                }
+                Logging.log("ASRHook", "Creating OpenAIRealtimeASRController")
                 OpenAIRealtimeASRController(context, httpClient, provider)
             }
 
             is ASRProviderSetting.DashScope -> {
-                if (provider.apiKey.isBlank()) return null
+                if (provider.apiKey.isBlank()) {
+                    Logging.log("ASRHook", "DashScope apiKey is blank, returning null controller")
+                    return null
+                }
+                Logging.log("ASRHook", "Creating DashScopeASRController")
                 DashScopeASRController(context, httpClient, provider)
             }
 
             is ASRProviderSetting.Volcengine -> {
-                if (provider.apiKey.isBlank()) return null
+                if (provider.apiKey.isBlank()) {
+                    Logging.log("ASRHook", "Volcengine apiKey is blank, returning null controller")
+                    return null
+                }
+                Logging.log("ASRHook", "Creating VolcengineASRController")
                 VolcengineASRController(context, httpClient, provider)
             }
 
             is ASRProviderSetting.MiMo -> {
-                if (provider.apiKey.isBlank()) return null
+                if (provider.apiKey.isBlank()) {
+                    Logging.log("ASRHook", "MiMo apiKey is blank, returning null controller")
+                    return null
+                }
+                Logging.log("ASRHook", "Creating MiMoASRController")
                 MiMoASRController(context, httpClient, provider)
             }
 
             is ASRProviderSetting.Step -> {
-                if (provider.apiKey.isBlank()) return null
+                if (provider.apiKey.isBlank()) {
+                    Logging.log("ASRHook", "Step apiKey is blank, returning null controller")
+                    return null
+                }
+                Logging.log("ASRHook", "Creating StepASRController")
                 StepASRController(context, httpClient, provider)
             }
 
             is ASRProviderSetting.SystemASR -> {
+                Logging.log("ASRHook", "Creating SystemASRController")
                 SystemASRController(context, provider)
             }
         }

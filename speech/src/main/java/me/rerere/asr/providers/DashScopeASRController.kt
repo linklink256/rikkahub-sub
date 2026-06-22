@@ -28,6 +28,7 @@ import me.rerere.asr.ASRState
 import me.rerere.asr.ASRStatus
 import me.rerere.asr.appendAmplitude
 import me.rerere.asr.calculateRmsAmplitude
+import me.rerere.common.android.Logging
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -69,6 +70,7 @@ class DashScopeASRController(
                 Manifest.permission.RECORD_AUDIO
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            Logging.log(TAG, "RECORD_AUDIO permission not granted")
             setError("Microphone permission is required")
             return
         }
@@ -84,6 +86,8 @@ class DashScopeASRController(
             )
         }
 
+        Logging.log(TAG, "ASR start called, connecting to ${provider.websocketEndpoint()}")
+
         val request = Request.Builder()
             .url(provider.websocketEndpoint())
             .addHeader("Authorization", "Bearer ${provider.apiKey}")
@@ -92,6 +96,7 @@ class DashScopeASRController(
 
         webSocket = httpClient.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
+                Logging.log(TAG, "WebSocket connected, sending session update")
                 webSocket.send(provider.sessionUpdateEvent().toString())
                 _state.update { it.copy(status = ASRStatus.Listening, errorMessage = null) }
                 startRecorder(webSocket)
@@ -103,11 +108,13 @@ class DashScopeASRController(
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "DashScope ASR websocket failed", t)
+                Logging.log(TAG, "WebSocket failed: ${t.message}")
                 releaseRecorder()
                 setError(t.message ?: "ASR websocket failed")
             }
 
             override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Logging.log(TAG, "WebSocket closed: code=$code, reason=$reason")
                 releaseRecorder()
                 _state.update {
                     it.copy(
@@ -120,6 +127,7 @@ class DashScopeASRController(
     }
 
     override fun stop() {
+        Logging.log(TAG, "ASR stop called")
         recorderJob?.cancel()
         releaseRecorder()
         val socket = webSocket
@@ -139,6 +147,7 @@ class DashScopeASRController(
     }
 
     override fun dispose() {
+        Logging.log(TAG, "ASR dispose called")
         stop()
         scope.cancel()
     }
@@ -167,6 +176,7 @@ class DashScopeASRController(
 
             try {
                 recorder.startRecording()
+                Logging.log(TAG, "AudioRecord started, sampleRate=${provider.sampleRate}, bufferSize=$bufferSize")
                 val buffer = ByteArray(bufferSize)
                 while (isActive) {
                     val read = recorder.read(buffer, 0, buffer.size)
@@ -182,6 +192,7 @@ class DashScopeASRController(
                             socket.send(event.toString())
                         } else {
                             Log.w(TAG, "WebSocket queue full, dropping audio frame")
+                            Logging.log(TAG, "WebSocket queue full, dropping audio frame")
                         }
                     } else if (read < 0) {
                         throw IllegalStateException("AudioRecord read error: $read")
@@ -189,6 +200,7 @@ class DashScopeASRController(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Audio recording failed", e)
+                Logging.log(TAG, "AudioRecord failed: ${e.message}")
                 setError(e.message ?: "Audio recording failed")
             } finally {
                 releaseRecorder()
@@ -207,6 +219,7 @@ class DashScopeASRController(
                 val itemId = event.optString("item_id", "default")
                 val delta = event.optString("delta")
                 if (delta.isNotEmpty()) {
+                    Logging.log(TAG, "Transcript delta: $delta")
                     partialTranscripts[itemId] = (partialTranscripts[itemId] ?: "") + delta
                     publishTranscript()
                 }
@@ -226,6 +239,7 @@ class DashScopeASRController(
                 val transcript = event.optString("transcript").trim()
                 partialTranscripts.remove(itemId)
                 if (transcript.isNotEmpty()) {
+                    Logging.log(TAG, "Transcript completed: $transcript")
                     completedTranscripts.add(transcript)
                     scope.launch { onTranscriptComplete?.invoke(transcript) }
                 }
@@ -234,11 +248,13 @@ class DashScopeASRController(
 
             "error" -> {
                 val error = event.optJSONObject("error")
+                Logging.log(TAG, "Server error: ${error?.optString("message")}")
                 setError(error?.optString("message") ?: "ASR realtime error")
             }
 
             else -> {
                 Log.v(TAG, "Ignored realtime event: $type")
+                Logging.log(TAG, "Unhandled event: $type")
             }
         }
     }
