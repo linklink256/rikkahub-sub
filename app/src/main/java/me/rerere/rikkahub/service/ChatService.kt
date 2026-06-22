@@ -1553,8 +1553,27 @@ class ChatService(
     }
 
     fun updateConversationState(conversationId: Uuid, update: (Conversation) -> Conversation) {
-        val current = getConversationFlow(conversationId).value
-        updateConversation(conversationId, update(current))
+        // 原子读-改-写（CAS 循环）—— 避免并行子代理 onProgress 回调并发更新时的 lost-update。
+        // 此前实现是「读快照 → 映射 → session.state.value = 直接赋值」的非原子序列：
+        // 多个并行 spawn_subagent 的 updateSubagentProgress 在 Dispatchers.IO 上真并发，
+        // 两个子代理可能读到同一份旧快照、各自只改自己 toolCallId 的 part 后整体写回，
+        // 后写者覆盖前写者 → 一个子代理的流式进度被另一个回退为空（UI 表现为上下文混淆/闪烁）。
+        //
+        // 用手动 CAS 循环而非 MutableStateFlow.update{}：
+        // - id 防御保留（与原 updateConversation 一致：id 不匹配时不写、不删文件）；
+        // - checkFilesDelete 只在 CAS 成功后执行一次，避免重试时重复触发删文件副作用
+        //   （虽然 deleteChatFiles 对缺失文件幂等，但成功后单次执行更清晰）。
+        // update() 的 lambda 经核实为纯映射（无 IO 副作用），在 CAS 重试循环中安全。
+        val session = getOrCreateSession(conversationId)
+        while (true) {
+            val prev = session.state.value
+            val updated = update(prev)
+            if (updated.id != conversationId) return
+            if (session.state.compareAndSet(prev, updated)) {
+                checkFilesDelete(updated, prev)
+                return
+            }
+        }
     }
 
     private fun checkFilesDelete(newConversation: Conversation, oldConversation: Conversation) {
