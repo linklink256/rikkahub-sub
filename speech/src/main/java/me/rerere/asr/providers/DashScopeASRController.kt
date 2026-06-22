@@ -58,6 +58,9 @@ class DashScopeASRController(
     private var onTranscriptComplete: ((String) -> Unit)? = null
     private val completedTranscripts = Collections.synchronizedList(mutableListOf<String>())
     private val partialTranscripts = ConcurrentHashMap<String, String>()
+    private var isListening = false
+    private var connectRetryCount = 0
+    private var connectStartTime = 0L
 
     override fun start(
         onTranscriptChange: (String) -> Unit,
@@ -78,6 +81,9 @@ class DashScopeASRController(
         this.onTranscriptComplete = onTranscriptComplete
         completedTranscripts.clear()
         partialTranscripts.clear()
+        isListening = true
+        connectRetryCount = 0
+        connectStartTime = System.currentTimeMillis()
         _state.update {
             ASRState(
                 status = ASRStatus.Connecting,
@@ -93,40 +99,12 @@ class DashScopeASRController(
             .addHeader("OpenAI-Beta", "realtime=v1")
             .build()
 
-        webSocket = httpClient.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
-                Logging.log(TAG, "WebSocket connected, sending session update")
-                webSocket.send(provider.sessionUpdateEvent().toString())
-                _state.update { it.copy(status = ASRStatus.Listening, errorMessage = null) }
-                startRecorder(webSocket)
-            }
-
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                handleServerEvent(text)
-            }
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "DashScope ASR websocket failed", t)
-                Logging.log(TAG, "WebSocket failed: ${t.message}")
-                releaseRecorder()
-                setError(t.message ?: "ASR websocket failed")
-            }
-
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
-                Logging.log(TAG, "WebSocket closed: code=$code, reason=$reason")
-                releaseRecorder()
-                _state.update {
-                    it.copy(
-                        status = ASRStatus.Idle,
-                        errorMessage = null
-                    )
-                }
-            }
-        })
+        webSocket = httpClient.newWebSocket(request, createWebSocketListener())
     }
 
     override fun stop() {
         Logging.log(TAG, "ASR stop called")
+        isListening = false
         recorderJob?.cancel()
         releaseRecorder()
         val socket = webSocket
@@ -154,6 +132,63 @@ class DashScopeASRController(
         Logging.log(TAG, "ASR dispose called")
         stop()
         scope.cancel()
+    }
+
+    private fun createWebSocketListener(): WebSocketListener = object : WebSocketListener() {
+        override fun onOpen(webSocket: WebSocket, response: Response) {
+            connectStartTime = System.currentTimeMillis()
+            val sessionUpdate = provider.sessionUpdateEvent().toString()
+            Logging.log(TAG, "WebSocket connected, sending session update: $sessionUpdate")
+            webSocket.send(sessionUpdate)
+            _state.update { it.copy(status = ASRStatus.Listening, errorMessage = null) }
+            startRecorder(webSocket)
+        }
+
+        override fun onMessage(webSocket: WebSocket, text: String) {
+            handleServerEvent(text)
+        }
+
+        override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            Log.e(TAG, "DashScope ASR websocket failed", t)
+            Logging.log(TAG, "WebSocket failed: ${t.message}")
+            releaseRecorder()
+            val elapsed = System.currentTimeMillis() - connectStartTime
+            if (elapsed < 5000 && connectRetryCount < 2 && isListening) {
+                connectRetryCount++
+                Logging.log(TAG, "Early WebSocket failure (${elapsed}ms), auto-retry $connectRetryCount/2")
+                scope.launch {
+                    delay(500L * connectRetryCount)
+                    if (isListening) {
+                        _state.update { it.copy(status = ASRStatus.Connecting, errorMessage = null) }
+                        reconnectWebSocket()
+                    }
+                }
+            } else {
+                setError(t.message ?: "ASR websocket failed")
+            }
+        }
+
+        override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            Logging.log(TAG, "WebSocket closed: code=$code, reason=$reason")
+            releaseRecorder()
+            _state.update {
+                it.copy(
+                    status = ASRStatus.Idle,
+                    errorMessage = null
+                )
+            }
+        }
+    }
+
+    private fun reconnectWebSocket() {
+        webSocket = null
+        val request = Request.Builder()
+            .url(provider.websocketEndpoint())
+            .addHeader("Authorization", "Bearer ${provider.apiKey}")
+            .addHeader("OpenAI-Beta", "realtime=v1")
+            .build()
+        connectStartTime = System.currentTimeMillis()
+        webSocket = httpClient.newWebSocket(request, createWebSocketListener())
     }
 
     @SuppressLint("MissingPermission")
@@ -237,6 +272,7 @@ class DashScopeASRController(
     }
 
     private fun handleServerEvent(text: String) {
+        Logging.log(TAG, "Raw WS event: ${text.take(200)}")
         val event = runCatching { JSONObject(text) }.getOrElse {
             Log.w(TAG, "Invalid realtime event: $text", it)
             return
