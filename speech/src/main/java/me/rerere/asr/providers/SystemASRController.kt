@@ -330,6 +330,12 @@ class SystemASRController(
                 intent,
                 PackageManager.GET_SERVICES
             )
+            // 记录所有找到的 RecognitionService, 方便排查
+            Logging.log(TAG, "Found ${services.size} RecognitionService(s) on device:")
+            services.forEach { info ->
+                Logging.log(TAG, "  - ${info.serviceInfo.packageName}/${info.serviceInfo.name}")
+            }
+            // 优先找 Google 的服务
             val googleService = services.firstOrNull { info ->
                 info.serviceInfo.packageName.contains("google", ignoreCase = true)
             }
@@ -337,7 +343,7 @@ class SystemASRController(
                 ComponentName(it.packageName, it.name)
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to query RecognitionService", e)
+            Logging.log(TAG, "Failed to query RecognitionService: ${e.message}")
             null
         }
     }
