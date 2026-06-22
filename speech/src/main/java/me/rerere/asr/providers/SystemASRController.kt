@@ -59,6 +59,7 @@ class SystemASRController(
     private var speechRecognizer: SpeechRecognizer? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
     private var isListening = false
+    private var clientErrorRetryCount = 0
 
     private val completedTranscripts = Collections.synchronizedList(mutableListOf<String>())
     private var currentPartial = ""
@@ -87,6 +88,7 @@ class SystemASRController(
             completedTranscripts.clear()
         }
         currentPartial = ""
+        clientErrorRetryCount = 0
         isListening = true
 
         _state.update {
@@ -156,10 +158,25 @@ class SystemASRController(
                 if (!isListening) return
 
                 when (error) {
-                    SpeechRecognizer.ERROR_CLIENT,
                     SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> {
                         setError(errorMsg)
                         isListening = false
+                    }
+                    SpeechRecognizer.ERROR_CLIENT -> {
+                        // ERROR_CLIENT 通常是临时性的 (音频焦点冲突、音频系统短暂繁忙),
+                        // 重试几次而非直接放弃。超过上限则判定为设备不支持。
+                        clientErrorRetryCount++
+                        if (clientErrorRetryCount > 3) {
+                            setError("系统语音识别不可用 (Client error), 请尝试在设置中配置其他 ASR provider")
+                            isListening = false
+                        } else {
+                            scope.launch {
+                                if (isListening && isActive) {
+                                    delay(500L * clientErrorRetryCount)
+                                    if (isListening) startListening()
+                                }
+                            }
+                        }
                     }
                     SpeechRecognizer.ERROR_RECOGNIZER_BUSY -> {
                         // 繁忙时等一下再重启, 避免紧密循环
