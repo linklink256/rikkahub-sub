@@ -169,7 +169,7 @@ class DashScopeASRController(
                 .coerceAtLeast(provider.sampleRate / 10 * 2)
                 .coerceAtLeast(4096)
 
-            val recorder = AudioRecord(
+            var recorder = AudioRecord(
                 MediaRecorder.AudioSource.VOICE_COMMUNICATION,
                 provider.sampleRate,
                 AudioFormat.CHANNEL_IN_MONO,
@@ -177,6 +177,30 @@ class DashScopeASRController(
                 bufferSize * 2
             )
             audioRecord = recorder
+
+            // Check if AudioRecord was properly initialized
+            if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+                Logging.log(TAG, "AudioRecord not initialized (state=${recorder.getState()}), retrying with MIC source")
+                runCatching { recorder.release() }
+                recorder = AudioRecord(
+                    MediaRecorder.AudioSource.MIC,
+                    provider.sampleRate,
+                    AudioFormat.CHANNEL_IN_MONO,
+                    AudioFormat.ENCODING_PCM_16BIT,
+                    bufferSize * 2
+                )
+                audioRecord = recorder
+            }
+
+            if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
+                Logging.log(TAG, "AudioRecord still not initialized (state=${recorder.getState()})")
+                runCatching { recorder.release() }
+                audioRecord = null
+                setError("无法初始化录音器，请检查麦克风权限或重启应用")
+                return@launch
+            }
+
+            Logging.log(TAG, "AudioRecord state=${recorder.getState()}, sampleRate=${provider.sampleRate}, bufferSize=$bufferSize")
 
             try {
                 recorder.startRecording()

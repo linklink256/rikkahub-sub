@@ -143,6 +143,7 @@ fun VoiceCallPage(conversationId: String) {
         var lastAssistantIndex = -1
         var lastTextLength = 0
         var pendingBuffer = StringBuilder()
+        var finalFlushDone = false
         val sentenceEndRegex = Regex("[。！？\\n]")
         val minChunkSize = 30  // 最少累积 30 字再发送, 避免断句
         Logging.log("VoiceCall", "Streaming TTS started, cycle=$thisCycle")
@@ -211,12 +212,15 @@ fun VoiceCallPage(conversationId: String) {
                 }
             }
 
-            // 生成完成时确保 buffer 中剩余内容也发送
-            if (generationDone.value && pendingBuffer.isNotEmpty()) {
-                val remaining = pendingBuffer.toString()
-                Logging.log("VoiceCall", "TTS final flush (${remaining.length}c): ${remaining.take(50)}...")
-                tts.speak(remaining, flushCalled = false)
-                pendingBuffer.clear()
+            // 生成完成时确保 buffer 中剩余内容也发送 (只执行一次)
+            if (generationDone.value && !finalFlushDone) {
+                finalFlushDone = true
+                if (pendingBuffer.isNotEmpty()) {
+                    val remaining = pendingBuffer.toString()
+                    Logging.log("VoiceCall", "TTS final flush (${remaining.length}c): ${remaining.take(50)}...")
+                    tts.speak(remaining, flushCalled = false)
+                    pendingBuffer.clear()
+                }
             }
         }
     }
