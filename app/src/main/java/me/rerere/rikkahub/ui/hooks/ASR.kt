@@ -53,7 +53,7 @@ fun rememberCustomAsrState(): CustomAsrState {
 
 interface CustomAsrState {
     val state: StateFlow<ASRState>
-    fun start(onTranscriptChange: (String) -> Unit)
+    fun start(onTranscriptChange: (String) -> Unit, onTranscriptComplete: ((String) -> Unit)? = null)
     fun stop()
     fun cleanup()
 }
@@ -87,10 +87,10 @@ private class CustomAsrStateImpl(
         }
     }
 
-    override fun start(onTranscriptChange: (String) -> Unit) {
+    override fun start(onTranscriptChange: (String) -> Unit, onTranscriptComplete: ((String) -> Unit)?) {
         val result = audioManager.requestAudioFocus(audioFocusRequest)
         if (result == AudioManager.AUDIOFOCUS_REQUEST_GRANTED) {
-            controller?.start(onTranscriptChange)
+            controller?.start(onTranscriptChange, onTranscriptComplete)
         }
     }
 

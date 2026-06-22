@@ -54,10 +54,14 @@ class OpenAIRealtimeASRController(
     private var recorderJob: Job? = null
     private var audioRecord: AudioRecord? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
+    private var onTranscriptComplete: ((String) -> Unit)? = null
     private val completedTranscripts = Collections.synchronizedList(mutableListOf<String>())
     private val partialTranscripts = ConcurrentHashMap<String, String>()
 
-    override fun start(onTranscriptChange: (String) -> Unit) {
+    override fun start(
+        onTranscriptChange: (String) -> Unit,
+        onTranscriptComplete: ((String) -> Unit)?
+    ) {
         if (state.value.isRecording) return
         if (ContextCompat.checkSelfPermission(
                 context,
@@ -69,6 +73,7 @@ class OpenAIRealtimeASRController(
         }
 
         this.onTranscriptChange = onTranscriptChange
+        this.onTranscriptComplete = onTranscriptComplete
         completedTranscripts.clear()
         partialTranscripts.clear()
         _state.update {
@@ -213,6 +218,7 @@ class OpenAIRealtimeASRController(
                 partialTranscripts.remove(itemId)
                 if (transcript.isNotEmpty()) {
                     completedTranscripts.add(transcript)
+                    scope.launch { onTranscriptComplete?.invoke(transcript) }
                 }
                 publishTranscript()
             }

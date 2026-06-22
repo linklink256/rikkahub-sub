@@ -75,6 +75,7 @@ class StepASRController(
     private var recorderJob: Job? = null
     private var audioRecord: AudioRecord? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
+    private var onTranscriptComplete: ((String) -> Unit)? = null
 
     // 同一时刻只允许一个 flush 协程在跑, 避免乱序拼结果
     private var flushJob: Job? = null
@@ -84,7 +85,10 @@ class StepASRController(
     private var segmentStartElapsedMs = 0L
     private val completedTranscripts = Collections.synchronizedList(mutableListOf<String>())
 
-    override fun start(onTranscriptChange: (String) -> Unit) {
+    override fun start(
+        onTranscriptChange: (String) -> Unit,
+        onTranscriptComplete: ((String) -> Unit)?
+    ) {
         if (state.value.isRecording) return
         if (ContextCompat.checkSelfPermission(
                 context,
@@ -96,6 +100,7 @@ class StepASRController(
         }
 
         this.onTranscriptChange = onTranscriptChange
+        this.onTranscriptComplete = onTranscriptComplete
         synchronized(bufferLock) {
             currentBuffer = ByteArrayOutputStream()
             segmentStartElapsedMs = SystemClock.elapsedRealtime()
@@ -276,6 +281,7 @@ class StepASRController(
         if (text.isNotEmpty()) {
             completedTranscripts.add(text)
             publishTranscript()
+            scope.launch { onTranscriptComplete?.invoke(text) }
         }
     }
 

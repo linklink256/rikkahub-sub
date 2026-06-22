@@ -62,13 +62,17 @@ class SystemASRController(
 
     private var speechRecognizer: SpeechRecognizer? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
+    private var onTranscriptComplete: ((String) -> Unit)? = null
     private var isListening = false
     private var clientErrorRetryCount = 0
 
     private val completedTranscripts = Collections.synchronizedList(mutableListOf<String>())
     private var currentPartial = ""
 
-    override fun start(onTranscriptChange: (String) -> Unit) {
+    override fun start(
+        onTranscriptChange: (String) -> Unit,
+        onTranscriptComplete: ((String) -> Unit)?
+    ) {
         Logging.log(TAG, "ASR start called, isListening=$isListening")
         if (state.value.isRecording) return
 
@@ -94,6 +98,7 @@ class SystemASRController(
         }
 
         this.onTranscriptChange = onTranscriptChange
+        this.onTranscriptComplete = onTranscriptComplete
         synchronized(completedTranscripts) {
             completedTranscripts.clear()
         }
@@ -239,6 +244,9 @@ class SystemASRController(
                 }
                 currentPartial = ""
                 publishTranscript()
+                if (text.isNotEmpty()) {
+                    scope.launch { onTranscriptComplete?.invoke(text) }
+                }
 
                 // 仍然在监听则自动重启, 实现连续识别
                 if (isListening) {
@@ -265,6 +273,7 @@ class SystemASRController(
     override fun stop() {
         Logging.log(TAG, "ASR stop called")
         isListening = false
+        onTranscriptComplete = null
         _state.update { it.copy(status = ASRStatus.Stopping) }
         speechRecognizer?.stopListening()
         // 短暂等待最终结果回调, 然后切回 Idle
@@ -277,6 +286,7 @@ class SystemASRController(
     override fun dispose() {
         Logging.log(TAG, "ASR dispose called")
         isListening = false
+        onTranscriptComplete = null
         speechRecognizer?.destroy()
         speechRecognizer = null
         scope.cancel()

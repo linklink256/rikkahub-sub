@@ -59,9 +59,13 @@ class VolcengineASRController(
     private var recorderJob: Job? = null
     private var audioRecord: AudioRecord? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
+    private var onTranscriptComplete: ((String) -> Unit)? = null
     private var lastText = ""
 
-    override fun start(onTranscriptChange: (String) -> Unit) {
+    override fun start(
+        onTranscriptChange: (String) -> Unit,
+        onTranscriptComplete: ((String) -> Unit)?
+    ) {
         if (state.value.isRecording) return
         if (ContextCompat.checkSelfPermission(
                 context,
@@ -73,6 +77,7 @@ class VolcengineASRController(
         }
 
         this.onTranscriptChange = onTranscriptChange
+        this.onTranscriptComplete = onTranscriptComplete
         lastText = ""
         _state.update {
             ASRState(
@@ -221,6 +226,18 @@ class VolcengineASRController(
                     lastText = text
                     _state.update { it.copy(transcript = text, errorMessage = null) }
                     scope.launch { onTranscriptChange?.invoke(text) }
+                    // Volcengine 流式 ASR 的完成信号不如 OpenAI Realtime/DashScope 明确:
+                    // 如果响应 JSON 含有 is_final 字段, 仅在 is_final 为 true 时视为一句话说完,
+                    // 触发 onTranscriptComplete 以便上层 (语音通话页) 自动发送;
+                    // 如果没有 is_final 字段, 则每个新结果都整体替换上一个结果,
+                    // 视为一次完整识别, 因此每次新结果到达都触发 onTranscriptComplete。
+                    if (json.has("is_final")) {
+                        if (json.optBoolean("is_final", false)) {
+                            scope.launch { onTranscriptComplete?.invoke(text) }
+                        }
+                    } else {
+                        scope.launch { onTranscriptComplete?.invoke(text) }
+                    }
                 }
             }
 
