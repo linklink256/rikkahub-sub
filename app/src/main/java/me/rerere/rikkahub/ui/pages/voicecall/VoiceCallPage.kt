@@ -137,37 +137,86 @@ fun VoiceCallPage(conversationId: String) {
         }
     }
 
-    // 流式 TTS: 实时监听对话更新, 将 AI 回复逐块送入 TTS
+    // 流式 TTS: 实时监听对话更新, 累积到句末标点或足够长度后再送入 TTS
     LaunchedEffect(streamCycle) {
         val thisCycle = streamCycle
+        var lastAssistantIndex = -1
         var lastTextLength = 0
+        var pendingBuffer = StringBuilder()
+        val sentenceEndRegex = Regex("[。！？\\n]")
+        val minChunkSize = 30  // 最少累积 30 字再发送, 避免断句
         Logging.log("VoiceCall", "Streaming TTS started, cycle=$thisCycle")
 
         vm.conversation.collect { conv ->
-            // 只有同一个 cycle 且处于思考或播报状态才处理
             if (streamCycle != thisCycle) return@collect
             val s = vm.state.value.status
             if (s != VoiceCallStatus.THINKING && s != VoiceCallStatus.SPEAKING) return@collect
 
-            val text = conv.currentMessages
-                .lastOrNull { it.role == MessageRole.ASSISTANT }
-                ?.toText().orEmpty()
+            val assistantIndex = conv.currentMessages.indexOfLast { it.role == MessageRole.ASSISTANT }
+            val text = if (assistantIndex >= 0) conv.currentMessages[assistantIndex].toText() else ""
+
+            // 新消息出现 → 重置追踪 (避免把上一轮的旧回复当新 delta)
+            if (assistantIndex != lastAssistantIndex) {
+                lastAssistantIndex = assistantIndex
+                lastTextLength = 0
+                pendingBuffer.clear()
+            }
 
             if (text.length > lastTextLength) {
                 val delta = text.substring(lastTextLength)
                 lastTextLength = text.length
                 if (delta.isNotBlank()) {
-                    val isFirst = s == VoiceCallStatus.THINKING
-                    Logging.log(
-                        "VoiceCall",
-                        "TTS delta (${delta.length}c, flush=$isFirst): ${delta.take(40)}..."
-                    )
-                    tts.speak(delta, flushCalled = isFirst)
-                    vm.updateAssistantText(text)
-                    if (isFirst) {
-                        vm.updateStatus(VoiceCallStatus.SPEAKING)
+                    pendingBuffer.append(delta)
+                    val pending = pendingBuffer.toString()
+
+                    // 遇到句末标点 或 累积足够长 → 发送给 TTS
+                    val shouldFlush = sentenceEndRegex.containsMatchIn(pending) || pending.length >= minChunkSize
+                    // 如果生成已完成, 最后剩余的也要发送
+                    val isFinal = generationDone.value
+
+                    if (shouldFlush || isFinal) {
+                        // 在标点处分句: 发到最后一个标点为止, 剩余留在 buffer
+                        val flushText: String
+                        val remaining: String
+                        if (isFinal) {
+                            flushText = pending
+                            remaining = ""
+                        } else {
+                            val lastEnd = sentenceEndRegex.findAll(pending).lastOrNull()
+                            if (lastEnd != null) {
+                                val splitAt = lastEnd.range.last + 1
+                                flushText = pending.substring(0, splitAt)
+                                remaining = pending.substring(splitAt)
+                            } else {
+                                // 没有句末标点但超长了, 全部发送
+                                flushText = pending
+                                remaining = ""
+                            }
+                        }
+
+                        if (flushText.isNotBlank()) {
+                            val isFirstChunk = s == VoiceCallStatus.THINKING
+                            Logging.log(
+                                "VoiceCall",
+                                "TTS flush (${flushText.length}c, first=$isFirstChunk): ${flushText.take(50)}..."
+                            )
+                            tts.speak(flushText, flushCalled = isFirstChunk)
+                            pendingBuffer = StringBuilder(remaining)
+                            vm.updateAssistantText(text)
+                            if (isFirstChunk) {
+                                vm.updateStatus(VoiceCallStatus.SPEAKING)
+                            }
+                        }
                     }
                 }
+            }
+
+            // 生成完成时确保 buffer 中剩余内容也发送
+            if (generationDone.value && pendingBuffer.isNotEmpty()) {
+                val remaining = pendingBuffer.toString()
+                Logging.log("VoiceCall", "TTS final flush (${remaining.length}c): ${remaining.take(50)}...")
+                tts.speak(remaining, flushCalled = false)
+                pendingBuffer.clear()
             }
         }
     }
