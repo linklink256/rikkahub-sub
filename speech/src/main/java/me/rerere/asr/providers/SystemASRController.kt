@@ -76,8 +76,10 @@ class SystemASRController(
         }
 
         if (!isSpeechRecognitionAvailable(context)) {
-            setError("Speech recognition is not available on this device")
-            return
+            // 设备可能没有 Google 服务的 SpeechRecognizer, 但可能有第三方语音引擎。
+            // 不直接拒绝, 而是尝试创建并启动; 若 createSpeechRecognizer 返回 null
+            // 或 startListening 抛异常, 再报错。
+            Log.w(TAG, "isRecognitionAvailable=false, but trying to start anyway")
         }
 
         this.onTranscriptChange = onTranscriptChange
@@ -104,7 +106,22 @@ class SystemASRController(
      */
     private fun startListening() {
         speechRecognizer?.destroy()
-        speechRecognizer = SpeechRecognizer.createSpeechRecognizer(context)
+        val recognizer = try {
+            SpeechRecognizer.createSpeechRecognizer(context)
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to create SpeechRecognizer", e)
+            setError("无法创建语音识别器: ${e.message}")
+            isListening = false
+            _state.update { it.copy(status = ASRStatus.Error) }
+            return
+        }
+        if (recognizer == null) {
+            setError("设备不支持语音识别")
+            isListening = false
+            _state.update { it.copy(status = ASRStatus.Error) }
+            return
+        }
+        speechRecognizer = recognizer
 
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
             putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
@@ -202,7 +219,14 @@ class SystemASRController(
             }
         })
 
-        speechRecognizer?.startListening(intent)
+        try {
+            speechRecognizer?.startListening(intent)
+        } catch (e: Exception) {
+            Log.e(TAG, "startListening failed", e)
+            setError("启动语音识别失败: ${e.message}")
+            isListening = false
+            _state.update { it.copy(status = ASRStatus.Error) }
+        }
     }
 
     override fun stop() {
