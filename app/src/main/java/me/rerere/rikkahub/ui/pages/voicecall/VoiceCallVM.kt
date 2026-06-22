@@ -18,7 +18,10 @@ import kotlinx.coroutines.launch
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
+import me.rerere.rikkahub.data.datastore.getSelectedTTSProvider
 import me.rerere.rikkahub.data.datastore.getCurrentChatModel
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.service.ChatError
@@ -66,10 +69,12 @@ class VoiceCallVM(
 
     val conversation: StateFlow<Conversation> = chatService.getConversationFlow(_conversationId)
 
+    val settings: StateFlow<Settings> =
+        settingsStore.settingsFlow.stateIn(viewModelScope, SharingStarted.Eagerly, Settings())
+
     val currentChatModel: StateFlow<Model?> =
-        settingsStore.settingsFlow.map { settings ->
-            settings.getCurrentChatModel()
-        }.stateIn(viewModelScope, SharingStarted.Lazily, null)
+        settings.map { it.getCurrentChatModel() }
+            .stateIn(viewModelScope, SharingStarted.Lazily, null)
 
     val generationDoneFlow: SharedFlow<Uuid> = chatService.generationDoneFlow
 

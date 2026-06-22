@@ -51,6 +51,8 @@ import kotlin.uuid.Uuid
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.Voice
+import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
+import me.rerere.rikkahub.data.datastore.getSelectedTTSProvider
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionManager
 import me.rerere.rikkahub.ui.components.ui.permission.PermissionRecordAudio
 import me.rerere.rikkahub.ui.components.ui.permission.rememberPermissionState
@@ -58,6 +60,7 @@ import me.rerere.rikkahub.ui.context.LocalASRState
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.context.LocalTTSState
+import me.rerere.rikkahub.ui.pages.chat.AssistantBackground
 import me.rerere.tts.model.PlaybackStatus
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
@@ -76,12 +79,12 @@ fun VoiceCallPage(conversationId: String) {
         parameters = { parametersOf(conversationId) },
     )
     val state by vm.state.collectAsStateWithLifecycle()
+    val setting by vm.settings.collectAsStateWithLifecycle()
 
     val asr = LocalASRState.current
     val tts = LocalTTSState.current
     val asrState by asr.state.collectAsStateWithLifecycle()
     val ttsPlaybackState by tts.playbackState.collectAsStateWithLifecycle()
-    val ttsAvailable by tts.isAvailable.collectAsStateWithLifecycle()
 
     val navController = LocalNavController.current
     val toaster = LocalToaster.current
@@ -169,12 +172,12 @@ fun VoiceCallPage(conversationId: String) {
 
     val startCall: () -> Unit = {
         when {
-            !asrState.isAvailable -> toaster.show(
+            setting.getSelectedASRProvider() == null -> toaster.show(
                 message = "语音识别未就绪, 请先在设置中配置 ASR",
                 type = ToastType.Warning,
             )
 
-            !ttsAvailable -> toaster.show(
+            setting.getSelectedTTSProvider() == null -> toaster.show(
                 message = "语音合成未就绪, 请先在设置中配置 TTS",
                 type = ToastType.Warning,
             )
@@ -224,19 +227,21 @@ fun VoiceCallPage(conversationId: String) {
         VoiceCallStatus.ENDED -> "通话已结束"
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black),
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background,
     ) {
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
+        Box(Modifier.fillMaxSize()) {
+            AssistantBackground(setting = setting, modifier = Modifier.fillMaxSize())
+
+            Column(
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(horizontal = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
             Spacer(Modifier.height(56.dp))
 
             // 通话时长
@@ -385,6 +390,7 @@ fun VoiceCallPage(conversationId: String) {
                 }
             }
         }
+    }
     }
 }
 
