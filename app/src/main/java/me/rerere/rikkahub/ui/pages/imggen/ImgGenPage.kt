@@ -41,10 +41,10 @@ import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.FilledTonalIconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SheetState
@@ -91,9 +91,9 @@ import me.rerere.ai.ui.ImageAspectRatio
 import me.rerere.common.android.appTempFolder
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
+import me.rerere.hugeicons.stroke.ArrowLeft01
 import me.rerere.hugeicons.stroke.ArrowUp02
 import me.rerere.hugeicons.stroke.Cancel01
-import me.rerere.hugeicons.stroke.Colors
 import me.rerere.hugeicons.stroke.Copy01
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.FloppyDisk
@@ -146,13 +146,39 @@ fun ImageGenPage(
                 title = {
                     Text(stringResource(R.string.imggen_page_title))
                 },
-                navigationIcon = { BackButton() },
+                navigationIcon = {
+                    // 在相册页时，返回按钮切回图像生成页（page 0），
+                    // 而不是 popBackStack 退出整个页面。
+                    if (pagerState.currentPage == 1) {
+                        FilledTonalIconButton(
+                            onClick = {
+                                scope.launch { pagerState.animateScrollToPage(0) }
+                            },
+                            shapes = IconButtonDefaults.shapes(),
+                            colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                containerColor = CustomColors.listItemColors.containerColor
+                            ),
+                        ) {
+                            Icon(
+                                imageVector = HugeIcons.ArrowLeft01,
+                                contentDescription = stringResource(R.string.back)
+                            )
+                        }
+                    } else {
+                        BackButton()
+                    }
+                },
                 actions = {
-                    IconButton(onClick = vm::startNewSession) {
-                        Icon(
-                            imageVector = HugeIcons.Add01,
-                            contentDescription = "New session"
-                        )
+                    // 相册入口（仅在图像生成页显示；相册页时右上角留空）
+                    if (pagerState.currentPage == 0) {
+                        IconButton(onClick = {
+                            scope.launch { pagerState.animateScrollToPage(1) }
+                        }) {
+                            Icon(
+                                imageVector = HugeIcons.Image03,
+                                contentDescription = stringResource(R.string.imggen_page_gallery)
+                            )
+                        }
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -161,9 +187,6 @@ fun ImageGenPage(
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
-        bottomBar = {
-            BottomBar(pagerState, scope)
-        },
     ) { innerPadding ->
         HorizontalPager(
             state = pagerState,
@@ -199,44 +222,6 @@ private fun CancelDialog(
             }
         }
     )
-}
-
-@Composable
-private fun BottomBar(
-    pagerState: PagerState,
-    scope: CoroutineScope
-) {
-    NavigationBar {
-        NavigationBarItem(
-            selected = 0 == pagerState.currentPage,
-            label = {
-                Text(stringResource(R.string.imggen_page_title))
-            },
-            icon = {
-                Icon(HugeIcons.Colors, null)
-            },
-            onClick = {
-                scope.launch {
-                    pagerState.animateScrollToPage(0)
-                }
-            }
-        )
-
-        NavigationBarItem(
-            selected = 1 == pagerState.currentPage,
-            label = {
-                Text(stringResource(R.string.imggen_page_gallery))
-            },
-            icon = {
-                Icon(HugeIcons.Image03, null)
-            },
-            onClick = {
-                scope.launch {
-                    pagerState.animateScrollToPage(1)
-                }
-            }
-        )
-    }
 }
 
 @Composable
