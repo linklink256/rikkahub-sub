@@ -104,6 +104,7 @@ import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceTerminalPage
 import me.rerere.rikkahub.ui.pages.favorite.FavoritePage
 import me.rerere.rikkahub.ui.pages.history.HistoryPage
 import me.rerere.rikkahub.ui.pages.imggen.ImageGenPage
+import me.rerere.rikkahub.ui.pages.imggen.ImageGalleryPage
 import me.rerere.rikkahub.ui.pages.log.LogPage
 import me.rerere.rikkahub.ui.pages.search.SearchPage
 import me.rerere.rikkahub.ui.pages.setting.SettingAboutPage
@@ -395,6 +396,10 @@ class RouteActivity : ComponentActivity() {
                                 ImageGenPage()
                             }
 
+                            entry<Screen.ImageGallery> {
+                                ImageGalleryPage()
+                            }
+
                             entry<Screen.WebView> { key ->
                                 WebViewPage(key.url, key.content)
                             }
@@ -625,6 +630,9 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object ImageGen : Screen
+
+    @Serializable
+    data object ImageGallery : Screen
 
     @Serializable
     data class WebView(val url: String = "", val content: String = "") : Screen

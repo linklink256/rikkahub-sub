@@ -24,25 +24,17 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.PagerState
-import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.BottomSheetDefaults
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.ContainedLoadingIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.FilledTonalIconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -53,8 +45,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.pulltorefresh.PullToRefreshBox
-import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
@@ -69,17 +59,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemContentType
-import androidx.paging.compose.itemKey
 import coil3.compose.AsyncImage
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.CoroutineScope
@@ -91,28 +75,25 @@ import me.rerere.ai.ui.ImageAspectRatio
 import me.rerere.common.android.appTempFolder
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
-import me.rerere.hugeicons.stroke.ArrowLeft01
 import me.rerere.hugeicons.stroke.ArrowUp02
 import me.rerere.hugeicons.stroke.Cancel01
-import me.rerere.hugeicons.stroke.Copy01
 import me.rerere.hugeicons.stroke.Delete01
-import me.rerere.hugeicons.stroke.FloppyDisk
 import me.rerere.hugeicons.stroke.Image03
 import me.rerere.hugeicons.stroke.Tools
 import me.rerere.rikkahub.R
+import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.files.FileUtils
-import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.ImagePreviewDialog
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
+import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.utils.ImageUtils
 import org.koin.androidx.compose.koinViewModel
-import org.koin.compose.koinInject
 import java.io.File
 import kotlin.uuid.Uuid
 
@@ -121,8 +102,7 @@ fun ImageGenPage(
     modifier: Modifier = Modifier,
     vm: ImgGenVM = koinViewModel()
 ) {
-    val pagerState = rememberPagerState { 2 }
-    val scope = rememberCoroutineScope()
+    val navController = LocalNavController.current
 
     val isGenerating by vm.isGenerating.collectAsStateWithLifecycle()
     var showCancelDialog by remember { mutableStateOf(false) }
@@ -146,39 +126,16 @@ fun ImageGenPage(
                 title = {
                     Text(stringResource(R.string.imggen_page_title))
                 },
-                navigationIcon = {
-                    // 在相册页时，返回按钮切回图像生成页（page 0），
-                    // 而不是 popBackStack 退出整个页面。
-                    if (pagerState.currentPage == 1) {
-                        FilledTonalIconButton(
-                            onClick = {
-                                scope.launch { pagerState.animateScrollToPage(0) }
-                            },
-                            shapes = IconButtonDefaults.shapes(),
-                            colors = IconButtonDefaults.filledTonalIconButtonColors(
-                                containerColor = CustomColors.listItemColors.containerColor
-                            ),
-                        ) {
-                            Icon(
-                                imageVector = HugeIcons.ArrowLeft01,
-                                contentDescription = stringResource(R.string.back)
-                            )
-                        }
-                    } else {
-                        BackButton()
-                    }
-                },
+                navigationIcon = { BackButton() },
                 actions = {
-                    // 相册入口（仅在图像生成页显示；相册页时右上角留空）
-                    if (pagerState.currentPage == 0) {
-                        IconButton(onClick = {
-                            scope.launch { pagerState.animateScrollToPage(1) }
-                        }) {
-                            Icon(
-                                imageVector = HugeIcons.Image03,
-                                contentDescription = stringResource(R.string.imggen_page_gallery)
-                            )
-                        }
+                    // 相册入口：跳转到独立的相册页面
+                    IconButton(onClick = {
+                        navController.navigate(Screen.ImageGallery)
+                    }) {
+                        Icon(
+                            imageVector = HugeIcons.Image03,
+                            contentDescription = stringResource(R.string.imggen_page_gallery)
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -188,16 +145,13 @@ fun ImageGenPage(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         containerColor = CustomColors.topBarColors.containerColor,
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
+        Box(
             modifier = modifier
+                .fillMaxSize()
                 .padding(innerPadding)
                 .consumeWindowInsets(innerPadding)
-        ) { page ->
-            when (page) {
-                0 -> ImageGenScreen(vm = vm)
-                1 -> ImageGalleryScreen(vm = vm)
-            }
+        ) {
+            ImageGenScreen(vm = vm)
         }
     }
 }
@@ -493,173 +447,6 @@ private fun ReferenceImagesRow(
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.inverseOnSurface,
                                 modifier = Modifier.size(12.dp)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun ImageGalleryScreen(
-    vm: ImgGenVM,
-) {
-    val generatedImages = vm.generatedImages.collectAsLazyPagingItems()
-    val context = LocalContext.current
-    val filesManager: FilesManager = koinInject()
-    val clipboardManager = LocalClipboardManager.current
-    val scope = rememberCoroutineScope()
-    val toaster = LocalToaster.current
-    val pullToRefreshState = rememberPullToRefreshState()
-
-    PullToRefreshBox(
-        isRefreshing = false,
-        onRefresh = { generatedImages.refresh() },
-        state = pullToRefreshState
-    ) {
-        if (generatedImages.itemCount == 0) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally
-                ) {
-                    Icon(
-                        imageVector = HugeIcons.Image03,
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = stringResource(R.string.imggen_page_no_generated_images),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        textAlign = TextAlign.Center
-                    )
-                }
-            }
-        } else {
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(2),
-                contentPadding = PaddingValues(16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                items(
-                    count = generatedImages.itemCount,
-                    key = generatedImages.itemKey { it.id },
-                    contentType = generatedImages.itemContentType { "GeneratedImage" }
-                ) { index ->
-                    val image = generatedImages[index]
-                    image?.let {
-                        var showPreview by remember { mutableStateOf(false) }
-
-                        Card(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column {
-                                AsyncImage(
-                                    model = File(it.filePath),
-                                    contentDescription = null,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .aspectRatio(1f)
-                                        .clickable { showPreview = true },
-                                    contentScale = ContentScale.Crop
-                                )
-
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = it.model,
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.primary
-                                        )
-                                        Text(
-                                            text = it.prompt.take(20) + if (it.prompt.length > 20) "..." else "",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            maxLines = 2
-                                        )
-                                    }
-
-                                    Row {
-                                        IconButton(
-                                            onClick = {
-                                                clipboardManager.setText(AnnotatedString(it.prompt))
-                                                toaster.show(
-                                                    message = "Prompt copied to clipboard",
-                                                    type = ToastType.Success
-                                                )
-                                            },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = HugeIcons.Copy01,
-                                                contentDescription = "Copy prompt",
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-
-                                        IconButton(
-                                            onClick = {
-                                                scope.launch {
-                                                    try {
-                                                        filesManager.saveMessageImage(context, "file://${it.filePath}")
-                                                        toaster.show(
-                                                            message = context.getString(R.string.imggen_page_image_saved_success),
-                                                            type = ToastType.Success
-                                                        )
-                                                    } catch (e: Exception) {
-                                                        toaster.show(
-                                                            message = context.getString(
-                                                                R.string.imggen_page_save_failed,
-                                                                e.message
-                                                            ),
-                                                            type = ToastType.Error
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = HugeIcons.FloppyDisk,
-                                                contentDescription = stringResource(R.string.imggen_page_save),
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                        }
-
-                                        IconButton(
-                                            onClick = { vm.deleteImage(it) },
-                                            modifier = Modifier.size(32.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = HugeIcons.Delete01,
-                                                contentDescription = stringResource(R.string.imggen_page_delete),
-                                                modifier = Modifier.size(16.dp),
-                                                tint = MaterialTheme.colorScheme.error
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-
-                        if (showPreview) {
-                            ImagePreviewDialog(
-                                images = listOf(it.filePath),
-                                onDismissRequest = { showPreview = false }
                             )
                         }
                     }
