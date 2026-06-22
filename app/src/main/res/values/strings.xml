@@ -656,6 +656,9 @@
   <string name="setting_asr_configure_step_timestamp_desc">Return word-level timestamps in delta events. Disabled by default to save tokens (rikkahub does not consume them yet)</string>
   <string name="setting_asr_configure_step_hotwords">Hotwords</string>
   <string name="setting_asr_configure_step_hotwords_desc">Comma-separated list of hotwords to boost recognition accuracy for proper nouns / domain terms</string>
+  <string name="setting_asr_configure_system_language_desc">Language tag for system speech recognition, e.g. zh-CN, en-US, ja-JP. Leave empty for device default</string>
+  <string name="setting_asr_configure_system_offline">Prefer Offline</string>
+  <string name="setting_asr_configure_system_offline_desc">Prefer on-device speech recognition (no network required, Android 10+). Accuracy depends on the device\'s built-in speech engine</string>
   <string name="setting_asr_page_add_provider">Add ASR Provider</string>
   <string name="setting_asr_page_default_name">ASR</string>
   <string name="setting_asr_page_edit_provider">Edit ASR Provider</string>

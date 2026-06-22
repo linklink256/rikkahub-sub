@@ -38,6 +38,7 @@ fun ASRProviderConfigure(
                         is ASRProviderSetting.Volcengine -> "Volcengine"
                         is ASRProviderSetting.MiMo -> "MiMo"
                         is ASRProviderSetting.Step -> "Step"
+                        is ASRProviderSetting.SystemASR -> "System ASR"
                     },
                     onValueChange = {},
                     readOnly = true,
@@ -64,6 +65,7 @@ fun ASRProviderConfigure(
             is ASRProviderSetting.Volcengine -> VolcengineASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.MiMo -> MiMoASRConfiguration(setting, onValueChange)
             is ASRProviderSetting.Step -> StepASRConfiguration(setting, onValueChange)
+            is ASRProviderSetting.SystemASR -> SystemASRConfiguration(setting, onValueChange)
         }
     }
 }
@@ -412,6 +414,36 @@ private fun MiMoASRConfiguration(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = "Segment Duration (s)"
+            )
+        }
+    }
+}
+
+@Composable
+private fun SystemASRConfiguration(
+    setting: ASRProviderSetting.SystemASR,
+    onValueChange: (ASRProviderSetting) -> Unit
+) {
+    CardGroup {
+        formItem(
+            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
+            description = { Text(stringResource(R.string.setting_asr_configure_system_language_desc)) }
+        ) {
+            OutlinedTextField(
+                value = setting.language,
+                onValueChange = { onValueChange(setting.copy(language = it)) },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text("zh-CN") }
+            )
+        }
+
+        formItem(
+            label = { Text(stringResource(R.string.setting_asr_configure_system_offline)) },
+            description = { Text(stringResource(R.string.setting_asr_configure_system_offline_desc)) }
+        ) {
+            androidx.compose.material3.Switch(
+                checked = setting.preferOffline,
+                onCheckedChange = { onValueChange(setting.copy(preferOffline = it)) }
             )
         }
     }

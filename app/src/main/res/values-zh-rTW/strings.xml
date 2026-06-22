@@ -1234,6 +1234,9 @@
   <string name="setting_asr_configure_step_timestamp_desc">回傳詞級時間戳。rikkahub 目前尚未使用，預設關閉以節省 token</string>
   <string name="setting_asr_configure_step_hotwords">熱詞</string>
   <string name="setting_asr_configure_step_hotwords_desc">以逗號分隔的熱詞清單，用於提升專有名詞／領域術語的辨識準確率</string>
+  <string name="setting_asr_configure_system_language_desc">系統語音辨識的語言標籤，如 zh-CN、en-US、ja-JP。留空則使用裝置預設語言</string>
+  <string name="setting_asr_configure_system_offline">優先離線辨識</string>
+  <string name="setting_asr_configure_system_offline_desc">優先使用裝置端離線語音辨識（無需網路，需 Android 10+）。辨識效果取決於裝置內建的語音引擎</string>
   <string name="log_page_record_requests">記錄請求</string>
   <string name="log_page_record_requests_desc">擷取請求標頭、請求主體和回應元數據</string>
 </resources>

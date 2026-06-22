@@ -655,6 +655,9 @@
   <string name="setting_asr_configure_step_timestamp_desc">在 delta 事件里返回词级时间戳。rikkahub 当前不消费时间戳，默认关闭节省 token</string>
   <string name="setting_asr_configure_step_hotwords">热词</string>
   <string name="setting_asr_configure_step_hotwords_desc">逗号分隔的热词列表，提升专有名词、术语的识别准确率</string>
+  <string name="setting_asr_configure_system_language_desc">系统语音识别的语言标签，如 zh-CN、en-US、ja-JP。留空则使用设备默认语言</string>
+  <string name="setting_asr_configure_system_offline">优先离线识别</string>
+  <string name="setting_asr_configure_system_offline_desc">优先使用设备端离线语音识别（无需网络，需 Android 10+）。识别效果取决于设备内置的语音引擎</string>
   <string name="setting_asr_page_add_provider">添加ASR提供商</string>
   <string name="setting_asr_page_default_name">ASR</string>
   <string name="setting_asr_page_edit_provider">编辑ASR提供商</string>

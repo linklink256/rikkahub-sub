@@ -1234,6 +1234,9 @@
   <string name="setting_asr_configure_step_timestamp_desc">단어 단위 타임스탬프를 반환합니다. rikkahub은 현재 이를 사용하지 않으므로 token 절약을 위해 기본적으로 꺼져 있습니다</string>
   <string name="setting_asr_configure_step_hotwords">핫워드</string>
   <string name="setting_asr_configure_step_hotwords_desc">고유명사/도메인 용어 인식 정확도를 높이기 위한 쉼표로 구분된 핫워드 목록</string>
+  <string name="setting_asr_configure_system_language_desc">시스템 음성 인식을 위한 언어 태그 (예: zh-CN, en-US, ja-JP). 비워두면 기기 기본 언어가 사용됩니다</string>
+  <string name="setting_asr_configure_system_offline">오프라인 선호</string>
+  <string name="setting_asr_configure_system_offline_desc">기기 내장 오프라인 음성 인식을 우선 사용합니다 (네트워크 불필요, Android 10+). 인식 정확도는 기기 내장 음성 엔진에 따라 달라집니다</string>
   <string name="log_page_record_requests">요청 기록</string>
   <string name="log_page_record_requests_desc">요청 헤더, 본문 및 응답 메타데이터를 기록합니다.</string>
 </resources>

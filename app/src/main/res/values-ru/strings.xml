@@ -1234,6 +1234,9 @@
   <string name="setting_asr_configure_step_timestamp_desc">Возвращать временные метки на уровне слов. Сейчас rikkahub их не использует, поэтому по умолчанию отключено для экономии token</string>
   <string name="setting_asr_configure_step_hotwords">Горячие слова</string>
   <string name="setting_asr_configure_step_hotwords_desc">Список горячих слов через запятую для повышения точности распознавания имён собственных и терминов предметной области</string>
+  <string name="setting_asr_configure_system_language_desc">Языковой тег для системного распознавания речи, например zh-CN, en-US, ja-JP. Пусто — язык устройства по умолчанию</string>
+  <string name="setting_asr_configure_system_offline">Предпочитать офлайн</string>
+  <string name="setting_asr_configure_system_offline_desc">Предпочитать локальное распознавание речи на устройстве (без сети, Android 10+). Точность зависит от встроенного речевого движка</string>
   <string name="log_page_record_requests">Записывать запросы</string>
   <string name="log_page_record_requests_desc">Записывать заголовки запросов, тела и метаданные ответов</string>
 </resources>

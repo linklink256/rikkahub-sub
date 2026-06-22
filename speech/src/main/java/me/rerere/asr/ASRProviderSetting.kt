@@ -169,6 +169,36 @@ sealed class ASRProviderSetting {
         }
     }
 
+    /**
+     * 系统 ASR (Android SpeechRecognizer)。
+     *
+     * 使用 Android 系统内置的语音识别引擎, 无需额外 API Key, 可离线工作
+     * (Android 10+ 支持 EXTRA_PREFER_OFFLINE)。识别效果取决于设备内置的
+     * 语音引擎 (Google / 各厂商自带), 不同设备可能有差异。
+     *
+     * 这是唯一一个不需要 apiKey 的 ASR provider, 适合作为零成本的默认选项。
+     */
+    @Serializable
+    @SerialName("system")
+    data class SystemASR(
+        override val id: Uuid = Uuid.random(),
+        override val name: String = "System ASR",
+        // 语言标签, 如 zh-CN / en-US / ja-JP; 留空使用设备默认语言
+        val language: String = "",
+        // 优先使用设备端离线识别 (Android 10+), 避免网络依赖
+        val preferOffline: Boolean = true,
+    ) : ASRProviderSetting() {
+        override fun copyProvider(
+            id: Uuid,
+            name: String,
+        ): ASRProviderSetting {
+            return this.copy(
+                id = id,
+                name = name,
+            )
+        }
+    }
+
     companion object {
         val Types by lazy {
             listOf(
@@ -177,6 +207,7 @@ sealed class ASRProviderSetting {
                 Volcengine::class,
                 MiMo::class,
                 Step::class,
+                SystemASR::class,
             )
         }
     }
