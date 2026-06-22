@@ -120,40 +120,49 @@ fun VoiceCallPage(conversationId: String) {
         }
     }
 
-    // THINKING: 等待生成完成, 然后朗读 AI 回复并进入 SPEAKING
+    // 长驻收集器 — 从进入 composition 就订阅, 不会丢失 generationDoneFlow 事件
+    LaunchedEffect(Unit) {
+        vm.generationDoneFlow.collect { doneUuid ->
+            if (doneUuid == conversationUuid && vm.state.value.status == VoiceCallStatus.THINKING) {
+                Logging.log("VoiceCall", "Generation done (from long-lived collector)")
+                val text = vm.getLatestAssistantText()
+                if (!text.isNullOrBlank()) {
+                    Logging.log("VoiceCall", "Assistant text: $text")
+                    vm.updateAssistantText(text)
+                    tts.speak(text)
+                    vm.updateStatus(VoiceCallStatus.SPEAKING)
+                } else {
+                    // 无新回复, 可能是生成失败 — 检查错误并提示
+                    val error = vm.errors.value.lastOrNull { it.conversationId == conversationUuid }
+                    if (error != null) {
+                        toaster.show(
+                            message = error.title ?: "生成回复出错",
+                            type = ToastType.Error,
+                        )
+                    }
+                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                }
+            }
+        }
+    }
+
+    // THINKING 超时保护: 若 120 秒内状态未从 THINKING 切走, 提示超时
     LaunchedEffect(state.status) {
         if (state.status == VoiceCallStatus.THINKING) {
             Logging.log("VoiceCall", "Entering THINKING, waiting for generation")
-            // 超时保护: 若 generationDoneFlow 未发射 (如生成异常), 120 秒后回退
-            val done = withTimeoutOrNull(120_000L) {
-                vm.generationDoneFlow.first { it == conversationUuid }
-            }
-            if (done == null) {
-                Logging.log("VoiceCall", "Generation timeout")
-                toaster.show(
-                    message = "生成超时, 请重试",
-                    type = ToastType.Warning,
-                )
-                vm.updateStatus(VoiceCallStatus.LISTENING)
-                return@LaunchedEffect
-            }
-            Logging.log("VoiceCall", "Generation done")
-            val text = vm.getLatestAssistantText()
-            if (!text.isNullOrBlank()) {
-                Logging.log("VoiceCall", "Assistant text: $text")
-                vm.updateAssistantText(text)
-                tts.speak(text)
-                vm.updateStatus(VoiceCallStatus.SPEAKING)
-            } else {
-                // 无新回复, 可能是生成失败 — 检查错误并提示
-                val error = vm.errors.value.lastOrNull { it.conversationId == conversationUuid }
-                if (error != null) {
+            withTimeoutOrNull(120_000L) {
+                // 等待状态从 THINKING 切走 (由长驻收集器或打断触发)
+                vm.state.first { it.status != VoiceCallStatus.THINKING }
+            } ?: run {
+                // 超时 — 状态仍然是 THINKING
+                if (vm.state.value.status == VoiceCallStatus.THINKING) {
+                    Logging.log("VoiceCall", "Generation timeout (120s)")
                     toaster.show(
-                        message = error.title ?: "生成回复出错",
-                        type = ToastType.Error,
+                        message = "生成超时, 请重试",
+                        type = ToastType.Warning,
                     )
+                    vm.updateStatus(VoiceCallStatus.LISTENING)
                 }
-                vm.updateStatus(VoiceCallStatus.LISTENING)
             }
         }
     }
