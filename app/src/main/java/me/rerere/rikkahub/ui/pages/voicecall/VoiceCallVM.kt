@@ -18,6 +18,7 @@ import kotlinx.coroutines.launch
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.provider.Model
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.common.android.Logging
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.datastore.getSelectedASRProvider
@@ -86,6 +87,7 @@ class VoiceCallVM(
     private var messageCountBeforeSend: Int = 0
 
     init {
+        Logging.log("VoiceCall", "Call init, conversationId=$conversationId")
         chatService.addConversationReference(_conversationId)
         viewModelScope.launch {
             chatService.initializeConversation(_conversationId)
@@ -93,6 +95,7 @@ class VoiceCallVM(
     }
 
     fun updateStatus(status: VoiceCallStatus) {
+        Logging.log("VoiceCall", "Status: ${_state.value.status} -> $status")
         _state.update { it.copy(status = status) }
     }
 
@@ -117,6 +120,7 @@ class VoiceCallVM(
      */
     fun sendUserMessage(text: String) {
         if (text.isBlank()) return
+        Logging.log("VoiceCall", "Send user message: $text")
         messageCountBeforeSend = conversation.value.currentMessages.size
         chatService.sendMessage(_conversationId, listOf(UIMessagePart.Text(text)))
         _state.update {
@@ -129,11 +133,13 @@ class VoiceCallVM(
      * 只查找 [messageCountBeforeSend] 之后的消息, 避免朗读上一轮的旧回复。
      */
     fun getLatestAssistantText(): String? {
-        return conversation.value.currentMessages
+        val text = conversation.value.currentMessages
             .drop(messageCountBeforeSend)
             .lastOrNull { it.role == MessageRole.ASSISTANT }
             ?.takeIf { it.toText().isNotBlank() }
             ?.toText()
+        Logging.log("VoiceCall", "Latest assistant text: $text")
+        return text
     }
 
     fun startCallTimer() {
@@ -160,6 +166,7 @@ class VoiceCallVM(
 
     override fun onCleared() {
         super.onCleared()
+        Logging.log("VoiceCall", "Call onCleared")
         timerJob?.cancel()
         chatService.removeConversationReference(_conversationId)
     }

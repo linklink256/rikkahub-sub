@@ -29,6 +29,7 @@ import me.rerere.asr.ASRProviderSetting
 import me.rerere.asr.ASRState
 import me.rerere.asr.ASRStatus
 import me.rerere.asr.appendAmplitude
+import me.rerere.common.android.Logging
 import java.util.Collections
 
 private const val TAG = "SystemASR"
@@ -68,6 +69,7 @@ class SystemASRController(
     private var currentPartial = ""
 
     override fun start(onTranscriptChange: (String) -> Unit) {
+        Logging.log(TAG, "ASR start called, isListening=$isListening")
         if (state.value.isRecording) return
 
         if (ContextCompat.checkSelfPermission(
@@ -75,15 +77,20 @@ class SystemASRController(
                 Manifest.permission.RECORD_AUDIO
             ) != PackageManager.PERMISSION_GRANTED
         ) {
+            Logging.log(TAG, "RECORD_AUDIO permission not granted")
             setError("Microphone permission is required")
             return
         }
+        Logging.log(TAG, "RECORD_AUDIO permission granted")
 
         if (!isSpeechRecognitionAvailable(context)) {
             // 设备可能没有 Google 服务的 SpeechRecognizer, 但可能有第三方语音引擎。
             // 不直接拒绝, 而是尝试创建并启动; 若 createSpeechRecognizer 返回 null
             // 或 startListening 抛异常, 再报错。
             Log.w(TAG, "isRecognitionAvailable=false, but trying to start anyway")
+            Logging.log(TAG, "isRecognitionAvailable=false, but trying to start anyway")
+        } else {
+            Logging.log(TAG, "isRecognitionAvailable=true")
         }
 
         this.onTranscriptChange = onTranscriptChange
@@ -136,6 +143,7 @@ class SystemASRController(
                 putExtra(RecognizerIntent.EXTRA_LANGUAGE, provider.language)
             }
         }
+        Logging.log(TAG, "RecognitionListener set, intent extras: language=${provider.language}, preferOffline=${provider.preferOffline}")
 
         speechRecognizer?.setRecognitionListener(object : RecognitionListener {
             override fun onReadyForSpeech(params: Bundle?) {}
@@ -157,6 +165,7 @@ class SystemASRController(
             override fun onError(error: Int) {
                 val errorMsg = mapError(error)
                 Log.w(TAG, "Recognition error: $error ($errorMsg)")
+                Logging.log(TAG, "Recognition error: $error ($errorMsg), retryCount=$clientErrorRetryCount")
 
                 if (!isListening) return
 
@@ -170,9 +179,11 @@ class SystemASRController(
                         // 重试几次而非直接放弃。超过上限则判定为设备不支持。
                         clientErrorRetryCount++
                         if (clientErrorRetryCount > 3) {
+                            Logging.log(TAG, "ERROR_CLIENT exceeded max retries (3), giving up")
                             setError("系统语音识别不可用 (Client error), 请尝试在设置中配置其他 ASR provider")
                             isListening = false
                         } else {
+                            Logging.log(TAG, "ERROR_CLIENT retrying ($clientErrorRetryCount/3) after ${500L * clientErrorRetryCount}ms")
                             scope.launch {
                                 if (isListening && isActive) {
                                     delay(500L * clientErrorRetryCount)
@@ -209,6 +220,7 @@ class SystemASRController(
                     ?.firstOrNull()
                     .orEmpty()
                 if (partial.isNotEmpty()) {
+                    Logging.log(TAG, "onPartialResults: partial=$partial")
                     currentPartial = partial
                     publishTranscript()
                 }
@@ -219,6 +231,7 @@ class SystemASRController(
                     ?.getStringArrayList(SpeechRecognizer.RESULTS_RECOGNITION)
                     ?.firstOrNull()
                     .orEmpty()
+                Logging.log(TAG, "onResults: text=$text")
                 if (text.isNotEmpty()) {
                     synchronized(completedTranscripts) {
                         completedTranscripts.add(text)
@@ -250,6 +263,7 @@ class SystemASRController(
     }
 
     override fun stop() {
+        Logging.log(TAG, "ASR stop called")
         isListening = false
         _state.update { it.copy(status = ASRStatus.Stopping) }
         speechRecognizer?.stopListening()
@@ -261,6 +275,7 @@ class SystemASRController(
     }
 
     override fun dispose() {
+        Logging.log(TAG, "ASR dispose called")
         isListening = false
         speechRecognizer?.destroy()
         speechRecognizer = null
@@ -297,9 +312,11 @@ class SystemASRController(
         val googleComponent = findGoogleRecognitionService()
         if (googleComponent != null) {
             Log.i(TAG, "Using Google RecognitionService: ${googleComponent.packageName}/${googleComponent.className}")
+            Logging.log(TAG, "Found Google RecognitionService: ${googleComponent.packageName}/${googleComponent.className}")
             return SpeechRecognizer.createSpeechRecognizer(context, googleComponent)
         }
         Log.w(TAG, "No Google RecognitionService found, falling back to system default")
+        Logging.log(TAG, "No Google RecognitionService found, falling back to system default")
         return SpeechRecognizer.createSpeechRecognizer(context)
     }
 

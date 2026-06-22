@@ -48,6 +48,7 @@ import com.dokar.sonner.ToastType
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.uuid.Uuid
+import me.rerere.common.android.Logging
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Cancel01
 import me.rerere.hugeicons.stroke.Voice
@@ -99,10 +100,12 @@ fun VoiceCallPage(conversationId: String) {
     // 进入 LISTENING 启动 ASR, 离开时停止 ASR
     LaunchedEffect(state.status) {
         if (state.status == VoiceCallStatus.LISTENING) {
+            Logging.log("VoiceCall", "Entering LISTENING, starting ASR")
             asr.start { transcript ->
                 vm.updateUserTranscript(transcript)
             }
         } else {
+            Logging.log("VoiceCall", "Leaving LISTENING, stopping ASR")
             asr.stop()
         }
     }
@@ -110,11 +113,13 @@ fun VoiceCallPage(conversationId: String) {
     // THINKING: 等待生成完成, 然后朗读 AI 回复并进入 SPEAKING
     LaunchedEffect(state.status) {
         if (state.status == VoiceCallStatus.THINKING) {
+            Logging.log("VoiceCall", "Entering THINKING, waiting for generation")
             // 超时保护: 若 generationDoneFlow 未发射 (如生成异常), 120 秒后回退
             val done = withTimeoutOrNull(120_000L) {
                 vm.generationDoneFlow.first { it == conversationUuid }
             }
             if (done == null) {
+                Logging.log("VoiceCall", "Generation timeout")
                 toaster.show(
                     message = "生成超时, 请重试",
                     type = ToastType.Warning,
@@ -122,8 +127,10 @@ fun VoiceCallPage(conversationId: String) {
                 vm.updateStatus(VoiceCallStatus.LISTENING)
                 return@LaunchedEffect
             }
+            Logging.log("VoiceCall", "Generation done")
             val text = vm.getLatestAssistantText()
             if (!text.isNullOrBlank()) {
+                Logging.log("VoiceCall", "Assistant text: $text")
                 vm.updateAssistantText(text)
                 tts.speak(text)
                 vm.updateStatus(VoiceCallStatus.SPEAKING)
@@ -145,8 +152,12 @@ fun VoiceCallPage(conversationId: String) {
     LaunchedEffect(ttsPlaybackState.status) {
         if (state.status == VoiceCallStatus.SPEAKING) {
             when (ttsPlaybackState.status) {
-                PlaybackStatus.Ended -> vm.updateStatus(VoiceCallStatus.LISTENING)
+                PlaybackStatus.Ended -> {
+                    Logging.log("VoiceCall", "TTS playback ended, back to LISTENING")
+                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                }
                 PlaybackStatus.Error -> {
+                    Logging.log("VoiceCall", "TTS error, back to LISTENING")
                     toaster.show(
                         message = "语音合成出错",
                         type = ToastType.Error,
@@ -192,6 +203,7 @@ fun VoiceCallPage(conversationId: String) {
     }
 
     val stopAndSend: () -> Unit = {
+        Logging.log("VoiceCall", "Stop and send")
         asr.stop()
         val text = vm.state.value.userTranscript
         if (text.isNotBlank()) {
@@ -200,12 +212,14 @@ fun VoiceCallPage(conversationId: String) {
     }
 
     val interrupt: () -> Unit = {
+        Logging.log("VoiceCall", "Interrupt clicked")
         vm.stopGeneration()
         tts.stop()
         vm.updateStatus(VoiceCallStatus.LISTENING)
     }
 
     val hangup: () -> Unit = {
+        Logging.log("VoiceCall", "Hangup clicked")
         asr.stop()
         tts.stop()
         vm.stopGeneration()
