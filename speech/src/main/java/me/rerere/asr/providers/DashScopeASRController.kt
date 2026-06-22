@@ -34,7 +34,6 @@ import okhttp3.Request
 import okhttp3.Response
 import okhttp3.WebSocket
 import okhttp3.WebSocketListener
-import org.json.JSONArray
 import org.json.JSONObject
 import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
@@ -133,8 +132,13 @@ class DashScopeASRController(
         val socket = webSocket
         if (socket != null) {
             _state.update { it.copy(status = ASRStatus.Stopping) }
+            // Send session.finish per protocol, then close
+            val finishEvent = JSONObject()
+                .put("event_id", "evt_finish_${System.currentTimeMillis()}")
+                .put("type", "session.finish")
+            socket.send(finishEvent.toString())
             scope.launch {
-                delay(500)
+                delay(500) // Wait briefly for session.finished or any final transcript
                 socket.close(1000, "stop")
                 if (webSocket === socket) {
                     webSocket = null
@@ -215,6 +219,16 @@ class DashScopeASRController(
         }
 
         when (val type = event.optString("type")) {
+            "session.created" -> {
+                Logging.log(TAG, "Session created")
+            }
+            "session.updated" -> {
+                Logging.log(TAG, "Session updated successfully")
+            }
+            "session.finished" -> {
+                Logging.log(TAG, "Session finished")
+                // Don't need to do anything special, the WebSocket will be closed by stop()
+            }
             "conversation.item.input_audio_transcription.delta" -> {
                 val itemId = event.optString("item_id", "default")
                 val delta = event.optString("delta")
@@ -298,7 +312,6 @@ private fun ASRProviderSetting.DashScope.sessionUpdateEvent(): JSONObject {
     if (language.isNotBlank()) transcription.put("language", language)
 
     val session = JSONObject()
-        .put("modalities", JSONArray().put("text"))
         .put("input_audio_format", "pcm")
         .put("sample_rate", sampleRate)
         .put("input_audio_transcription", transcription)

@@ -133,8 +133,15 @@ private class CustomAsrStateImpl(
                     Logging.log("ASRHook", "DashScope apiKey is blank, returning null controller")
                     return null
                 }
+                // Auto-migrate old URL: /api-ws/v1/inference → /api-ws/v1/realtime
+                val fixedProvider = if (provider.websocketUrl.contains("/api-ws/v1/inference")) {
+                    Logging.log("ASRHook", "DashScope URL migration: ${provider.websocketUrl} -> using /api-ws/v1/realtime")
+                    provider.copy(websocketUrl = provider.websocketUrl.replace("/api-ws/v1/inference", "/api-ws/v1/realtime"))
+                } else {
+                    provider
+                }
                 Logging.log("ASRHook", "Creating DashScopeASRController")
-                DashScopeASRController(context, httpClient, provider)
+                DashScopeASRController(context, httpClient, fixedProvider)
             }
 
             is ASRProviderSetting.Volcengine -> {
