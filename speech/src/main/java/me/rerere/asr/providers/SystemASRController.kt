@@ -1,11 +1,14 @@
 package me.rerere.asr.providers
 
 import android.Manifest
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ResolveInfo
 import android.os.Bundle
 import android.speech.RecognitionListener
+import android.speech.RecognitionService
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
@@ -109,7 +112,7 @@ class SystemASRController(
     private fun startListening() {
         speechRecognizer?.destroy()
         val recognizer = try {
-            SpeechRecognizer.createSpeechRecognizer(context)
+            createBestSpeechRecognizer()
         } catch (e: Exception) {
             Log.e(TAG, "Failed to create SpeechRecognizer", e)
             setError("无法创建语音识别器: ${e.message}")
@@ -118,7 +121,7 @@ class SystemASRController(
             return
         }
         if (recognizer == null) {
-            setError("设备不支持语音识别")
+            setError("设备不支持语音识别，请安装 Google App 或配置云端 ASR")
             isListening = false
             _state.update { it.copy(status = ASRStatus.Error) }
             return
@@ -283,6 +286,42 @@ class SystemASRController(
                 status = ASRStatus.Error,
                 errorMessage = message
             )
+        }
+    }
+
+    /**
+     * 创建 SpeechRecognizer, 优先显式绑定 Google 的 RecognitionService。
+     * 这样即使系统"语音输入"默认设置不正确, 只要装了 Google App 就能用。
+     */
+    private fun createBestSpeechRecognizer(): SpeechRecognizer? {
+        val googleComponent = findGoogleRecognitionService()
+        if (googleComponent != null) {
+            Log.i(TAG, "Using Google RecognitionService: ${googleComponent.packageName}/${googleComponent.className}")
+            return SpeechRecognizer.createSpeechRecognizer(context, googleComponent)
+        }
+        Log.w(TAG, "No Google RecognitionService found, falling back to system default")
+        return SpeechRecognizer.createSpeechRecognizer(context)
+    }
+
+    /**
+     * 查询设备上已安装的 RecognitionService, 优先找 Google 的。
+     */
+    private fun findGoogleRecognitionService(): ComponentName? {
+        return try {
+            val intent = Intent(RecognitionService.SERVICE_INTERFACE)
+            val services = context.packageManager.queryIntentServices(
+                intent,
+                PackageManager.GET_SERVICES
+            )
+            val googleService = services.firstOrNull { info ->
+                info.serviceInfo.packageName.contains("google", ignoreCase = true)
+            }
+            googleService?.serviceInfo?.let {
+                ComponentName(it.packageName, it.name)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to query RecognitionService", e)
+            null
         }
     }
 
