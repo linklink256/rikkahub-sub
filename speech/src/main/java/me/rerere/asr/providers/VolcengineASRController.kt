@@ -27,6 +27,7 @@ import me.rerere.asr.ASRState
 import me.rerere.asr.ASRStatus
 import me.rerere.asr.appendAmplitude
 import me.rerere.asr.calculateRmsAmplitude
+import me.rerere.common.android.Logging
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -221,21 +222,34 @@ class VolcengineASRController(
                     return
                 }
 
-                val text = json.optJSONObject("result")?.optString("text", "") ?: ""
+                val result = json.optJSONObject("result")
+                val text = result?.optString("text", "") ?: ""
                 if (text.isNotEmpty() && text != lastText) {
                     lastText = text
                     _state.update { it.copy(transcript = text, errorMessage = null) }
                     scope.launch { onTranscriptChange?.invoke(text) }
-                    // Volcengine 流式 ASR 的完成信号不如 OpenAI Realtime/DashScope 明确:
-                    // 如果响应 JSON 含有 is_final 字段, 仅在 is_final 为 true 时视为一句话说完,
-                    // 触发 onTranscriptComplete 以便上层 (语音通话页) 自动发送;
-                    // 如果没有 is_final 字段, 则每个新结果都整体替换上一个结果,
-                    // 视为一次完整识别, 因此每次新结果到达都触发 onTranscriptComplete。
-                    if (json.has("is_final")) {
-                        if (json.optBoolean("is_final", false)) {
-                            scope.launch { onTranscriptComplete?.invoke(text) }
-                        }
+
+                    // 火山引擎 SAUC bigmodel 的完成信号在 utterances[].definite 字段:
+                    // - definite=true  → VAD 检测到停顿, 这句话确定了 (可以发送)
+                    // - definite=false → 中间结果, 还在识别中 (只更新文字, 不发送)
+                    // show_utterances=true 已在请求中开启, 服务器会返回 utterances 数组。
+                    val utterances = result?.optJSONArray("utterances")
+                    val isDefinite = if (utterances != null && utterances.length() > 0) {
+                        // 检查最后一个 utterance 的 definite 字段
+                        val lastUtterance = utterances.optJSONObject(utterances.length() - 1)
+                        val definite = lastUtterance?.optBoolean("definite", false) ?: false
+                        Logging.log(TAG, "Utterance definite=$definite, text=${text.take(50)}")
+                        definite
                     } else {
+                        // 没有 utterances 字段时, 退回到只在最后一包 (FLAG_LAST_PACKET 响应) 时发送
+                        // message type specific flags = 0b0011 表示最后一包结果
+                        val isLastPacket = (messageFlags and 0x03) == 0x03
+                        Logging.log(TAG, "No utterances, isLastPacket=$isLastPacket, text=${text.take(50)}")
+                        isLastPacket
+                    }
+
+                    if (isDefinite) {
+                        Logging.log(TAG, "Transcript complete (definite=true): $text")
                         scope.launch { onTranscriptComplete?.invoke(text) }
                     }
                 }
