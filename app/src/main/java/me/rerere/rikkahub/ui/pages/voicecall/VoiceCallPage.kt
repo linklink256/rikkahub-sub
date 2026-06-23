@@ -165,7 +165,10 @@ fun VoiceCallPage(conversationId: String) {
         var pendingBuffer = StringBuilder()
         var finalFlushDone = false
         var lastFlushTime = System.currentTimeMillis()
-        val sentenceEndRegex = Regex("[。！？\\n]")
+        // 断句标点: 句末标点(。！？\n) + 子句分隔符(，,;；:：)
+        // 参考 bailing 项目: 逗号也是有效切分点, 让 TTS 在子句边界尽早播报,
+        // 而不是等到完整句末才送 TTS (降低首音延迟, 断句更自然)。
+        val sentenceEndRegex = Regex("[。！？\\n，,;；:：]")
         val minChunkSize = 30  // 最少累积 30 字再发送, 避免断句
         Logging.log("VoiceCall", "Streaming TTS started, cycle=$thisCycle")
 
