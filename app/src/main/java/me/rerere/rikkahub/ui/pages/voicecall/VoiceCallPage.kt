@@ -30,6 +30,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -38,6 +39,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -67,6 +69,7 @@ import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.pages.chat.AssistantBackground
 import me.rerere.tts.model.PlaybackStatus
+import me.rerere.vad.EnergyVadDetector
 import org.koin.androidx.compose.koinViewModel
 import org.koin.core.parameter.parametersOf
 
@@ -99,6 +102,23 @@ fun VoiceCallPage(conversationId: String) {
     // 流式 TTS 状态
     var streamCycle by remember { mutableStateOf(0) }
     val generationDone = remember { mutableStateOf(false) }
+
+    val context = LocalContext.current
+
+    // 能量 VAD: SPEAKING 时监听用户说话, 实现 barge-in (全双工打断)
+    val energyVad = remember {
+        EnergyVadDetector(
+            context = context.applicationContext,
+            energyThreshold = 3000.0,
+            speechDurationMs = 480,
+            onSpeechDetected = {
+                Logging.log("VoiceCall", "VAD barge-in: user speech detected during AI response")
+                vm.stopGeneration()
+                tts.stop()
+                vm.updateStatus(VoiceCallStatus.LISTENING)
+            }
+        )
+    }
 
     val asrPermission = rememberPermissionState(PermissionRecordAudio)
     PermissionManager(permissionState = asrPermission)
@@ -144,6 +164,7 @@ fun VoiceCallPage(conversationId: String) {
         var lastTextLength = 0
         var pendingBuffer = StringBuilder()
         var finalFlushDone = false
+        var lastFlushTime = System.currentTimeMillis()
         val sentenceEndRegex = Regex("[。！？\\n]")
         val minChunkSize = 30  // 最少累积 30 字再发送, 避免断句
         Logging.log("VoiceCall", "Streaming TTS started, cycle=$thisCycle")
@@ -161,6 +182,7 @@ fun VoiceCallPage(conversationId: String) {
                 lastAssistantIndex = assistantIndex
                 lastTextLength = text.length  // 把当前文本标记为"已处理", 只追踪新增的
                 pendingBuffer.clear()
+                lastFlushTime = System.currentTimeMillis()
             }
 
             if (text.length > lastTextLength) {
@@ -196,18 +218,46 @@ fun VoiceCallPage(conversationId: String) {
                         }
 
                         if (flushText.isNotBlank()) {
-                            val isFirstChunk = s == VoiceCallStatus.THINKING
-                            Logging.log(
-                                "VoiceCall",
-                                "TTS flush (${flushText.length}c, first=$isFirstChunk): ${flushText.take(50)}..."
-                            )
-                            tts.speak(flushText, flushCalled = isFirstChunk)
-                            pendingBuffer = StringBuilder(remaining)
-                            vm.updateAssistantText(text)
-                            if (isFirstChunk) {
-                                vm.updateStatus(VoiceCallStatus.SPEAKING)
+                            // 最小字数检查: 非 final 时过短的内容(如单独标点)保留在 buffer, 等待更多文本
+                            if (flushText.length < 2 && !isFinal) {
+                                Logging.log("VoiceCall", "TTS skip short chunk (${flushText.length}c), waiting for more")
+                            } else {
+                                val isFirstChunk = s == VoiceCallStatus.THINKING
+                                Logging.log(
+                                    "VoiceCall",
+                                    "TTS flush (${flushText.length}c, first=$isFirstChunk): ${flushText.take(50)}..."
+                                )
+                                tts.speak(flushText, flushCalled = isFirstChunk)
+                                pendingBuffer = StringBuilder(remaining)
+                                lastFlushTime = System.currentTimeMillis()
+                                vm.updateAssistantText(text)
+                                if (isFirstChunk) {
+                                    vm.updateStatus(VoiceCallStatus.SPEAKING)
+                                }
                             }
                         }
+                    }
+                }
+            }
+
+            // 超时强制 flush: buffer 非空且超过 1.5 秒未 flush 时, 即使无标点也发送
+            // (降低无标点长定语的首音延迟)
+            if (pendingBuffer.isNotEmpty() && !generationDone.value &&
+                System.currentTimeMillis() - lastFlushTime > 1500
+            ) {
+                val pending = pendingBuffer.toString()
+                if (pending.length >= 2) {  // 仍需满足最小字数
+                    val isFirstChunk = s == VoiceCallStatus.THINKING
+                    Logging.log(
+                        "VoiceCall",
+                        "TTS timeout flush (${pending.length}c, first=$isFirstChunk): ${pending.take(50)}..."
+                    )
+                    tts.speak(pending, flushCalled = isFirstChunk)
+                    pendingBuffer.clear()
+                    lastFlushTime = System.currentTimeMillis()
+                    vm.updateAssistantText(text)
+                    if (isFirstChunk) {
+                        vm.updateStatus(VoiceCallStatus.SPEAKING)
                     }
                 }
             }
@@ -291,6 +341,49 @@ fun VoiceCallPage(conversationId: String) {
         }
     }
 
+    // LLM 错误兜底: 生成出错时 TTS 播一句提示并回到监听
+    LaunchedEffect(vm.errors) {
+        val processedErrorIds = mutableSetOf<Uuid>()
+        vm.errors.collect { errors ->
+            // 只处理本会话最新的未处理错误
+            val myError = errors.lastOrNull {
+                it.conversationId == conversationUuid && it.id !in processedErrorIds
+            }
+            if (myError != null) {
+                processedErrorIds.add(myError.id)
+                // 仅在 THINKING 状态兜底 (SPEAKING 说明 TTS 已开始, 不再重复兜底)
+                if (vm.state.value.status == VoiceCallStatus.THINKING) {
+                    val errorMsg = myError.error.message ?: "未知错误"
+                    Logging.log("VoiceCall", "LLM error: $errorMsg")
+                    toaster.show(message = "AI 回复出错: $errorMsg", type = ToastType.Error)
+                    tts.speak("抱歉，出了点问题，请再说一次", flushCalled = true)
+                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                }
+            }
+        }
+    }
+
+    // 全双工 barge-in: THINKING/SPEAKING 时启动能量 VAD 监听用户说话
+    LaunchedEffect(state.status) {
+        when (state.status) {
+            VoiceCallStatus.THINKING, VoiceCallStatus.SPEAKING -> {
+                Logging.log("VoiceCall", "Starting energy VAD for barge-in (${state.status})")
+                energyVad.stop()
+                energyVad.start()
+            }
+            else -> {
+                energyVad.stop()
+            }
+        }
+    }
+
+    // 离开页面时释放 VAD
+    DisposableEffect(Unit) {
+        onDispose {
+            energyVad.stop()
+        }
+    }
+
     // ---- 按钮动作 ----
 
     val startCall: () -> Unit = {
@@ -346,6 +439,7 @@ fun VoiceCallPage(conversationId: String) {
         Logging.log("VoiceCall", "Hangup clicked")
         asr.stop()
         tts.stop()
+        energyVad.stop()
         vm.stopGeneration()
         vm.stopCallTimer()
         vm.updateStatus(VoiceCallStatus.ENDED)
