@@ -37,7 +37,6 @@ fun ASRProviderConfigure(
                     is ASRProviderSetting.Volcengine -> "Volcengine"
                     is ASRProviderSetting.MiMo -> "MiMo"
                     is ASRProviderSetting.Step -> "Step"
-                    is ASRProviderSetting.SystemASR -> "System ASR"
                 },
                 onValueChange = {},
                 readOnly = true,
@@ -412,36 +411,6 @@ private fun MiMoASRConfiguration(
                 },
                 modifier = Modifier.fillMaxWidth(),
                 label = "Segment Duration (s)"
-            )
-        }
-    }
-}
-
-@Composable
-private fun SystemASRConfiguration(
-    setting: ASRProviderSetting.SystemASR,
-    onValueChange: (ASRProviderSetting) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_system_language_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.language,
-                onValueChange = { onValueChange(setting.copy(language = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("zh-CN") }
-            )
-        }
-
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_system_offline)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_system_offline_desc)) }
-        ) {
-            androidx.compose.material3.Switch(
-                checked = setting.preferOffline,
-                onCheckedChange = { onValueChange(setting.copy(preferOffline = it)) }
             )
         }
     }
