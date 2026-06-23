@@ -79,8 +79,8 @@ import me.rerere.rikkahub.data.model.InjectionPosition
 import me.rerere.rikkahub.data.model.Lorebook
 import me.rerere.rikkahub.data.model.PromptInjection
 import me.rerere.rikkahub.ui.components.nav.BackButton
-import me.rerere.rikkahub.ui.components.ui.CardGroup
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
@@ -398,17 +398,15 @@ private fun LorebookEditSheet(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                CardGroup {
-                    formItem(
-                        label = { Text(stringResource(R.string.prompt_page_enabled)) },
-                        tail = {
-                            Switch(
-                                checked = book.enabled,
-                                onCheckedChange = { onEdit(book.copy(enabled = it)) }
-                            )
-                        }
-                    )
-                }
+                FormItem(
+                    label = { Text(stringResource(R.string.prompt_page_enabled)) },
+                    tail = {
+                        Switch(
+                            checked = book.enabled,
+                            onCheckedChange = { onEdit(book.copy(enabled = it)) }
+                        )
+                    }
+                )
 
                 // 条目列表
                 Row(
@@ -540,17 +538,15 @@ private fun RegexInjectionEditDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                CardGroup {
-                    formItem(
-                        label = { Text(stringResource(R.string.prompt_page_enabled)) },
-                        tail = {
-                            Switch(
-                                checked = entry.enabled,
-                                onCheckedChange = { onEdit(entry.copy(enabled = it)) }
-                            )
-                        }
-                    )
-                }
+                FormItem(
+                    label = { Text(stringResource(R.string.prompt_page_enabled)) },
+                    tail = {
+                        Switch(
+                            checked = entry.enabled,
+                            onCheckedChange = { onEdit(entry.copy(enabled = it)) }
+                        )
+                    }
+                )
 
                 OutlinedTextField(
                     value = entry.priority.toString(),
@@ -628,36 +624,34 @@ private fun RegexInjectionEditDialog(
                     }
                 }
 
-                CardGroup {
-                    formItem(
-                        label = { Text(stringResource(R.string.prompt_page_use_regex)) },
-                        tail = {
-                            Switch(
-                                checked = entry.useRegex,
-                                onCheckedChange = { onEdit(entry.copy(useRegex = it)) }
-                            )
-                        }
-                    )
-                    formItem(
-                        label = { Text(stringResource(R.string.prompt_page_case_sensitive)) },
-                        tail = {
-                            Switch(
-                                checked = entry.caseSensitive,
-                                onCheckedChange = { onEdit(entry.copy(caseSensitive = it)) }
-                            )
-                        }
-                    )
-                    formItem(
-                        label = { Text(stringResource(R.string.prompt_page_constant_active)) },
-                        description = { Text(stringResource(R.string.prompt_page_constant_active_desc)) },
-                        tail = {
-                            Switch(
-                                checked = entry.constantActive,
-                                onCheckedChange = { onEdit(entry.copy(constantActive = it)) }
-                            )
-                        }
-                    )
-                }
+                FormItem(
+                    label = { Text(stringResource(R.string.prompt_page_use_regex)) },
+                    tail = {
+                        Switch(
+                            checked = entry.useRegex,
+                            onCheckedChange = { onEdit(entry.copy(useRegex = it)) }
+                        )
+                    }
+                )
+                FormItem(
+                    label = { Text(stringResource(R.string.prompt_page_case_sensitive)) },
+                    tail = {
+                        Switch(
+                            checked = entry.caseSensitive,
+                            onCheckedChange = { onEdit(entry.copy(caseSensitive = it)) }
+                        )
+                    }
+                )
+                FormItem(
+                    label = { Text(stringResource(R.string.prompt_page_constant_active)) },
+                    description = { Text(stringResource(R.string.prompt_page_constant_active_desc)) },
+                    tail = {
+                        Switch(
+                            checked = entry.constantActive,
+                            onCheckedChange = { onEdit(entry.copy(constantActive = it)) }
+                        )
+                    }
+                )
 
                 OutlinedTextField(
                     value = entry.scanDepth.toString(),

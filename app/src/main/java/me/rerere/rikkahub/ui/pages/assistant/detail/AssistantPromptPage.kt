@@ -79,7 +79,7 @@ import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.toMessageNode
 import me.rerere.rikkahub.ui.components.message.ChatMessage
 import me.rerere.rikkahub.ui.components.nav.BackButton
-import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
@@ -199,8 +199,11 @@ private fun AssistantPromptContent(
             }
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_allow_conversation_system_prompt))
                 },
@@ -222,8 +225,11 @@ private fun AssistantPromptContent(
             )
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_allow_conversation_prompt_injection))
                 },
@@ -245,8 +251,11 @@ private fun AssistantPromptContent(
             )
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -322,66 +331,69 @@ private fun AssistantPromptContent(
                     })
                 }
             )
-        }
-
-        Column(
-            modifier = Modifier
-                .clip(MaterialTheme.shapes.small)
-                .background(MaterialTheme.colorScheme.background)
-                .padding(8.dp)
-                .fillMaxWidth()
-        ) {
-            SectionHeader(stringResource(R.string.assistant_page_template_preview))
-            val rawMessages = listOf(
-                UIMessage.user("你好啊"),
-                UIMessage.assistant("你好，有什么我可以帮你的吗？"),
-            )
-            val preview by produceState<UiState<List<UIMessage>>>(
-                UiState.Success(rawMessages),
-                assistant
+            Column(
+                modifier = Modifier
+                    .padding(8.dp)
+                    .clip(MaterialTheme.shapes.small)
+                    .background(MaterialTheme.colorScheme.background)
+                    .padding(8.dp)
+                    .fillMaxWidth()
             ) {
-                value = runCatching {
-                    UiState.Success(
-                        templateTransformer.transform(
-                            ctx = TransformerContext(
-                                context = context,
-                                model = Model(modelId = "gpt-4o", displayName = "GPT-4o"),
-                                assistant = assistant,
-                                settings = settings
-                            ),
-                            messages = rawMessages
-                        )
-                    )
-                }.getOrElse {
-                    UiState.Error(it)
-                }
-            }
-            preview.onError {
-                Text(
-                    text = it.message ?: it.javaClass.name,
-                    color = MaterialTheme.colorScheme.error
+                SectionHeader(stringResource(R.string.assistant_page_template_preview))
+                val rawMessages = listOf(
+                    UIMessage.user("你好啊"),
+                    UIMessage.assistant("你好，有什么我可以帮你的吗？"),
                 )
-            }
-            preview.onSuccess {
-                ChatFontProvider(displaySetting = settings.displaySetting) {
-                    it.fastForEach { message ->
-                        ChatMessage(
-                            node = message.toMessageNode(),
-                            onFork = {},
-                            onRegenerate = {},
-                            onEdit = {},
-                            onShare = {},
-                            onDelete = {},
-                            onUpdate = {},
-                            lastMessage = false,
+                val preview by produceState<UiState<List<UIMessage>>>(
+                    UiState.Success(rawMessages),
+                    assistant
+                ) {
+                    value = runCatching {
+                        UiState.Success(
+                            templateTransformer.transform(
+                                ctx = TransformerContext(
+                                    context = context,
+                                    model = Model(modelId = "gpt-4o", displayName = "GPT-4o"),
+                                    assistant = assistant,
+                                    settings = settings
+                                ),
+                                messages = rawMessages
+                            )
                         )
+                    }.getOrElse {
+                        UiState.Error(it)
+                    }
+                }
+                preview.onError {
+                    Text(
+                        text = it.message ?: it.javaClass.name,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                preview.onSuccess {
+                    ChatFontProvider(displaySetting = settings.displaySetting) {
+                        it.fastForEach { message ->
+                            ChatMessage(
+                                node = message.toMessageNode(),
+                                onFork = {},
+                                onRegenerate = {},
+                                onEdit = {},
+                                onShare = {},
+                                onDelete = {},
+                                onUpdate = {},
+                                lastMessage = false,
+                            )
+                        }
                     }
                 }
             }
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_preset_messages))
                 },
@@ -389,29 +401,60 @@ private fun AssistantPromptContent(
                     Text(stringResource(R.string.assistant_page_preset_messages_desc))
                 }
             )
-        }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            assistant.presetMessages.fastForEachIndexed { index, presetMessage ->
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(16.dp)
+            ) {
+                assistant.presetMessages.fastForEachIndexed { index, presetMessage ->
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Select(
-                            options = listOf(MessageRole.USER, MessageRole.ASSISTANT),
-                            selectedOption = presetMessage.role,
-                            onOptionSelected = { role ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Select(
+                                options = listOf(MessageRole.USER, MessageRole.ASSISTANT),
+                                selectedOption = presetMessage.role,
+                                onOptionSelected = { role ->
+                                    onUpdate(
+                                        assistant.copy(
+                                            presetMessages = assistant.presetMessages.mapIndexed { i, msg ->
+                                                if (i == index) {
+                                                    msg.copy(role = role)
+                                                } else {
+                                                    msg
+                                                }
+                                            }
+                                        )
+                                    )
+                                },
+                                modifier = Modifier.width(160.dp)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            IconButton(
+                                onClick = {
+                                    onUpdate(
+                                        assistant.copy(
+                                            presetMessages = assistant.presetMessages.filterIndexed { i, _ ->
+                                                i != index
+                                            }
+                                        )
+                                    )
+                                }
+                            ) {
+                                Icon(HugeIcons.Cancel01, null)
+                            }
+                        }
+                        OutlinedTextField(
+                            value = presetMessage.toText(),
+                            onValueChange = { text ->
                                 onUpdate(
                                     assistant.copy(
                                         presetMessages = assistant.presetMessages.mapIndexed { i, msg ->
                                             if (i == index) {
-                                                msg.copy(role = role)
+                                                msg.copy(parts = listOf(UIMessagePart.Text(text)))
                                             } else {
                                                 msg
                                             }
@@ -419,68 +462,40 @@ private fun AssistantPromptContent(
                                     )
                                 )
                             },
-                            modifier = Modifier.width(160.dp)
+                            modifier = Modifier.fillMaxWidth(),
+                            maxLines = 6
                         )
-                        Spacer(modifier = Modifier.weight(1f))
-                        IconButton(
-                            onClick = {
-                                onUpdate(
-                                    assistant.copy(
-                                        presetMessages = assistant.presetMessages.filterIndexed { i, _ ->
-                                            i != index
-                                        }
-                                    )
-                                )
-                            }
-                        ) {
-                            Icon(HugeIcons.Cancel01, null)
-                        }
                     }
-                    OutlinedTextField(
-                        value = presetMessage.toText(),
-                        onValueChange = { text ->
-                            onUpdate(
-                                assistant.copy(
-                                    presetMessages = assistant.presetMessages.mapIndexed { i, msg ->
-                                        if (i == index) {
-                                            msg.copy(parts = listOf(UIMessagePart.Text(text)))
-                                        } else {
-                                            msg
-                                        }
-                                    }
-                                )
-                            )
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        maxLines = 6
-                    )
                 }
-            }
-            Button(
-                onClick = {
-                    val lastRole = assistant.presetMessages.lastOrNull()?.role ?: MessageRole.ASSISTANT
-                    val nextRole = when (lastRole) {
-                        MessageRole.USER -> MessageRole.ASSISTANT
-                        MessageRole.ASSISTANT -> MessageRole.USER
-                        else -> MessageRole.USER
-                    }
-                    onUpdate(
-                        assistant.copy(
-                            presetMessages = assistant.presetMessages + UIMessage(
-                                role = nextRole,
-                                parts = listOf(UIMessagePart.Text(""))
+                Button(
+                    onClick = {
+                        val lastRole = assistant.presetMessages.lastOrNull()?.role ?: MessageRole.ASSISTANT
+                        val nextRole = when (lastRole) {
+                            MessageRole.USER -> MessageRole.ASSISTANT
+                            MessageRole.ASSISTANT -> MessageRole.USER
+                            else -> MessageRole.USER
+                        }
+                        onUpdate(
+                            assistant.copy(
+                                presetMessages = assistant.presetMessages + UIMessage(
+                                    role = nextRole,
+                                    parts = listOf(UIMessagePart.Text(""))
+                                )
                             )
                         )
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(HugeIcons.Add01, null)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(HugeIcons.Add01, null)
+                }
             }
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_regex_title))
                 },
@@ -488,32 +503,32 @@ private fun AssistantPromptContent(
                     Text(stringResource(R.string.assistant_page_regex_desc))
                 }
             )
-        }
-
-        Column(
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            assistant.regexes.fastForEachIndexed { index, regex ->
-                AssistantRegexCard(
-                    regex = regex,
-                    onUpdate = onUpdate,
-                    assistant = assistant,
-                    index = index
-                )
-            }
-            Button(
-                onClick = {
-                    onUpdate(
-                        assistant.copy(
-                            regexes = assistant.regexes + AssistantRegex(
-                                id = Uuid.random()
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                modifier = Modifier.padding(horizontal = 8.dp)
+            ) {
+                assistant.regexes.fastForEachIndexed { index, regex ->
+                    AssistantRegexCard(
+                        regex = regex,
+                        onUpdate = onUpdate,
+                        assistant = assistant,
+                        index = index
+                    )
+                }
+                Button(
+                    onClick = {
+                        onUpdate(
+                            assistant.copy(
+                                regexes = assistant.regexes + AssistantRegex(
+                                    id = Uuid.random()
+                                )
                             )
                         )
-                    )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Icon(HugeIcons.Add01, null)
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(HugeIcons.Add01, null)
+                }
             }
         }
     }

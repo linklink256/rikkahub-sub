@@ -20,7 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import me.rerere.rikkahub.R
-import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
 import me.rerere.tts.provider.TTSProviderSetting
 
@@ -38,123 +38,121 @@ fun TTSProviderConfigure(
         var expanded by remember { mutableStateOf(false) }
         val providers = remember { TTSProviderSetting.Types }
 
-        CardGroup {
-            formItem(
-                label = { Text(stringResource(R.string.setting_tts_page_provider_type)) },
-                description = { Text(stringResource(R.string.setting_tts_page_provider_type_description)) },
+        FormItem(
+            label = { Text(stringResource(R.string.setting_tts_page_provider_type)) },
+            description = { Text(stringResource(R.string.setting_tts_page_provider_type_description)) },
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = expanded,
+                onExpandedChange = { expanded = !expanded }
             ) {
-                ExposedDropdownMenuBox(
+                OutlinedTextField(
+                    value = when (setting) {
+                        is TTSProviderSetting.OpenAI -> "OpenAI"
+                        is TTSProviderSetting.Gemini -> "Gemini"
+                        is TTSProviderSetting.SystemTTS -> "System TTS"
+                        is TTSProviderSetting.MiniMax -> "MiniMax"
+                        is TTSProviderSetting.Qwen -> "Qwen"
+                        is TTSProviderSetting.Groq -> "Groq"
+                        is TTSProviderSetting.XAI -> "xAI"
+                        is TTSProviderSetting.MiMo -> "MiMo"
+                    },
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = {
+                        ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
                     expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
+                    onDismissRequest = { expanded = false }
                 ) {
-                    OutlinedTextField(
-                        value = when (setting) {
-                            is TTSProviderSetting.OpenAI -> "OpenAI"
-                            is TTSProviderSetting.Gemini -> "Gemini"
-                            is TTSProviderSetting.SystemTTS -> "System TTS"
-                            is TTSProviderSetting.MiniMax -> "MiniMax"
-                            is TTSProviderSetting.Qwen -> "Qwen"
-                            is TTSProviderSetting.Groq -> "Groq"
-                            is TTSProviderSetting.XAI -> "xAI"
-                            is TTSProviderSetting.MiMo -> "MiMo"
-                        },
-                        onValueChange = {},
-                        readOnly = true,
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .menuAnchor(MenuAnchorType.PrimaryNotEditable)
-                    )
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        providers.forEach { providerClass ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        when (providerClass) {
-                                            TTSProviderSetting.OpenAI::class -> "OpenAI"
-                                            TTSProviderSetting.Gemini::class -> "Gemini"
-                                            TTSProviderSetting.SystemTTS::class -> "System TTS"
-                                            TTSProviderSetting.MiniMax::class -> "MiniMax"
-                                            TTSProviderSetting.Qwen::class -> "Qwen"
-                                            TTSProviderSetting.Groq::class -> "Groq"
-                                            TTSProviderSetting.XAI::class -> "xAI"
-                                            TTSProviderSetting.MiMo::class -> "MiMo"
-                                            else -> providerClass.simpleName ?: "Unknown"
-                                        }
-                                    )
-                                },
-                                onClick = {
-                                    expanded = false
-                                    val newSetting = when (providerClass) {
-                                        TTSProviderSetting.OpenAI::class -> TTSProviderSetting.OpenAI(
-                                            id = setting.id,
-                                            name = "OpenAI TTS"
-                                        )
-
-                                        TTSProviderSetting.Gemini::class -> TTSProviderSetting.Gemini(
-                                            id = setting.id,
-                                            name = "Gemini TTS"
-                                        )
-
-                                        TTSProviderSetting.SystemTTS::class -> TTSProviderSetting.SystemTTS(
-                                            id = setting.id,
-                                            name = "System TTS"
-                                        )
-
-                                        TTSProviderSetting.MiniMax::class -> TTSProviderSetting.MiniMax(
-                                            id = setting.id,
-                                            name = "MiniMax TTS"
-                                        )
-
-                                        TTSProviderSetting.Qwen::class -> TTSProviderSetting.Qwen(
-                                            id = setting.id,
-                                            name = "Qwen TTS"
-                                        )
-
-                                        TTSProviderSetting.Groq::class -> TTSProviderSetting.Groq(
-                                            id = setting.id,
-                                            name = "Groq TTS"
-                                        )
-
-                                        TTSProviderSetting.XAI::class -> TTSProviderSetting.XAI(
-                                            id = setting.id,
-                                            name = "xAI TTS"
-                                        )
-
-                                        TTSProviderSetting.MiMo::class -> TTSProviderSetting.MiMo(
-                                            id = setting.id,
-                                            name = "MiMo TTS"
-                                        )
-
-                                        else -> setting
+                    providers.forEach { providerClass ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    when (providerClass) {
+                                        TTSProviderSetting.OpenAI::class -> "OpenAI"
+                                        TTSProviderSetting.Gemini::class -> "Gemini"
+                                        TTSProviderSetting.SystemTTS::class -> "System TTS"
+                                        TTSProviderSetting.MiniMax::class -> "MiniMax"
+                                        TTSProviderSetting.Qwen::class -> "Qwen"
+                                        TTSProviderSetting.Groq::class -> "Groq"
+                                        TTSProviderSetting.XAI::class -> "xAI"
+                                        TTSProviderSetting.MiMo::class -> "MiMo"
+                                        else -> providerClass.simpleName ?: "Unknown"
                                     }
-                                    onValueChange(newSetting)
+                                )
+                            },
+                            onClick = {
+                                expanded = false
+                                val newSetting = when (providerClass) {
+                                    TTSProviderSetting.OpenAI::class -> TTSProviderSetting.OpenAI(
+                                        id = setting.id,
+                                        name = "OpenAI TTS"
+                                    )
+
+                                    TTSProviderSetting.Gemini::class -> TTSProviderSetting.Gemini(
+                                        id = setting.id,
+                                        name = "Gemini TTS"
+                                    )
+
+                                    TTSProviderSetting.SystemTTS::class -> TTSProviderSetting.SystemTTS(
+                                        id = setting.id,
+                                        name = "System TTS"
+                                    )
+
+                                    TTSProviderSetting.MiniMax::class -> TTSProviderSetting.MiniMax(
+                                        id = setting.id,
+                                        name = "MiniMax TTS"
+                                    )
+
+                                    TTSProviderSetting.Qwen::class -> TTSProviderSetting.Qwen(
+                                        id = setting.id,
+                                        name = "Qwen TTS"
+                                    )
+
+                                    TTSProviderSetting.Groq::class -> TTSProviderSetting.Groq(
+                                        id = setting.id,
+                                        name = "Groq TTS"
+                                    )
+
+                                    TTSProviderSetting.XAI::class -> TTSProviderSetting.XAI(
+                                        id = setting.id,
+                                        name = "xAI TTS"
+                                    )
+
+                                    TTSProviderSetting.MiMo::class -> TTSProviderSetting.MiMo(
+                                        id = setting.id,
+                                        name = "MiMo TTS"
+                                    )
+
+                                    else -> setting
                                 }
-                            )
-                        }
+                                onValueChange(newSetting)
+                            }
+                        )
                     }
                 }
             }
+        }
 
-            // Name
-            formItem(
-                label = { Text(stringResource(R.string.setting_tts_page_name)) },
-                description = { Text(stringResource(R.string.setting_tts_page_name_description)) }
-            ) {
-                OutlinedTextField(
-                    value = setting.name,
-                    onValueChange = { newName ->
-                        onValueChange(setting.copyProvider(name = newName))
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text(stringResource(R.string.setting_tts_page_name_placeholder)) }
-                )
-            }
+        // Name
+        FormItem(
+            label = { Text(stringResource(R.string.setting_tts_page_name)) },
+            description = { Text(stringResource(R.string.setting_tts_page_name_description)) }
+        ) {
+            OutlinedTextField(
+                value = setting.name,
+                onValueChange = { newName ->
+                    onValueChange(setting.copyProvider(name = newName))
+                },
+                modifier = Modifier.fillMaxWidth(),
+                placeholder = { Text(stringResource(R.string.setting_tts_page_name_placeholder)) }
+            )
         }
 
         // Provider-specific fields
@@ -179,9 +177,9 @@ private fun OpenAITTSConfiguration(
     var voiceExpanded by remember { mutableStateOf(false) }
     val voices = listOf("alloy", "echo", "fable", "onyx", "nova", "shimmer")
 
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -196,7 +194,7 @@ private fun OpenAITTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -211,7 +209,7 @@ private fun OpenAITTSConfiguration(
         }
 
         // Model
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_model)) },
             description = { Text(stringResource(R.string.setting_tts_page_model_description)) }
         ) {
@@ -226,7 +224,7 @@ private fun OpenAITTSConfiguration(
         }
 
         // Voice
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_description)) }
         ) {
@@ -271,9 +269,9 @@ private fun MiMoTTSConfiguration(
     onValueChange: (TTSProviderSetting) -> Unit
 ) {
     // MiMo 配置均为自由输入 默认值只是占位
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -288,7 +286,7 @@ private fun MiMoTTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -303,7 +301,7 @@ private fun MiMoTTSConfiguration(
         }
 
         // Model
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_model)) },
             description = { Text(stringResource(R.string.setting_tts_page_model_description)) }
         ) {
@@ -318,7 +316,7 @@ private fun MiMoTTSConfiguration(
         }
 
         // Voice
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_description)) }
         ) {
@@ -356,9 +354,9 @@ private fun MiniMaxTTSConfiguration(
     var emotionExpanded by remember { mutableStateOf(false) }
     val emotions = listOf("auto", "calm", "happy", "sad", "angry", "fearful", "disgusted", "surprised")
 
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -372,7 +370,7 @@ private fun MiniMaxTTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -387,7 +385,7 @@ private fun MiniMaxTTSConfiguration(
         }
 
         // Model
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_model)) },
             description = { Text(stringResource(R.string.setting_tts_page_model_description)) }
         ) {
@@ -402,7 +400,7 @@ private fun MiniMaxTTSConfiguration(
         }
 
         // Voice ID
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice_id)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_id_description)) }
         ) {
@@ -440,7 +438,7 @@ private fun MiniMaxTTSConfiguration(
         }
 
         // Emotion
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_emotion)) },
             description = { Text(stringResource(R.string.setting_tts_page_emotion_description)) }
         ) {
@@ -478,7 +476,7 @@ private fun MiniMaxTTSConfiguration(
         }
 
         // Speed
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_speed)) },
             description = { Text(stringResource(R.string.setting_tts_page_speed_description)) }
         ) {
@@ -501,9 +499,9 @@ private fun GeminiTTSConfiguration(
     setting: TTSProviderSetting.Gemini,
     onValueChange: (TTSProviderSetting) -> Unit
 ) {
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -518,7 +516,7 @@ private fun GeminiTTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -533,7 +531,7 @@ private fun GeminiTTSConfiguration(
         }
 
         // Model
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_model)) },
             description = { Text(stringResource(R.string.setting_tts_page_model_description)) }
         ) {
@@ -548,7 +546,7 @@ private fun GeminiTTSConfiguration(
         }
 
         // Voice Name
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice_name)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_name_description)) }
         ) {
@@ -569,9 +567,9 @@ private fun SystemTTSConfiguration(
     setting: TTSProviderSetting.SystemTTS,
     onValueChange: (TTSProviderSetting) -> Unit
 ) {
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // Speech Rate
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_speech_rate)) },
             description = { Text(stringResource(R.string.setting_tts_page_speech_rate_description)) }
         ) {
@@ -588,7 +586,7 @@ private fun SystemTTSConfiguration(
         }
 
         // Pitch
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_pitch)) },
             description = { Text(stringResource(R.string.setting_tts_page_pitch_description)) }
         ) {
@@ -623,9 +621,9 @@ private fun QwenTTSConfiguration(
     var languageExpanded by remember { mutableStateOf(false) }
     val languageTypes = listOf("Auto", "Chinese", "English", "Japanese", "Korean")
 
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -640,7 +638,7 @@ private fun QwenTTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -655,7 +653,7 @@ private fun QwenTTSConfiguration(
         }
 
         // Model
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_model)) },
             description = { Text(stringResource(R.string.setting_tts_page_model_description)) }
         ) {
@@ -670,7 +668,7 @@ private fun QwenTTSConfiguration(
         }
 
         // Voice
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_description)) }
         ) {
@@ -708,7 +706,7 @@ private fun QwenTTSConfiguration(
         }
 
         // Language Type
-        formItem(
+        FormItem(
             label = { Text("Language Type") },
             description = { Text("Language type for TTS synthesis") }
         ) {
@@ -755,9 +753,9 @@ private fun GroqTTSConfiguration(
     var voiceExpanded by remember { mutableStateOf(false) }
     val voices = listOf("austin", "natalie", "kailin")
 
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -772,7 +770,7 @@ private fun GroqTTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -787,7 +785,7 @@ private fun GroqTTSConfiguration(
         }
 
         // Model
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_model)) },
             description = { Text(stringResource(R.string.setting_tts_page_model_description)) }
         ) {
@@ -802,7 +800,7 @@ private fun GroqTTSConfiguration(
         }
 
         // Voice
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_description)) }
         ) {
@@ -877,9 +875,9 @@ private fun XAITTSConfiguration(
         "bn" to "Bengali"
     )
 
-    CardGroup {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         // API Key
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_api_key)) },
             description = { Text(stringResource(R.string.setting_tts_page_api_key_description)) }
         ) {
@@ -894,7 +892,7 @@ private fun XAITTSConfiguration(
         }
 
         // Base URL
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_base_url)) },
             description = { Text(stringResource(R.string.setting_tts_page_base_url_description)) }
         ) {
@@ -909,7 +907,7 @@ private fun XAITTSConfiguration(
         }
 
         // Voice ID
-        formItem(
+        FormItem(
             label = { Text(stringResource(R.string.setting_tts_page_voice)) },
             description = { Text(stringResource(R.string.setting_tts_page_voice_description)) }
         ) {
@@ -947,7 +945,7 @@ private fun XAITTSConfiguration(
         }
 
         // Language
-        formItem(
+        FormItem(
             label = { Text("Language") },
         ) {
             ExposedDropdownMenuBox(

@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -38,7 +41,7 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.ai.ReasoningButton
 import me.rerere.rikkahub.ui.components.nav.BackButton
-import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.TagsInput
 import me.rerere.rikkahub.ui.components.ui.UIAvatar
@@ -131,11 +134,15 @@ internal fun AssistantBasicContent(
             )
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
                 label = {
                     Text(stringResource(R.string.assistant_page_name))
                 },
+                modifier = Modifier.padding(8.dp),
+
             ) {
                 OutlinedTextField(
                     value = assistant.name,
@@ -150,10 +157,13 @@ internal fun AssistantBasicContent(
                 )
             }
 
-            formItem(
+            HorizontalDivider()
+
+            FormItem(
                 label = {
                     Text(stringResource(R.string.assistant_page_tags))
                 },
+                modifier = Modifier.padding(8.dp),
             ) {
                 TagsInput(
                     value = assistant.tags,
@@ -164,13 +174,16 @@ internal fun AssistantBasicContent(
                 )
             }
 
-            formItem(
+            HorizontalDivider()
+
+            FormItem(
                 label = {
                     Text(stringResource(R.string.assistant_page_workspace))
                 },
                 description = {
                     Text(stringResource(R.string.assistant_page_workspace_desc))
                 },
+                modifier = Modifier.padding(8.dp),
             ) {
                 val selectedWorkspace = workspaces.find { it.id == assistant.workspaceId?.toString() }
                 Select(
@@ -190,7 +203,10 @@ internal fun AssistantBasicContent(
                 )
             }
 
-            formItem(
+            HorizontalDivider()
+
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_use_assistant_avatar))
                 },
@@ -212,8 +228,11 @@ internal fun AssistantBasicContent(
             )
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_chat_model))
                 },
@@ -235,7 +254,9 @@ internal fun AssistantBasicContent(
                     )
                 }
             )
-            formItem(
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_temperature))
                 },
@@ -286,7 +307,9 @@ internal fun AssistantBasicContent(
                     )
                 }
             }
-            formItem(
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_top_p))
                 },
@@ -337,7 +360,9 @@ internal fun AssistantBasicContent(
                     )
                 }
             }
-            formItem(
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_context_message_size))
                 },
@@ -370,7 +395,9 @@ internal fun AssistantBasicContent(
                     color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.75f),
                 )
             }
-            formItem(
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_stream_output))
                 },
@@ -390,7 +417,9 @@ internal fun AssistantBasicContent(
                     )
                 }
             )
-            formItem(
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_thinking_budget))
                 },
@@ -402,7 +431,9 @@ internal fun AssistantBasicContent(
                     }
                 )
             }
-            formItem(
+            HorizontalDivider()
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_max_tokens))
                 },
@@ -439,8 +470,11 @@ internal fun AssistantBasicContent(
             }
         }
 
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = {
                     Text(stringResource(R.string.assistant_page_gradient_background))
                 },
@@ -460,26 +494,29 @@ internal fun AssistantBasicContent(
                     )
                 }
             )
-        }
 
-        if (!assistant.useGradientBackground) {
-            BackgroundPicker(
-                background = assistant.background,
-                backgroundOpacity = assistant.backgroundOpacity,
-                onUpdate = { background ->
-                    onUpdate(
-                        assistant.copy(
-                            background = background
+            if (!assistant.useGradientBackground) {
+                HorizontalDivider()
+
+                BackgroundPicker(
+                    modifier = Modifier.padding(8.dp),
+                    background = assistant.background,
+                    backgroundOpacity = assistant.backgroundOpacity,
+                    onUpdate = { background ->
+                        onUpdate(
+                            assistant.copy(
+                                background = background
+                            )
                         )
-                    )
-                }
-            )
-        }
+                    }
+                )
+            }
 
-        if (!assistant.useGradientBackground && assistant.background != null) {
-            val backgroundOpacity = assistant.backgroundOpacity.coerceIn(0f, 1f)
-            CardGroup {
-                formItem(
+            if (!assistant.useGradientBackground && assistant.background != null) {
+                val backgroundOpacity = assistant.backgroundOpacity.coerceIn(0f, 1f)
+                HorizontalDivider()
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
                     label = {
                         Text(stringResource(R.string.assistant_page_background_opacity))
                     },

@@ -12,7 +12,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Card
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -49,7 +51,7 @@ import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.components.ai.ModelSelector
 import me.rerere.rikkahub.ui.components.ai.ReasoningButton
 import me.rerere.rikkahub.ui.components.nav.BackButton
-import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.TextArea
 import me.rerere.rikkahub.ui.theme.CustomColors
 import org.koin.compose.koinInject
@@ -126,8 +128,11 @@ private fun AssistantSubagentProfileContent(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // ---- 基本信息 ----
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_name)) },
                 description = { Text(stringResource(R.string.subagent_profile_name_desc)) },
             ) {
@@ -138,7 +143,11 @@ private fun AssistantSubagentProfileContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            formItem(
+
+            HorizontalDivider()
+
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_display_name)) },
             ) {
                 OutlinedTextField(
@@ -147,7 +156,11 @@ private fun AssistantSubagentProfileContent(
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
-            formItem(
+
+            HorizontalDivider()
+
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_description)) },
                 description = { Text(stringResource(R.string.subagent_profile_description_desc)) },
             ) {
@@ -161,8 +174,11 @@ private fun AssistantSubagentProfileContent(
         }
 
         // ---- 系统提示词 ----
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_system_prompt)) },
                 description = { Text(stringResource(R.string.subagent_profile_system_prompt_desc)) },
             ) {
@@ -183,8 +199,11 @@ private fun AssistantSubagentProfileContent(
         }
 
         // ---- 模型与参数 ----
-        CardGroup {
-            formItem(
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_model)) },
                 description = { Text(stringResource(R.string.subagent_profile_model_desc)) },
             ) {
@@ -199,8 +218,11 @@ private fun AssistantSubagentProfileContent(
                 )
             }
 
+            HorizontalDivider()
+
             // temperature —— Switch 开关控制（null = 继承父代理）
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_temperature)) },
                 description = { Text(stringResource(R.string.subagent_profile_temperature_desc)) },
                 tail = {
@@ -234,8 +256,11 @@ private fun AssistantSubagentProfileContent(
                 }
             }
 
+            HorizontalDivider()
+
             // topP —— Switch 开关控制（null = 继承父代理）
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_top_p)) },
                 description = { Text(stringResource(R.string.subagent_profile_top_p_desc)) },
                 tail = {
@@ -269,8 +294,11 @@ private fun AssistantSubagentProfileContent(
                 }
             }
 
+            HorizontalDivider()
+
             // maxTokens —— 直接 TextField（空 = 继承父代理）
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_max_tokens)) },
                 description = { Text(stringResource(R.string.subagent_profile_max_tokens_desc)) },
             ) {
@@ -300,8 +328,11 @@ private fun AssistantSubagentProfileContent(
                 )
             }
 
+            HorizontalDivider()
+
             // reasoningLevel
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_reasoning)) },
             ) {
                 ReasoningButton(
@@ -314,9 +345,12 @@ private fun AssistantSubagentProfileContent(
         }
 
         // ---- 行为参数 ----
-        CardGroup {
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
             // maxSteps —— Slider
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_max_steps)) },
                 description = { Text(stringResource(R.string.subagent_profile_max_steps_desc)) },
             ) {
@@ -336,8 +370,11 @@ private fun AssistantSubagentProfileContent(
                 )
             }
 
+            HorizontalDivider()
+
             // inheritTools —— Switch
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_inherit_tools)) },
                 description = { Text(stringResource(R.string.subagent_profile_inherit_tools_desc)) },
                 tail = {
@@ -360,8 +397,11 @@ private fun AssistantSubagentProfileContent(
                 LocalToolOption.AskBtw,
                 LocalToolOption.Logs,
             )
-            CardGroup {
-                formItem(
+            Card(
+                colors = CustomColors.cardColorsOnSurfaceContainer
+            ) {
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
                     label = { Text("Local Tools") },
                     // todo: use string resource subagent_profile_local_tools_desc
                     description = { Text("Select local tools available to this subagent") },
@@ -396,8 +436,11 @@ private fun AssistantSubagentProfileContent(
             val skillManager: SkillManager = koinInject()
             val availableSkills = remember { skillManager.listSkills() }
             if (availableSkills.isNotEmpty()) {
-                CardGroup {
-                    formItem(
+                Card(
+                    colors = CustomColors.cardColorsOnSurfaceContainer
+                ) {
+                    FormItem(
+                        modifier = Modifier.padding(8.dp),
                         label = { Text("Skills") },
                         // todo: use string resource subagent_profile_skills_desc
                         description = { Text("Select skills to enable for this subagent") },
@@ -430,8 +473,11 @@ private fun AssistantSubagentProfileContent(
                 .collectAsStateWithLifecycle(initialValue = null)
             val mcpServers = availableMcp?.mcpServers ?: emptyList()
             if (mcpServers.isNotEmpty()) {
-                CardGroup {
-                    formItem(
+                Card(
+                    colors = CustomColors.cardColorsOnSurfaceContainer
+                ) {
+                    FormItem(
+                        modifier = Modifier.padding(8.dp),
                         label = { Text("MCP Servers") },
                         // todo: use string resource subagent_profile_mcp_servers_desc
                         description = { Text("Select MCP servers available to this subagent") },
@@ -464,9 +510,12 @@ private fun AssistantSubagentProfileContent(
             }
         }
 
-        CardGroup {
+        Card(
+            colors = CustomColors.cardColorsOnSurfaceContainer
+        ) {
             // streamOutput —— Switch
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_stream)) },
                 description = { Text(stringResource(R.string.subagent_profile_stream_desc)) },
                 tail = {
@@ -477,8 +526,11 @@ private fun AssistantSubagentProfileContent(
                 },
             )
 
+            HorizontalDivider()
+
             // enableMemory —— Switch
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_memory)) },
                 description = { Text(stringResource(R.string.subagent_profile_memory_desc)) },
                 tail = {
@@ -489,8 +541,11 @@ private fun AssistantSubagentProfileContent(
                 },
             )
 
+            HorizontalDivider()
+
             // summaryMinLength —— Slider
-            formItem(
+            FormItem(
+                modifier = Modifier.padding(8.dp),
                 label = { Text(stringResource(R.string.subagent_profile_summary_min_length)) },
                 description = { Text(stringResource(R.string.subagent_profile_summary_min_length_desc)) },
             ) {

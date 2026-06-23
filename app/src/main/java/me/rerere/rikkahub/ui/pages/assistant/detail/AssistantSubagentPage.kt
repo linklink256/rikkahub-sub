@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Card
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
@@ -47,6 +49,7 @@ import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
 import org.koin.androidx.compose.koinViewModel
@@ -103,8 +106,12 @@ private fun AssistantSubagentContent(
     ) {
         // ---- 总开关 + 最大深度 ----
         item {
-            CardGroup {
-                formItem(
+            Card(
+                colors = CustomColors.cardColorsOnSurfaceContainer
+            ) {
+                val levels = (assistant.subagentMaxDepth - 1).coerceAtLeast(0)
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
                     label = { Text(stringResource(R.string.subagent_enable_title)) },
                     description = { Text(stringResource(R.string.subagent_enable_desc)) },
                     tail = {
@@ -116,8 +123,11 @@ private fun AssistantSubagentContent(
                         )
                     },
                 )
-                val levels = (assistant.subagentMaxDepth - 1).coerceAtLeast(0)
-                formItem(
+
+                HorizontalDivider()
+
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
                     label = { Text(stringResource(R.string.subagent_max_depth_title)) },
                     description = {
                         if (levels == 0) {
@@ -146,7 +156,11 @@ private fun AssistantSubagentContent(
                         steps = 3,
                     )
                 }
-                formItem(
+
+                HorizontalDivider()
+
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
                     label = { Text(stringResource(R.string.subagent_delegate_only_title)) },
                     description = { Text(stringResource(R.string.subagent_delegate_only_desc)) },
                     tail = {
@@ -159,7 +173,11 @@ private fun AssistantSubagentContent(
                         )
                     },
                 )
-                formItem(
+
+                HorizontalDivider()
+
+                FormItem(
+                    modifier = Modifier.padding(8.dp),
                     label = { Text(stringResource(R.string.subagent_parallel_execution_title)) },
                     description = { Text(stringResource(R.string.subagent_parallel_execution_desc)) },
                     tail = {
