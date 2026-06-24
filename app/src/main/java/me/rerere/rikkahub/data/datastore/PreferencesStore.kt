@@ -136,6 +136,7 @@ class SettingsStore(
         val MODE_INJECTIONS = stringPreferencesKey("mode_injections")
         val LOREBOOKS = stringPreferencesKey("lorebooks")
         val QUICK_MESSAGES = stringPreferencesKey("quick_messages")
+        val HIDDEN_TTS_PROVIDER_IDS = stringPreferencesKey("hidden_tts_provider_ids")
 
         // 备份提醒
         val BACKUP_REMINDER_CONFIG = stringPreferencesKey("backup_reminder_config")
@@ -228,6 +229,9 @@ class SettingsStore(
                 quickMessages = preferences[QUICK_MESSAGES]?.let {
                     JsonInstant.decodeFromString(it)
                 } ?: emptyList(),
+                hiddenTtsProviderIds = preferences[HIDDEN_TTS_PROVIDER_IDS]?.let {
+                    JsonInstant.decodeFromString<Set<Uuid>>(it)
+                } ?: emptySet(),
                 backupReminderConfig = preferences[BACKUP_REMINDER_CONFIG]?.let {
                     JsonInstant.decodeFromString(it)
                 } ?: BackupReminderConfig(),
@@ -260,7 +264,9 @@ class SettingsStore(
             }
             val ttsProviders = it.ttsProviders.ifEmpty { DEFAULT_TTS_PROVIDERS }.toMutableList()
             DEFAULT_TTS_PROVIDERS.forEach { defaultTTSProvider ->
-                if (ttsProviders.none { provider -> provider.id == defaultTTSProvider.id }) {
+                if (ttsProviders.none { provider -> provider.id == defaultTTSProvider.id } &&
+                    defaultTTSProvider.id !in it.hiddenTtsProviderIds
+                ) {
                     ttsProviders.add(defaultTTSProvider.copyProvider())
                 }
             }
@@ -393,6 +399,7 @@ class SettingsStore(
             preferences[MODE_INJECTIONS] = JsonInstant.encodeToString(settings.modeInjections)
             preferences[LOREBOOKS] = JsonInstant.encodeToString(settings.lorebooks)
             preferences[QUICK_MESSAGES] = JsonInstant.encodeToString(settings.quickMessages)
+            preferences[HIDDEN_TTS_PROVIDER_IDS] = JsonInstant.encodeToString(settings.hiddenTtsProviderIds)
             preferences[BACKUP_REMINDER_CONFIG] = JsonInstant.encodeToString(settings.backupReminderConfig)
             preferences[LAUNCH_COUNT] = settings.launchCount
             preferences[SPONSOR_ALERT_DISMISSED_AT] = settings.sponsorAlertDismissedAt
@@ -509,6 +516,7 @@ data class Settings(
     val s3Config: S3Config = S3Config(),
     val ttsProviders: List<TTSProviderSetting> = DEFAULT_TTS_PROVIDERS,
     val selectedTTSProviderId: Uuid = DEFAULT_SYSTEM_TTS_ID,
+    val hiddenTtsProviderIds: Set<Uuid> = emptySet(),
     val asrProviders: List<ASRProviderSetting> = emptyList(),
     val selectedASRProviderId: Uuid? = null,
     val modeInjections: List<PromptInjection.ModeInjection> = DEFAULT_MODE_INJECTIONS,
@@ -697,6 +705,10 @@ internal val DEFAULT_ASSISTANTS = listOf(
 )
 
 val DEFAULT_SYSTEM_TTS_ID = Uuid.parse("026a01a2-c3a0-4fd5-8075-80e03bdef200")
+val DEFAULT_TTS_PROVIDER_IDS: Set<Uuid> = setOf(
+    DEFAULT_SYSTEM_TTS_ID,
+    Uuid.parse("e36b22ef-ca82-40ab-9e70-60cad861911c"),
+)
 private val DEFAULT_TTS_PROVIDERS = listOf(
     TTSProviderSetting.SystemTTS(
         id = DEFAULT_SYSTEM_TTS_ID,

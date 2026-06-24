@@ -3,6 +3,7 @@ package me.rerere.rikkahub.ui.components.ui
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
@@ -142,22 +144,27 @@ fun SwipeToDeleteContainer(
     // 阻尼系数：超过阈值后每像素手指只移动 0.3 像素 → 阻力感
     val damping = 0.3f
 
-    // 显示位移（负值 = 左移），用 Animatable 支持弹性回弹动画
+    // 阻尼回弹动画
     val offset = remember { Animatable(0f) }
     // 累计原始左滑量（正值），用于计算红色 alpha 和判断是否过阈值
     var rawDrag by remember { mutableFloatStateOf(0f) }
+    // 卡片圆角，与 Card 默认 shapes.medium 一致
+    val cardShape = MaterialTheme.shapes.medium
 
     BoxWithConstraints(modifier) {
         // 阈值 = 卡片宽度的 30%
         val thresholdPx = with(density) { maxWidth.toPx() * 0.3f }
+        // 卡片完整宽度（用于滑出动画目标值）
+        val fullWidthPx = with(density) { maxWidth.toPx() }
         // 提前在 Composable 上下文中取色，供 drawBehind 使用
         val errorColor = MaterialTheme.colorScheme.error
         val onErrorColor = MaterialTheme.colorScheme.onError
 
-        // 背景层：红色预警
+        // 背景层：红色预警（与卡片同圆角，覆盖完整宽度）
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .clip(cardShape)
                 .drawBehind {
                     val alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f)
                     drawRect(errorColor.copy(alpha = alpha))
@@ -184,7 +191,14 @@ fun SwipeToDeleteContainer(
                         onDragEnd = {
                             val reached = rawDrag >= thresholdPx
                             if (reached) {
-                                onDelete()
+                                // 先动画滑出屏幕左侧，再回调删除
+                                scope.launch {
+                                    offset.animateTo(
+                                        targetValue = -fullWidthPx,
+                                        animationSpec = tween(durationMillis = 250),
+                                    )
+                                    onDelete()
+                                }
                             } else {
                                 rawDrag = 0f
                                 scope.launch {

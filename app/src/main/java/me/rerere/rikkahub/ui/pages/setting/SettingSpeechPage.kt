@@ -63,6 +63,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.rikkahub.R
 import me.rerere.asr.ASRProviderSetting
 import me.rerere.rikkahub.data.datastore.DEFAULT_SYSTEM_TTS_ID
+import me.rerere.rikkahub.data.datastore.DEFAULT_TTS_PROVIDER_IDS
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
@@ -319,10 +320,17 @@ private fun TTSProviderList(
                         val newProviders = settings.ttsProviders - provider
                         val newSelectedId =
                             if (settings.selectedTTSProviderId == provider.id) DEFAULT_SYSTEM_TTS_ID else settings.selectedTTSProviderId
+                        // 如果删除的是内置默认 TTS provider，记录到 hiddenTtsProviderIds 防止迁移回灌
+                        val newHidden = if (provider.id in DEFAULT_TTS_PROVIDER_IDS) {
+                            settings.hiddenTtsProviderIds + provider.id
+                        } else {
+                            settings.hiddenTtsProviderIds
+                        }
                         onUpdateSettings(
                             settings.copy(
                                 ttsProviders = newProviders,
-                                selectedTTSProviderId = newSelectedId
+                                selectedTTSProviderId = newSelectedId,
+                                hiddenTtsProviderIds = newHidden,
                             )
                         )
                     },
