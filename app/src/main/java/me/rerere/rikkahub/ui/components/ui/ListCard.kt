@@ -164,10 +164,10 @@ fun SwipeToDeleteContainer(
         val errorColor = MaterialTheme.colorScheme.error
         val onErrorColor = MaterialTheme.colorScheme.onError
 
-        // 背景层：红色预警（与卡片同圆角，覆盖完整宽度）
+        // 背景层：红色预警（matchParentSize 确保与前景卡片完全等大）
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .clip(cardShape)
                 .drawBehind {
                     val alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f)
