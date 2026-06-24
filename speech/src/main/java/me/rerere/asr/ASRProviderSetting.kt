@@ -9,11 +9,6 @@ sealed class ASRProviderSetting {
     abstract val id: Uuid
     abstract val name: String
 
-    abstract fun copyProvider(
-        id: Uuid = this.id,
-        name: String = this.name,
-    ): ASRProviderSetting
-
     @Serializable
     @SerialName("openai_realtime")
     data class OpenAIRealtime(
@@ -29,15 +24,6 @@ sealed class ASRProviderSetting {
         val prefixPaddingMs: Int = 300,
         val silenceDurationMs: Int = 500,
     ) : ASRProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): ASRProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -53,15 +39,6 @@ sealed class ASRProviderSetting {
         val vadThreshold: Float = 0.2f,
         val silenceDurationMs: Int = 800,
     ) : ASRProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): ASRProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -74,15 +51,6 @@ sealed class ASRProviderSetting {
         val resourceId: String = "volc.seedasr.sauc.duration",
         val language: String = "",
     ) : ASRProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): ASRProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     /**
@@ -112,15 +80,6 @@ sealed class ASRProviderSetting {
         // 16kHz/16bit/mono 下约 234 秒)。
         val segmentDurationSec: Int = 30,
     ) : ASRProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): ASRProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     /**
@@ -158,16 +117,19 @@ sealed class ASRProviderSetting {
         // 热词列表, 提升专有名词/术语识别准确率
         val hotwords: List<String> = emptyList(),
     ) : ASRProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): ASRProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
+
+// ponytail: single extension replaces 5 identical copyProvider overrides
+fun ASRProviderSetting.copyProvider(
+    id: Uuid = this.id,
+    name: String = this.name,
+): ASRProviderSetting = when (this) {
+    is ASRProviderSetting.OpenAIRealtime -> copy(id = id, name = name)
+    is ASRProviderSetting.DashScope -> copy(id = id, name = name)
+    is ASRProviderSetting.Volcengine -> copy(id = id, name = name)
+    is ASRProviderSetting.MiMo -> copy(id = id, name = name)
+    is ASRProviderSetting.Step -> copy(id = id, name = name)
+}
 
     companion object {
         val Types by lazy {

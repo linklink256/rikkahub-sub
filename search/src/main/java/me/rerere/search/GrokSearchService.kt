@@ -130,13 +130,6 @@ object GrokSearchService : SearchService<SearchServiceOptions.GrokOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.GrokOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Grok"))
-    }
 
     @Serializable
     private data class GrokResponse(

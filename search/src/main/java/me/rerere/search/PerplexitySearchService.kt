@@ -35,10 +35,7 @@ object PerplexitySearchService : SearchService<SearchServiceOptions.PerplexityOp
     override fun parameters(options: SearchServiceOptions.PerplexityOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
@@ -111,13 +108,6 @@ object PerplexitySearchService : SearchService<SearchServiceOptions.PerplexityOp
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.PerplexityOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Perplexity"))
-    }
 
     @Serializable
     private data class PerplexityResponse(

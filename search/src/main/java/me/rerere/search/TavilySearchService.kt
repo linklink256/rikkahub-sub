@@ -37,10 +37,7 @@ object TavilySearchService : SearchService<SearchServiceOptions.TavilyOptions> {
     override fun parameters(options: SearchServiceOptions.TavilyOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
                 put("topic", buildJsonObject {
                     put("type", "string")
                     put("description", "search topic (one of `general`, `news`, `finance`)")

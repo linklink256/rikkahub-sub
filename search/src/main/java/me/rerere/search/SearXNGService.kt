@@ -36,10 +36,7 @@ object SearXNGService : SearchService<SearchServiceOptions.SearXNGOptions> {
     override fun parameters(options: SearchServiceOptions.SearXNGOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
@@ -119,13 +116,6 @@ object SearXNGService : SearchService<SearchServiceOptions.SearXNGOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.SearXNGOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for SearXNG"))
-    }
 
 
     @Serializable

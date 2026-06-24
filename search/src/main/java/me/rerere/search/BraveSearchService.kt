@@ -30,10 +30,7 @@ object BraveSearchService : SearchService<SearchServiceOptions.BraveOptions> {
     override fun parameters(options: SearchServiceOptions.BraveOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
@@ -82,13 +79,6 @@ object BraveSearchService : SearchService<SearchServiceOptions.BraveOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.BraveOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Brave"))
-    }
 
     @Serializable
     data class BraveSearchResponse(

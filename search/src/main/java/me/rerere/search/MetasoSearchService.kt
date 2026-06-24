@@ -39,10 +39,7 @@ object MetasoSearchService : SearchService<SearchServiceOptions.MetasoOptions> {
     override fun parameters(options: SearchServiceOptions.MetasoOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
@@ -102,13 +99,6 @@ object MetasoSearchService : SearchService<SearchServiceOptions.MetasoOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.MetasoOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Metaso"))
-    }
 
     @Serializable
     data class MetasoSearchResponse(

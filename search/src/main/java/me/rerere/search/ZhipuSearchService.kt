@@ -31,10 +31,7 @@ object ZhipuSearchService : SearchService<SearchServiceOptions.ZhipuOptions> {
     override fun parameters(options: SearchServiceOptions.ZhipuOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
@@ -89,13 +86,6 @@ object ZhipuSearchService : SearchService<SearchServiceOptions.ZhipuOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.ZhipuOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Zhipu"))
-    }
 
     @Serializable
     data class ZhipuDto(

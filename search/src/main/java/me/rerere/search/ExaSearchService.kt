@@ -34,10 +34,7 @@ object ExaSearchService : SearchService<SearchServiceOptions.ExaOptions> {
     override fun parameters(options: SearchServiceOptions.ExaOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
                 put("type", buildJsonObject {
                     put("type", "string")
                     put("description", "Search type: fast (quick results), auto (default, balanced), deep (synthesized answer with citations)")
@@ -105,13 +102,6 @@ object ExaSearchService : SearchService<SearchServiceOptions.ExaOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.ExaOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Exa"))
-    }
 
     @Serializable
     data class ExaData(

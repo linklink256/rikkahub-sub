@@ -407,70 +407,37 @@ class SettingsStore(
             preferences[SELECT_ASSISTANT] = assistantId.toString()
         }
     }
-
-    suspend fun updateAssistantModel(assistantId: Uuid, modelId: Uuid) {
+    // ponytail: shared assistant-update helper — dedup'd from 4 identical map+copy blocks
+    private suspend fun updateAssistant(assistantId: Uuid, transform: (Assistant) -> Assistant) {
         update { settings ->
             settings.copy(
                 assistants = settings.assistants.map { assistant ->
-                    if (assistant.id == assistantId) {
-                        assistant.copy(chatModelId = modelId)
-                    } else {
-                        assistant
-                    }
+                    if (assistant.id == assistantId) transform(assistant) else assistant
                 }
             )
         }
     }
 
-    suspend fun updateAssistantReasoningLevel(assistantId: Uuid, reasoningLevel: ReasoningLevel) {
-        update { settings ->
-            settings.copy(
-                assistants = settings.assistants.map { assistant ->
-                    if (assistant.id == assistantId) {
-                        assistant.copy(reasoningLevel = reasoningLevel)
-                    } else {
-                        assistant
-                    }
-                }
-            )
-        }
-    }
+    suspend fun updateAssistantModel(assistantId: Uuid, modelId: Uuid) =
+        updateAssistant(assistantId) { it.copy(chatModelId = modelId) }
 
-    suspend fun updateAssistantMcpServers(assistantId: Uuid, mcpServers: Set<Uuid>) {
-        update { settings ->
-            settings.copy(
-                assistants = settings.assistants.map { assistant ->
-                    if (assistant.id == assistantId) {
-                        assistant.copy(mcpServers = mcpServers)
-                    } else {
-                        assistant
-                    }
-                }
-            )
-        }
-    }
+    suspend fun updateAssistantReasoningLevel(assistantId: Uuid, reasoningLevel: ReasoningLevel) =
+        updateAssistant(assistantId) { it.copy(reasoningLevel = reasoningLevel) }
+
+    suspend fun updateAssistantMcpServers(assistantId: Uuid, mcpServers: Set<Uuid>) =
+        updateAssistant(assistantId) { it.copy(mcpServers = mcpServers) }
 
     suspend fun updateAssistantInjections(
         assistantId: Uuid,
         modeInjectionIds: Set<Uuid>,
         lorebookIds: Set<Uuid>,
         quickMessageIds: Set<Uuid> = emptySet(),
-    ) {
-        update { settings ->
-            settings.copy(
-                assistants = settings.assistants.map { assistant ->
-                    if (assistant.id == assistantId) {
-                        assistant.copy(
-                            modeInjectionIds = modeInjectionIds,
-                            lorebookIds = lorebookIds,
-                            quickMessageIds = quickMessageIds,
-                        )
-                    } else {
-                        assistant
-                    }
-                }
-            )
-        }
+    ) = updateAssistant(assistantId) {
+        it.copy(
+            modeInjectionIds = modeInjectionIds,
+            lorebookIds = lorebookIds,
+            quickMessageIds = quickMessageIds,
+        )
     }
 
     /**

@@ -6,12 +6,23 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.util.KeyRoulette
 import me.rerere.common.http.await
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
 import kotlin.uuid.Uuid
+
+// ponytail: shared query-property builder — dedup'd from 15+ identical blocks
+fun JsonObjectBuilder.queryField(description: String = "search keyword") {
+    put("query", buildJsonObject {
+        put("type", "string")
+        put("description", description)
+    })
+}
 
 interface SearchService<T : SearchServiceOptions> {
     val name: String
@@ -33,7 +44,7 @@ interface SearchService<T : SearchServiceOptions> {
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: T
-    ): Result<ScrapedResult>
+    ): Result<ScrapedResult> = Result.failure(UnsupportedOperationException("Scrape not supported"))
 
     companion object {
         @Suppress("UNCHECKED_CAST")

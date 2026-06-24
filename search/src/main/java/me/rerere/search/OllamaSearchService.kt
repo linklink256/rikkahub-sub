@@ -32,10 +32,7 @@ object OllamaSearchService : SearchService<SearchServiceOptions.OllamaOptions> {
     override fun parameters(options: SearchServiceOptions.OllamaOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
@@ -83,13 +80,6 @@ object OllamaSearchService : SearchService<SearchServiceOptions.OllamaOptions> {
         }
     }
 
-    override suspend fun scrape(
-        params: JsonObject,
-        commonOptions: SearchCommonOptions,
-        serviceOptions: SearchServiceOptions.OllamaOptions
-    ): Result<ScrapedResult> {
-        return Result.failure(Exception("Scraping is not supported for Ollama"))
-    }
 
     @Serializable
     private data class OllamaSearchResponse(

@@ -9,11 +9,6 @@ sealed class TTSProviderSetting {
     abstract val id: Uuid
     abstract val name: String
 
-    abstract fun copyProvider(
-        id: Uuid = this.id,
-        name: String = this.name,
-    ): TTSProviderSetting
-
     @Serializable
     @SerialName("openai")
     data class OpenAI(
@@ -24,15 +19,6 @@ sealed class TTSProviderSetting {
         val model: String = "gpt-4o-mini-tts",
         val voice: String = "alloy"
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -45,15 +31,6 @@ sealed class TTSProviderSetting {
         val model: String = "gemini-2.5-flash-preview-tts",
         val voiceName: String = "Kore"
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -64,15 +41,6 @@ sealed class TTSProviderSetting {
         val speechRate: Float = 1.0f,
         val pitch: Float = 1.0f,
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -87,15 +55,6 @@ sealed class TTSProviderSetting {
         val emotion: String = "auto",
         val speed: Float = 1.0f
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -109,15 +68,6 @@ sealed class TTSProviderSetting {
         val voice: String = "Cherry",
         val languageType: String = "Auto"
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -130,15 +80,6 @@ sealed class TTSProviderSetting {
         val model: String = "canopylabs/orpheus-v1-english",
         val voice: String = "austin"
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -151,15 +92,6 @@ sealed class TTSProviderSetting {
         val voiceId: String = "eve",
         val language: String = "auto"
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
 
     @Serializable
@@ -173,16 +105,22 @@ sealed class TTSProviderSetting {
         val model: String = "mimo-v2-tts",
         val voice: String = "mimo_default"
     ) : TTSProviderSetting() {
-        override fun copyProvider(
-            id: Uuid,
-            name: String,
-        ): TTSProviderSetting {
-            return this.copy(
-                id = id,
-                name = name,
-            )
-        }
     }
+
+// ponytail: single extension replaces 8 identical copyProvider overrides
+fun TTSProviderSetting.copyProvider(
+    id: Uuid = this.id,
+    name: String = this.name,
+): TTSProviderSetting = when (this) {
+    is TTSProviderSetting.OpenAI -> copy(id = id, name = name)
+    is TTSProviderSetting.Gemini -> copy(id = id, name = name)
+    is TTSProviderSetting.SystemTTS -> copy(id = id, name = name)
+    is TTSProviderSetting.MiniMax -> copy(id = id, name = name)
+    is TTSProviderSetting.Qwen -> copy(id = id, name = name)
+    is TTSProviderSetting.Groq -> copy(id = id, name = name)
+    is TTSProviderSetting.XAI -> copy(id = id, name = name)
+    is TTSProviderSetting.MiMo -> copy(id = id, name = name)
+}
 
     companion object {
         val Types by lazy {

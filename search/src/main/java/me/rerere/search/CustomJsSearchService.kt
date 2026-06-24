@@ -27,10 +27,7 @@ object CustomJsSearchService : SearchService<SearchServiceOptions.CustomJsOption
     override fun parameters(options: SearchServiceOptions.CustomJsOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )

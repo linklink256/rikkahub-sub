@@ -30,10 +30,7 @@ object RikkaHubSearchService : SearchService<SearchServiceOptions.RikkaHubOption
     override fun parameters(options: SearchServiceOptions.RikkaHubOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
-                put("query", buildJsonObject {
-                    put("type", "string")
-                    put("description", "search keyword")
-                })
+                queryField()
             },
             required = listOf("query")
         )
