@@ -1,13 +1,13 @@
 package me.rerere.rikkahub.ui.components.ui
 
+import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
-// longPressDraggableHandle 是 ReorderableItemScope 的成员，无需 top-level import
+// ReorderableItem 和 longPressDraggableHandle 都是 scope 成员，通过 LazyItemScope / ReorderableCollectionItemScope 解析
 
 /**
  * 可拖拽排序 + 弹性滑动删除的列表项包装（组合式，非继承）。
@@ -25,7 +25,7 @@ import sh.calvin.reorderable.ReorderableLazyListState
  * @param content       卡片内容
  */
 @Composable
-fun ReorderableSwipeableItem(
+fun LazyItemScope.ReorderableSwipeableItem(
     onDelete: () -> Unit,
     state: ReorderableLazyListState,
     key: Any,
