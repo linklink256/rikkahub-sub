@@ -53,8 +53,10 @@ import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.ListCard
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -129,11 +131,7 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                     state = reorderableState,
                     key = service.id
                 ) { isDragging ->
-                    SearchProviderCard(
-                        service = service,
-                        onEdit = {
-                            nav.navigate(Screen.SettingSearchDetail(service.id.toString()))
-                        },
+                    SwipeToDeleteContainer(
                         onDelete = {
                             if (settings.searchServices.size > 1) {
                                 val index = settings.searchServices.indexOf(service)
@@ -144,7 +142,6 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                                 )
                             }
                         },
-                        canDelete = settings.searchServices.size > 1,
                         modifier = Modifier
                             .scale(if (isDragging) 0.95f else 1f)
                             .animateItem()
@@ -156,7 +153,20 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                                     haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
                                 }
                             )
-                    )
+                    ) {
+                        ListCard(
+                            onClick = {
+                                nav.navigate(Screen.SettingSearchDetail(service.id.toString()))
+                            },
+                            leading = {
+                                AutoAIIcon(name = service.displayName)
+                            },
+                            title = service.displayName,
+                            tags = {
+                                SearchAbilityTagLine(options = service)
+                            },
+                        )
+                    }
                 }
             }
 
@@ -266,79 +276,13 @@ private fun AddProviderDialog(
 }
 
 @Composable
-private fun SearchProviderCard(
-    service: SearchServiceOptions,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
-    canDelete: Boolean,
-    modifier: Modifier = Modifier,
+private fun SearchProviderCard_removed(
+    @Suppress("UNUSED_PARAMETER") service: SearchServiceOptions,
+    @Suppress("UNUSED_PARAMETER") onEdit: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onDelete: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") canDelete: Boolean,
+    @Suppress("UNUSED_PARAMETER") modifier: Modifier = Modifier,
 ) {
-    var showMenu by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = CustomColors.listItemColors.containerColor
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            AutoAIIcon(
-                name = service.displayName,
-                modifier = Modifier.size(32.dp)
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = service.displayName,
-                    style = MaterialTheme.typography.titleMedium
-                )
-                SearchAbilityTagLine(options = service)
-            }
-
-            IconButton(onClick = { showMenu = true }) {
-                Icon(
-                    imageVector = HugeIcons.MoreVertical,
-                    contentDescription = null
-                )
-                DropdownMenu(
-                    expanded = showMenu,
-                    onDismissRequest = { showMenu = false }
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.edit)) },
-                        onClick = {
-                            showMenu = false
-                            onEdit()
-                        },
-                        leadingIcon = {
-                            Icon(HugeIcons.PencilEdit01, contentDescription = null)
-                        }
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete)) },
-                        onClick = {
-                            showMenu = false
-                            onDelete()
-                        },
-                        leadingIcon = {
-                            Icon(HugeIcons.Delete01, contentDescription = null)
-                        },
-                        enabled = canDelete
-                    )
-                }
-            }
-
-        }
-    }
 }
 
 @Composable

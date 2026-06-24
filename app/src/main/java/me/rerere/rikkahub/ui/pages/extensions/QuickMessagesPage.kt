@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -32,7 +33,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -46,10 +50,14 @@ import me.rerere.hugeicons.stroke.Zap
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.model.QuickMessage
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.components.ui.ListCard
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
+import sh.calvin.reorderable.ReorderableItem
+import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
@@ -58,6 +66,11 @@ fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var editTarget by remember { mutableStateOf<QuickMessage?>(null) }
     var deleteTarget by remember { mutableStateOf<QuickMessage?>(null) }
+    val lazyListState = rememberLazyListState()
+    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
+        vm.reorderQuickMessages(from.index, to.index)
+    }
+    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
@@ -80,6 +93,7 @@ fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
             modifier = Modifier.fillMaxSize(),
             contentPadding = innerPadding + PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
+            state = lazyListState,
         ) {
             if (settings.quickMessages.isEmpty()) {
                 item {
@@ -111,11 +125,41 @@ fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
             }
 
             items(settings.quickMessages, key = { it.id }) { quickMessage ->
-                QuickMessageCard(
-                    quickMessage = quickMessage,
-                    onEdit = { editTarget = quickMessage },
-                    onDelete = { deleteTarget = quickMessage },
-                )
+                ReorderableItem(
+                    state = reorderableState,
+                    key = quickMessage.id,
+                ) { isDragging ->
+                    SwipeToDeleteContainer(
+                        onDelete = { deleteTarget = quickMessage },
+                        modifier = Modifier
+                            .longPressDraggableHandle(
+                                onDragStarted = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                },
+                                onDragStopped = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                }
+                            )
+                            .graphicsLayer {
+                                if (isDragging) {
+                                    scaleX = 0.95f
+                                    scaleY = 0.95f
+                                }
+                            },
+                    ) {
+                        ListCard(
+                            onClick = { editTarget = quickMessage },
+                            leading = {
+                                Icon(
+                                    imageVector = HugeIcons.Zap,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                )
+                            },
+                            title = quickMessage.title.ifBlank { stringResource(R.string.quick_messages_page_untitled) },
+                        )
+                    }
+                }
             }
         }
     }
@@ -165,91 +209,11 @@ fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
 }
 
 @Composable
-private fun QuickMessageCard(
-    quickMessage: QuickMessage,
-    onEdit: () -> Unit,
-    onDelete: () -> Unit,
+private fun QuickMessageCard_removed(
+    @Suppress("UNUSED_PARAMETER") quickMessage: QuickMessage,
+    @Suppress("UNUSED_PARAMETER") onEdit: () -> Unit,
+    @Suppress("UNUSED_PARAMETER") onDelete: () -> Unit,
 ) {
-    var menuExpanded by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CustomColors.cardColorsOnSurfaceContainer,
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = HugeIcons.Zap,
-                contentDescription = null,
-                modifier = Modifier.size(20.dp),
-                tint = MaterialTheme.colorScheme.primary,
-            )
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(start = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = quickMessage.title.ifBlank { stringResource(R.string.quick_messages_page_untitled) },
-                    style = MaterialTheme.typography.titleSmallEmphasized,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = quickMessage.content.ifBlank { stringResource(R.string.quick_messages_page_empty_content) },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Box {
-                IconButton(onClick = { menuExpanded = true }) {
-                    Icon(
-                        imageVector = HugeIcons.MoreVertical,
-                        contentDescription = stringResource(R.string.skills_page_more_actions),
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuExpanded,
-                    onDismissRequest = { menuExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.edit)) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = HugeIcons.Edit01,
-                                contentDescription = null,
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            onEdit()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
-                        leadingIcon = {
-                            Icon(
-                                imageVector = HugeIcons.Delete01,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.error,
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            onDelete()
-                        },
-                    )
-                }
-            }
-        }
-    }
 }
 
 @Composable

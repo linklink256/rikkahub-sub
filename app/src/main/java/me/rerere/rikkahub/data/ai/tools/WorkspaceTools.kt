@@ -29,7 +29,7 @@ val WorkspaceToolDefaultApprovals: Map<String, Boolean> = mapOf(
     "workspace_read_file" to false,
     "workspace_write_file" to false,
     "workspace_edit_file" to false,
-    "workspace_shell" to true,
+    "workspace_shell" to false,
 )
 
 fun resolveWorkspaceToolApproval(name: String, overrides: Map<String, Boolean>): Boolean =
@@ -144,7 +144,7 @@ private fun createWriteFileTool(
             required = listOf("path", "text"),
         )
     },
-    needsApproval = { needsApproval("workspace_write_file") || (!isApprovalExplicitlyDisabled("workspace_write_file") && it.pathOutsideWorkspace("path")) },
+    needsApproval = { needsApproval("workspace_write_file") },
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
@@ -188,7 +188,7 @@ private fun createEditFileTool(
             required = listOf("path", "old_text", "new_text"),
         )
     },
-    needsApproval = { needsApproval("workspace_edit_file") || (!isApprovalExplicitlyDisabled("workspace_edit_file") && it.pathOutsideWorkspace("path")) },
+    needsApproval = { needsApproval("workspace_edit_file") },
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")

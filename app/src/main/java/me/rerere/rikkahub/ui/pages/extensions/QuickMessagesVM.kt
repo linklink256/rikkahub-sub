@@ -38,6 +38,14 @@ class QuickMessagesVM(
         )
     }
 
+    fun reorderQuickMessages(from: Int, to: Int) {
+        updateQuickMessages(
+            settings.value.quickMessages.toMutableList().apply {
+                add(to, removeAt(from))
+            }
+        )
+    }
+
     private fun updateQuickMessages(quickMessages: List<QuickMessage>) {
         val validIds = quickMessages.map { it.id }.toSet()
         viewModelScope.launch {

@@ -62,6 +62,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -81,8 +83,10 @@ import me.rerere.rikkahub.data.model.PromptInjection
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.ListCard
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalToaster
@@ -168,7 +172,7 @@ private fun ModeInjectionTab(
         modifier = Modifier
             .fillMaxSize(),
         contentPadding = contentPadding + PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         state = lazyListState
     ) {
             if (modeInjections.isEmpty()) {
@@ -198,19 +202,30 @@ private fun ModeInjectionTab(
                         state = reorderableState,
                         key = injection.id
                     ) { isDragging ->
-                        ModeInjectionCard(
-                            injection = injection,
+                        val haptic = LocalHapticFeedback.current
+                        SwipeToDeleteContainer(
+                            onDelete = { onUpdate(modeInjections - injection) },
                             modifier = Modifier
-                                .longPressDraggableHandle()
+                                .longPressDraggableHandle(
+                                    onDragStarted = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                    },
+                                    onDragStopped = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                    }
+                                )
                                 .graphicsLayer {
                                     if (isDragging) {
-                                        scaleX = 1.05f
-                                        scaleY = 1.05f
+                                        scaleX = 0.95f
+                                        scaleY = 0.95f
                                     }
                                 },
-                            onEdit = { editState.open(injection) },
-                            onDelete = { onUpdate(modeInjections - injection) }
-                        )
+                        ) {
+                            ModeInjectionCard(
+                                injection = injection,
+                                onEdit = { editState.open(injection) },
+                            )
+                        }
                     }
                 }
             }
@@ -234,86 +249,33 @@ private fun ModeInjectionCard(
     injection: PromptInjection.ModeInjection,
     modifier: Modifier = Modifier,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
 ) {
-    val swipeState = rememberSwipeToDismissBoxState()
-    val scope = rememberCoroutineScope()
     var showExportDialog by remember { mutableStateOf(false) }
     val exporter = rememberExporter(injection, ModeInjectionSerializer)
 
-    SwipeToDismissBox(
-        state = swipeState,
-        backgroundContent = {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = { scope.launch { swipeState.reset() } }) {
-                    Icon(HugeIcons.Cancel01, null)
-                }
-                FilledIconButton(onClick = {
-                    scope.launch {
-                        onDelete()
-                        swipeState.reset()
-                    }
-                }) {
-                    Icon(HugeIcons.Delete01, stringResource(R.string.prompt_page_delete))
+    ListCard(
+        onClick = onEdit,
+        modifier = modifier,
+        title = injection.name.ifEmpty { stringResource(R.string.prompt_page_unnamed) },
+        tags = {
+            Tag(type = TagType.INFO) {
+                Text(getPositionLabel(injection.position))
+            }
+            Tag(type = TagType.DEFAULT) {
+                Text(stringResource(R.string.prompt_page_priority_format, injection.priority))
+            }
+            if (!injection.enabled) {
+                Tag(type = TagType.WARNING) {
+                    Text(stringResource(R.string.prompt_page_disabled))
                 }
             }
         },
-        enableDismissFromStartToEnd = false,
-        modifier = modifier
-    ) {
-        Card(
-            colors = CardDefaults.cardColors(
-                containerColor = CustomColors.listItemColors.containerColor
-            )
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        text = injection.name.ifEmpty { stringResource(R.string.prompt_page_unnamed) },
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        Tag(type = TagType.INFO) {
-                            Text(getPositionLabel(injection.position))
-                        }
-                        Tag(type = TagType.DEFAULT) {
-                            Text(stringResource(R.string.prompt_page_priority_format, injection.priority))
-                        }
-                        if (!injection.enabled) {
-                            Tag(type = TagType.WARNING) {
-                                Text(stringResource(R.string.prompt_page_disabled))
-                            }
-                        }
-                    }
-                }
-                IconButton(onClick = { showExportDialog = true }) {
-                    Icon(HugeIcons.Share03, stringResource(R.string.export_title))
-                }
-                IconButton(onClick = onEdit) {
-                    Icon(HugeIcons.Tools, stringResource(R.string.prompt_page_edit))
-                }
+        trailing = {
+            IconButton(onClick = { showExportDialog = true }) {
+                Icon(HugeIcons.Share03, stringResource(R.string.export_title))
             }
-        }
-    }
+        },
+    )
 
     if (showExportDialog) {
         ExportDialog(

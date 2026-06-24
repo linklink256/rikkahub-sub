@@ -66,6 +66,8 @@ import me.rerere.rikkahub.data.datastore.DEFAULT_SYSTEM_TTS_ID
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
+import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalTTSState
@@ -303,7 +305,7 @@ private fun TTSProviderList(
             .fillMaxSize()
             .imePadding(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         state = lazyListState
     ) {
         items(settings.ttsProviders, key = { it.id }) { provider ->
@@ -311,38 +313,8 @@ private fun TTSProviderList(
                 state = reorderableState,
                 key = provider.id
             ) { isDragging ->
-                TTSProviderItem(
-                    modifier = Modifier
-                        .scale(if (isDragging) 0.95f else 1f)
-                        .fillMaxWidth(),
-                    provider = provider,
-                    dragHandle = {
-                        val haptic = LocalHapticFeedback.current
-                        IconButton(
-                            onClick = {},
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                    },
-                                    onDragStopped = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                    }
-                                )
-                        ) {
-                            Icon(
-                                imageVector = HugeIcons.DragDropHorizontal,
-                                contentDescription = null
-                            )
-                        }
-                    },
-                    isSelected = settings.selectedTTSProviderId == provider.id,
-                    onSelect = {
-                        onUpdateSettings(settings.copy(selectedTTSProviderId = provider.id))
-                    },
-                    onEdit = {
-                        onEdit(provider)
-                    },
+                val haptic = LocalHapticFeedback.current
+                SwipeToDeleteContainer(
                     onDelete = {
                         val newProviders = settings.ttsProviders - provider
                         val newSelectedId =
@@ -353,8 +325,30 @@ private fun TTSProviderList(
                                 selectedTTSProviderId = newSelectedId
                             )
                         )
-                    }
-                )
+                    },
+                    modifier = Modifier
+                        .scale(if (isDragging) 0.95f else 1f)
+                        .fillMaxWidth()
+                        .longPressDraggableHandle(
+                            onDragStarted = {
+                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                            },
+                            onDragStopped = {
+                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                            }
+                        ),
+                ) {
+                    TTSProviderItem(
+                        provider = provider,
+                        isSelected = settings.selectedTTSProviderId == provider.id,
+                        onSelect = {
+                            onUpdateSettings(settings.copy(selectedTTSProviderId = provider.id))
+                        },
+                        onEdit = {
+                            onEdit(provider)
+                        },
+                    )
+                }
             }
         }
     }
@@ -380,7 +374,7 @@ private fun ASRProviderList(
             .fillMaxSize()
             .imePadding(),
         contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
         state = lazyListState
     ) {
         items(settings.asrProviders, key = { it.id }) { provider ->
@@ -388,38 +382,8 @@ private fun ASRProviderList(
                 state = reorderableState,
                 key = provider.id
             ) { isDragging ->
-                ASRProviderItem(
-                    modifier = Modifier
-                        .scale(if (isDragging) 0.95f else 1f)
-                        .fillMaxWidth(),
-                    provider = provider,
-                    dragHandle = {
-                        val haptic = LocalHapticFeedback.current
-                        IconButton(
-                            onClick = {},
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                    },
-                                    onDragStopped = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                    }
-                                )
-                        ) {
-                            Icon(
-                                imageVector = HugeIcons.DragDropHorizontal,
-                                contentDescription = null
-                            )
-                        }
-                    },
-                    isSelected = settings.selectedASRProviderId == provider.id,
-                    onSelect = {
-                        onUpdateSettings(settings.copy(selectedASRProviderId = provider.id))
-                    },
-                    onEdit = {
-                        onEdit(provider)
-                    },
+                val haptic = LocalHapticFeedback.current
+                SwipeToDeleteContainer(
                     onDelete = {
                         val newProviders = settings.asrProviders - provider
                         val newSelectedId =
@@ -434,8 +398,30 @@ private fun ASRProviderList(
                                 selectedASRProviderId = newSelectedId
                             )
                         )
-                    }
-                )
+                    },
+                    modifier = Modifier
+                        .scale(if (isDragging) 0.95f else 1f)
+                        .fillMaxWidth()
+                        .longPressDraggableHandle(
+                            onDragStarted = {
+                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                            },
+                            onDragStopped = {
+                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                            }
+                        ),
+                ) {
+                    ASRProviderItem(
+                        provider = provider,
+                        isSelected = settings.selectedASRProviderId == provider.id,
+                        onSelect = {
+                            onUpdateSettings(settings.copy(selectedASRProviderId = provider.id))
+                        },
+                        onEdit = {
+                            onEdit(provider)
+                        },
+                    )
+                }
             }
         }
     }
@@ -637,146 +623,64 @@ private fun TTSProviderItem(
     provider: TTSProviderSetting,
     modifier: Modifier = Modifier,
     isSelected: Boolean = false,
-    dragHandle: @Composable () -> Unit,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
 ) {
-    var showDropdownMenu by remember { mutableStateOf(false) }
     val tts = LocalTTSState.current
     val isSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
     val isAvailable by tts.isAvailable.collectAsStateWithLifecycle()
-
-    Card(
+    val providerType = when (provider) {
+        is TTSProviderSetting.OpenAI -> stringResource(R.string.setting_tts_page_provider_openai)
+        is TTSProviderSetting.Gemini -> stringResource(R.string.setting_tts_page_provider_gemini)
+        is TTSProviderSetting.MiniMax -> "MiniMax"
+        is TTSProviderSetting.SystemTTS -> stringResource(R.string.setting_tts_page_provider_system)
+        is TTSProviderSetting.Qwen -> "Qwen"
+        is TTSProviderSetting.Groq -> "Groq"
+        is TTSProviderSetting.XAI -> "xAI"
+        is TTSProviderSetting.MiMo -> "MiMo"
+    }
+    ListCard(
+        onClick = onEdit,
         modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                CustomColors.cardColorsOnSurfaceContainer.containerColor
+        leading = {
+            AutoAIIcon(
+                name = provider.name.ifEmpty { stringResource(R.string.setting_tts_page_default_name) },
+            )
+        },
+        title = provider.name.ifEmpty { stringResource(R.string.setting_tts_page_default_name) },
+        tags = {
+            Tag(type = TagType.DEFAULT) { Text(providerType) }
+            if (isSelected) {
+                Tag(type = TagType.SUCCESS) {
+                    Text(stringResource(R.string.setting_tts_page_selected))
+                }
             }
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AutoAIIcon(
-                    name = provider.name.ifEmpty { stringResource(R.string.setting_tts_page_default_name) },
-                    modifier = Modifier.size(32.dp)
-                )
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = provider.name.ifEmpty { stringResource(R.string.setting_tts_page_default_name) },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
-                    )
-
-                    Text(
-                        text = when (provider) {
-                            is TTSProviderSetting.OpenAI -> stringResource(R.string.setting_tts_page_provider_openai)
-                            is TTSProviderSetting.Gemini -> stringResource(R.string.setting_tts_page_provider_gemini)
-                            is TTSProviderSetting.MiniMax -> "MiniMax"
-                            is TTSProviderSetting.SystemTTS -> stringResource(R.string.setting_tts_page_provider_system)
-                            is TTSProviderSetting.Qwen -> "Qwen"
-                            is TTSProviderSetting.Groq -> "Groq"
-                            is TTSProviderSetting.XAI -> "xAI"
-                            is TTSProviderSetting.MiMo -> "MiMo"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                RadioButton(
-                    selected = isSelected,
-                    onClick = onSelect
-                )
-
-                dragHandle()
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                // 状态标签
-                if (isSelected) {
-                    Tag(type = TagType.SUCCESS) {
-                        Text(stringResource(R.string.setting_tts_page_selected))
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                // TTS测试播放按钮
-                if (isSelected && isAvailable) {
-                    val testText = stringResource(R.string.setting_tts_page_test_text)
-                    IconButton(
-                        onClick = {
-                            if (!isSpeaking) {
-                                tts.speak(testText)
-                            } else {
-                                tts.stop()
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = if (isSpeaking) HugeIcons.StopCircle else HugeIcons.VolumeHigh,
-                            contentDescription = if (isSpeaking) stringResource(R.string.stop) else stringResource(R.string.test_tts),
-                            tint = if (isSpeaking) MaterialTheme.colorScheme.error else LocalContentColor.current
-                        )
-                    }
-                }
-
+        },
+        trailing = {
+            if (isSelected && isAvailable) {
+                val testText = stringResource(R.string.setting_tts_page_test_text)
                 IconButton(
-                    onClick = { showDropdownMenu = true }
+                    onClick = {
+                        if (!isSpeaking) {
+                            tts.speak(testText)
+                        } else {
+                            tts.stop()
+                        }
+                    }
                 ) {
                     Icon(
-                        imageVector = HugeIcons.Tools,
-                        contentDescription = stringResource(R.string.setting_tts_page_more_options_content_description)
+                        imageVector = if (isSpeaking) HugeIcons.StopCircle else HugeIcons.VolumeHigh,
+                        contentDescription = if (isSpeaking) stringResource(R.string.stop) else stringResource(R.string.test_tts),
+                        tint = if (isSpeaking) MaterialTheme.colorScheme.error else LocalContentColor.current
                     )
-                    DropdownMenu(
-                        expanded = showDropdownMenu,
-                        onDismissRequest = { showDropdownMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.edit)) },
-                            onClick = {
-                                showDropdownMenu = false
-                                onEdit()
-                            },
-                            leadingIcon = {
-                                Icon(HugeIcons.PencilEdit01, contentDescription = null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.delete)) },
-                            onClick = {
-                                showDropdownMenu = false
-                                onDelete()
-                            },
-                            leadingIcon = {
-                                Icon(HugeIcons.Delete01, contentDescription = null)
-                            },
-                            enabled = provider.id != DEFAULT_SYSTEM_TTS_ID
-                        )
-                    }
                 }
             }
-        }
-    }
+            RadioButton(
+                selected = isSelected,
+                onClick = onSelect
+            )
+        },
+    )
 }
 
 @Composable
@@ -784,116 +688,38 @@ private fun ASRProviderItem(
     provider: ASRProviderSetting,
     modifier: Modifier = Modifier,
     isSelected: Boolean = false,
-    dragHandle: @Composable () -> Unit,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
 ) {
-    var showDropdownMenu by remember { mutableStateOf(false) }
-
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = if (isSelected) {
-                MaterialTheme.colorScheme.primaryContainer
-            } else {
-                CustomColors.cardColorsOnSurfaceContainer.containerColor
-            }
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                AutoAIIcon(
-                    name = provider.name.ifEmpty { stringResource(R.string.setting_asr_page_default_name) },
-                    modifier = Modifier.size(32.dp)
-                )
-
-                Column(
-                    modifier = Modifier.weight(1f)
-                ) {
-                    Text(
-                        text = provider.name.ifEmpty { stringResource(R.string.setting_asr_page_default_name) },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = if (isSelected) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
-                        }
-                    )
-
-                    Text(
-                        text = when (provider) {
-                            is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
-                            is ASRProviderSetting.DashScope -> "DashScope"
-                            is ASRProviderSetting.Volcengine -> "Volcengine"
-                            is ASRProviderSetting.MiMo -> "MiMo"
-                            is ASRProviderSetting.Step -> "Step"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-
-                RadioButton(
-                    selected = isSelected,
-                    onClick = onSelect
-                )
-
-                dragHandle()
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                if (isSelected) {
-                    Tag(type = TagType.SUCCESS) {
-                        Text(stringResource(R.string.setting_tts_page_selected))
-                    }
-                }
-
-                Spacer(modifier = Modifier.weight(1f))
-
-                IconButton(
-                    onClick = { showDropdownMenu = true }
-                ) {
-                    Icon(
-                        imageVector = HugeIcons.Tools,
-                        contentDescription = stringResource(R.string.setting_tts_page_more_options_content_description)
-                    )
-                    DropdownMenu(
-                        expanded = showDropdownMenu,
-                        onDismissRequest = { showDropdownMenu = false }
-                    ) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.edit)) },
-                            onClick = {
-                                showDropdownMenu = false
-                                onEdit()
-                            },
-                            leadingIcon = {
-                                Icon(HugeIcons.PencilEdit01, contentDescription = null)
-                            }
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.delete)) },
-                            onClick = {
-                                showDropdownMenu = false
-                                onDelete()
-                            },
-                            leadingIcon = {
-                                Icon(HugeIcons.Delete01, contentDescription = null)
-                            }
-                        )
-                    }
-                }
-            }
-        }
+    val providerType = when (provider) {
+        is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
+        is ASRProviderSetting.DashScope -> "DashScope"
+        is ASRProviderSetting.Volcengine -> "Volcengine"
+        is ASRProviderSetting.MiMo -> "MiMo"
+        is ASRProviderSetting.Step -> "Step"
     }
+    ListCard(
+        onClick = onEdit,
+        modifier = modifier,
+        leading = {
+            AutoAIIcon(
+                name = provider.name.ifEmpty { stringResource(R.string.setting_asr_page_default_name) },
+            )
+        },
+        title = provider.name.ifEmpty { stringResource(R.string.setting_asr_page_default_name) },
+        tags = {
+            Tag(type = TagType.DEFAULT) { Text(providerType) }
+            if (isSelected) {
+                Tag(type = TagType.SUCCESS) {
+                    Text(stringResource(R.string.setting_tts_page_selected))
+                }
+            }
+        },
+        trailing = {
+            RadioButton(
+                selected = isSelected,
+                onClick = onSelect
+            )
+        },
+    )
 }

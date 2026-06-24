@@ -33,6 +33,12 @@ class SkillsVM(
         loadSkills()
     }
 
+    fun reorderSkills(from: Int, to: Int) {
+        _skills.value = _skills.value.toMutableList().apply {
+            add(to, removeAt(from))
+        }
+    }
+
     private fun loadSkills() {
         viewModelScope.launch(Dispatchers.IO) {
             _skills.value = skillManager.listSkills()

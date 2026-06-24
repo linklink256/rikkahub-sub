@@ -66,6 +66,8 @@ import me.rerere.rikkahub.data.model.AssistantMemory
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.components.ui.UIAvatar
@@ -96,8 +98,6 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
     var searchQuery by remember { mutableStateOf("") }
     // 标签过滤状态
     var selectedTagIds by remember { mutableStateOf(emptySet<Uuid>()) }
-    // 操作菜单状态
-    var actionSheetAssistant by remember { mutableStateOf<Assistant?>(null) }
 
     // 根据搜索关键词和选中的标签过滤助手
     val filteredAssistants = remember(settings.assistants, selectedTagIds, searchQuery) {
@@ -189,7 +189,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                     .fillMaxSize()
                     .imePadding(),
                 contentPadding = PaddingValues(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 state = lazyListState,
             ) {
                 lazyItems(filteredAssistants, key = { assistant -> assistant.id }) { assistant ->
@@ -200,20 +200,11 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                         val memories by vm.getMemories(assistant).collectAsStateWithLifecycle(
                             initialValue = emptyList(),
                         )
-                        AssistantItem(
-                            assistant = assistant,
-                            settings = settings,
-                            memories = memories,
-                            onEdit = {
-                                navController.navigate(Screen.AssistantDetail(id = assistant.id.toString()))
-                            },
-                            onShowActions = {
-                                actionSheetAssistant = assistant
+                        SwipeToDeleteContainer(
+                            onDelete = {
+                                vm.removeAssistant(assistant)
                             },
                             modifier = Modifier
-                                .scale(if (isDragging) 0.95f else 1f)
-                                .fillMaxWidth()
-                                .animateItem()
                                 .then(
                                     if (!isFiltering) {
                                         Modifier.longPressDraggableHandle(
@@ -228,7 +219,55 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                                         Modifier
                                     }
                                 )
-                        )
+                                .scale(if (isDragging) 0.95f else 1f)
+                                .fillMaxWidth()
+                                .animateItem(),
+                        ) {
+                            ListCard(
+                                onClick = {
+                                    navController.navigate(Screen.AssistantDetail(id = assistant.id.toString()))
+                                },
+                                leading = {
+                                    UIAvatar(
+                                        name = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
+                                        value = assistant.avatar,
+                                        modifier = Modifier
+                                            .heroAnimation("assistant_${assistant.id}")
+                                    )
+                                },
+                                title = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
+                                tags = {
+                                    if (assistant.enableMemory) {
+                                        Tag(type = TagType.SUCCESS) {
+                                            Text(stringResource(R.string.assistant_page_memory_count, memories.size))
+                                        }
+                                    }
+                                    if (assistant.tags.isNotEmpty()) {
+                                        assistant.tags.take(2).fastForEach { tagId ->
+                                            val tag = settings.assistantTags.find { it.id == tagId }
+                                                ?: return@fastForEach
+                                            Surface(
+                                                shape = RoundedCornerShape(50),
+                                                color = MaterialTheme.colorScheme.tertiaryContainer,
+                                            ) {
+                                                Text(
+                                                    text = tag.name,
+                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                )
+                                            }
+                                        }
+                                        if (assistant.tags.size > 2) {
+                                            Text(
+                                                text = "+${assistant.tags.size - 2}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -236,22 +275,6 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
     }
 
     AssistantCreationSheet(createState)
-
-    // 操作菜单 Bottom Sheet
-    actionSheetAssistant?.let { assistant ->
-        AssistantActionSheet(
-            assistant = assistant,
-            onDismiss = { actionSheetAssistant = null },
-            onCopy = {
-                vm.copyAssistant(assistant)
-                actionSheetAssistant = null
-            },
-            onDelete = {
-                vm.removeAssistant(assistant)
-                actionSheetAssistant = null
-            }
-        )
-    }
 }
 
 @Composable
@@ -384,186 +407,5 @@ private fun AssistantCreationSheet(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun AssistantItem(
-    assistant: Assistant,
-    settings: Settings,
-    modifier: Modifier = Modifier,
-    memories: List<AssistantMemory>,
-    onEdit: () -> Unit,
-    onShowActions: () -> Unit,
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onEdit,
-        colors = CardDefaults.cardColors(
-            containerColor = CustomColors.listItemColors.containerColor
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            UIAvatar(
-                name = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
-                value = assistant.avatar,
-                modifier = Modifier
-                    .size(48.dp)
-                    .heroAnimation("assistant_${assistant.id}")
-            )
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-
-                Text(
-                    text = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (assistant.enableMemory) {
-                        Tag(type = TagType.SUCCESS) {
-                            Text(stringResource(R.string.assistant_page_memory_count, memories.size))
-                        }
-                    }
-
-                    if (assistant.tags.isNotEmpty()) {
-                        assistant.tags.take(2).fastForEach { tagId ->
-                            val tag = settings.assistantTags.find { it.id == tagId }
-                                ?: return@fastForEach
-                            Surface(
-                                shape = RoundedCornerShape(50),
-                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                            ) {
-                                Text(
-                                    text = tag.name,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
-                        }
-                        if (assistant.tags.size > 2) {
-                            Text(
-                                text = "+${assistant.tags.size - 2}",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-
-            IconButton(
-                onClick = onShowActions
-            ) {
-                Icon(
-                    imageVector = HugeIcons.MoreVertical,
-                    contentDescription = stringResource(R.string.assistant_page_actions)
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun AssistantActionSheet(
-    assistant: Assistant,
-    onDismiss: () -> Unit,
-    onCopy: () -> Unit,
-    onDelete: () -> Unit
-) {
-    var showDeleteDialog by remember { mutableStateOf(false) }
-
-    ModalBottomSheet(
-        onDismissRequest = onDismiss
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 32.dp)
-        ) {
-            // 助手信息头部
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                UIAvatar(
-                    name = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
-                    value = assistant.avatar,
-                    modifier = Modifier.size(40.dp)
-                )
-                Text(
-                    text = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-
-            HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-            // 克隆选项
-            ListItem(
-                headlineContent = { Text(stringResource(R.string.assistant_page_clone)) },
-                leadingContent = {
-                    Icon(
-                        imageVector = HugeIcons.Copy01,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                },
-                modifier = Modifier.onClick { onCopy() },
-                colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-            )
-
-            // 删除选项（仅非默认助手显示）
-            if (assistant.id !in DEFAULT_ASSISTANTS_IDS) {
-                ListItem(
-                    headlineContent = {
-                        Text(
-                            stringResource(R.string.assistant_page_delete),
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    leadingContent = {
-                        Icon(
-                            imageVector = HugeIcons.Delete01,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.error
-                        )
-                    },
-                    modifier = Modifier.onClick { showDeleteDialog = true },
-                    colors = ListItemDefaults.colors(containerColor = Color.Transparent)
-                )
-            }
-        }
-    }
-
-    RikkaConfirmDialog(
-        show = showDeleteDialog,
-        title = stringResource(R.string.assistant_page_delete),
-        confirmText = stringResource(R.string.confirm),
-        dismissText = stringResource(R.string.cancel),
-        onConfirm = {
-            showDeleteDialog = false
-            onDelete()
-        },
-        onDismiss = { showDeleteDialog = false },
-    ) {
-        Text(stringResource(R.string.assistant_page_delete_dialog_text))
     }
 }

@@ -70,6 +70,8 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
+import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.components.ui.decodeProviderSetting
@@ -193,7 +195,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                     .imePadding(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp) +
                     PaddingValues(bottom = innerPadding.calculateBottomPadding()),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 state = lazyListState,
             ) {
                 items(filteredProviders, key = { it.id }) { provider ->
@@ -201,35 +203,51 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                         state = reorderableState,
                         key = provider.id
                     ) { isDragging ->
-                        ProviderItem(
+                        val haptic = LocalHapticFeedback.current
+                        SwipeToDeleteContainer(
+                            onDelete = {
+                                vm.updateSettings(settings.copy(providers = settings.providers - provider))
+                            },
                             modifier = Modifier
+                                .longPressDraggableHandle(
+                                    onDragStarted = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
+                                    },
+                                    onDragStopped = {
+                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
+                                    }
+                                )
                                 .scale(if (isDragging) 0.95f else 1f)
                                 .fillMaxWidth(),
-                            provider = provider,
-                            dragHandle = {
-                                val haptic = LocalHapticFeedback.current
-                                IconButton(
-                                    onClick = {},
-                                    modifier = Modifier
-                                        .longPressDraggableHandle(
-                                            onDragStarted = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                            },
-                                            onDragStopped = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                            }
+                        ) {
+                            ListCard(
+                                onClick = {
+                                    navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
+                                },
+                                leading = {
+                                    AutoAIIcon(name = provider.name)
+                                },
+                                title = provider.name,
+                                tags = {
+                                    Tag(type = if (provider.enabled) TagType.SUCCESS else TagType.WARNING) {
+                                        Text(stringResource(if (provider.enabled) R.string.setting_provider_page_enabled else R.string.setting_provider_page_disabled))
+                                    }
+                                    Tag(type = TagType.INFO) {
+                                        Text(
+                                            stringResource(
+                                                R.string.setting_provider_page_model_count,
+                                                provider.models.size
+                                            )
                                         )
-                                ) {
-                                    Icon(
-                                        imageVector = HugeIcons.DragDropHorizontal,
-                                        contentDescription = null
-                                    )
-                                }
-                            },
-                            onClick = {
-                                navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
-                            }
-                        )
+                                    }
+                                    if (provider.name == "AiHubMix") {
+                                        Tag(type = TagType.INFO) {
+                                            Text("10% 优惠")
+                                        }
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }
@@ -495,71 +513,4 @@ private fun AddButton(onAdd: (ProviderSetting) -> Unit) {
     }
 }
 
-@Composable
-private fun ProviderItem(
-    provider: ProviderSetting,
-    modifier: Modifier = Modifier,
-    dragHandle: @Composable () -> Unit,
-    onClick: () -> Unit
-) {
-    Card(
-        modifier = modifier,
-        colors = CardDefaults.cardColors(
-            containerColor = if (provider.enabled) {
-                CustomColors.listItemColors.containerColor
-            } else MaterialTheme.colorScheme.errorContainer,
-        ),
-        onClick = {
-            onClick()
-        }
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            AutoAIIcon(
-                name = provider.name,
-                modifier = Modifier.size(40.dp)
-            )
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = provider.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                    CompositionLocalProvider(LocalContentColor provides LocalContentColor.current.copy(alpha = 0.7f)) {
-                        provider.shortDescription()
-                    }
-                }
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Tag(type = if (provider.enabled) TagType.SUCCESS else TagType.WARNING) {
-                        Text(stringResource(if (provider.enabled) R.string.setting_provider_page_enabled else R.string.setting_provider_page_disabled))
-                    }
-                    Tag(type = TagType.INFO) {
-                        Text(
-                            stringResource(
-                                R.string.setting_provider_page_model_count,
-                                provider.models.size
-                            )
-                        )
-                    }
-                    if (provider.name == "AiHubMix") {
-                        Tag(type = TagType.INFO) {
-                            Text("10% 优惠")
-                        }
-                    }
-                }
-            }
-            dragHandle()
-        }
-    }
-}
+
