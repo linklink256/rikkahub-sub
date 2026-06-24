@@ -106,22 +106,6 @@ sealed class TTSProviderSetting {
         val voice: String = "mimo_default"
     ) : TTSProviderSetting() {
     }
-
-// ponytail: single extension replaces 8 identical copyProvider overrides
-fun TTSProviderSetting.copyProvider(
-    id: Uuid = this.id,
-    name: String = this.name,
-): TTSProviderSetting = when (this) {
-    is TTSProviderSetting.OpenAI -> copy(id = id, name = name)
-    is TTSProviderSetting.Gemini -> copy(id = id, name = name)
-    is TTSProviderSetting.SystemTTS -> copy(id = id, name = name)
-    is TTSProviderSetting.MiniMax -> copy(id = id, name = name)
-    is TTSProviderSetting.Qwen -> copy(id = id, name = name)
-    is TTSProviderSetting.Groq -> copy(id = id, name = name)
-    is TTSProviderSetting.XAI -> copy(id = id, name = name)
-    is TTSProviderSetting.MiMo -> copy(id = id, name = name)
-}
-
     companion object {
         val Types by lazy {
             listOf(
@@ -136,4 +120,19 @@ fun TTSProviderSetting.copyProvider(
             )
         }
     }
+}
+
+// ponytail: single extension replaces 8 identical copyProvider overrides
+fun TTSProviderSetting.copyProvider(
+    id: Uuid = this.id,
+    name: String = this.name,
+): TTSProviderSetting = when (this) {
+    is TTSProviderSetting.OpenAI -> copy(id = id, name = name)
+    is TTSProviderSetting.Gemini -> copy(id = id, name = name)
+    is TTSProviderSetting.SystemTTS -> copy(id = id, name = name)
+    is TTSProviderSetting.MiniMax -> copy(id = id, name = name)
+    is TTSProviderSetting.Qwen -> copy(id = id, name = name)
+    is TTSProviderSetting.Groq -> copy(id = id, name = name)
+    is TTSProviderSetting.XAI -> copy(id = id, name = name)
+    is TTSProviderSetting.MiMo -> copy(id = id, name = name)
 }

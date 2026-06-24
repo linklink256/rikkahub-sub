@@ -118,19 +118,6 @@ sealed class ASRProviderSetting {
         val hotwords: List<String> = emptyList(),
     ) : ASRProviderSetting() {
     }
-
-// ponytail: single extension replaces 5 identical copyProvider overrides
-fun ASRProviderSetting.copyProvider(
-    id: Uuid = this.id,
-    name: String = this.name,
-): ASRProviderSetting = when (this) {
-    is ASRProviderSetting.OpenAIRealtime -> copy(id = id, name = name)
-    is ASRProviderSetting.DashScope -> copy(id = id, name = name)
-    is ASRProviderSetting.Volcengine -> copy(id = id, name = name)
-    is ASRProviderSetting.MiMo -> copy(id = id, name = name)
-    is ASRProviderSetting.Step -> copy(id = id, name = name)
-}
-
     companion object {
         val Types by lazy {
             listOf(
@@ -142,4 +129,16 @@ fun ASRProviderSetting.copyProvider(
             )
         }
     }
+}
+
+// ponytail: single extension replaces 5 identical copyProvider overrides
+fun ASRProviderSetting.copyProvider(
+    id: Uuid = this.id,
+    name: String = this.name,
+): ASRProviderSetting = when (this) {
+    is ASRProviderSetting.OpenAIRealtime -> copy(id = id, name = name)
+    is ASRProviderSetting.DashScope -> copy(id = id, name = name)
+    is ASRProviderSetting.Volcengine -> copy(id = id, name = name)
+    is ASRProviderSetting.MiMo -> copy(id = id, name = name)
+    is ASRProviderSetting.Step -> copy(id = id, name = name)
 }
