@@ -6,8 +6,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
-// ReorderableItem 和 longPressDraggableHandle 都是 scope 成员，通过 LazyItemScope / ReorderableCollectionItemScope 解析
+// longPressDraggableHandle 是 ReorderableCollectionItemScope 的成员，通过 ReorderableItem lambda 接收者解析
 
 /**
  * 可拖拽排序 + 弹性滑动删除的列表项包装（组合式，非继承）。
