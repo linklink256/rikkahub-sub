@@ -46,12 +46,13 @@ import me.rerere.rikkahub.ui.theme.CustomColors
  *
  * 结构：Card > Row(leading 32dp + Column(title + tags) + trailing)
  *
- * @param onClick    整卡点击（进入详情页）
- * @param leading    左侧图标/头像，会被约束为 32dp
- * @param title      标题（titleMedium）
- * @param titleEnd   标题右侧附加内容（如状态圆点），可选
- * @param tags       标签行（FlowRow 内），不需要时传空 lambda
- * @param trailing   右侧操作区（按钮等），可选
+ * @param onClick          整卡点击（进入详情页）
+ * @param leading          左侧图标/头像，会被约束为 32dp
+ * @param title            标题（titleMedium）
+ * @param titleEnd         标题右侧附加内容（如状态圆点），可选
+ * @param tags             标签行（FlowRow 内），不需要时传空 lambda
+ * @param trailing         右侧操作区（按钮等），可选
+ * @param containerColor   卡片背景色，默认 surfaceBright；可传入自定义颜色（如禁用态橘色）
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -63,11 +64,12 @@ fun ListCard(
     titleEnd: (@Composable () -> Unit)? = null,
     tags: @Composable RowScope.() -> Unit = {},
     trailing: @Composable () -> Unit = {},
+    containerColor: androidx.compose.ui.graphics.Color = CustomColors.cardColorsOnSurfaceContainer.containerColor,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = onClick,
-        colors = CustomColors.cardColorsOnSurfaceContainer,
+        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Row(
             modifier = Modifier
@@ -130,12 +132,14 @@ fun ListCard(
  *
  * @param onDelete   松手时且滑动超过阈值时回调
  * @param modifier   传入 longPressDraggableHandle 等拖拽修饰符
+ * @param enabled    是否允许滑动删除（false 时卡片不可滑动，纯展示）
  * @param content     卡片内容（通常是 ListCard）
  */
 @Composable
 fun SwipeToDeleteContainer(
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     content: @Composable () -> Unit,
 ) {
     val density = LocalDensity.current
@@ -151,7 +155,7 @@ fun SwipeToDeleteContainer(
     // 卡片圆角，与 Card 默认 shapes.medium 一致
     val cardShape = MaterialTheme.shapes.medium
 
-    BoxWithConstraints(modifier) {
+    BoxWithConstraints(modifier.fillMaxWidth()) {
         // 阈值 = 卡片宽度的 30%
         val thresholdPx = with(density) { maxWidth.toPx() * 0.3f }
         // 卡片完整宽度（用于滑出动画目标值）
@@ -186,45 +190,51 @@ fun SwipeToDeleteContainer(
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer { translationX = offset.value }
-                .pointerInput(Unit) {
-                    detectHorizontalDragGestures(
-                        onDragEnd = {
-                            val reached = rawDrag >= thresholdPx
-                            if (reached) {
-                                // 先动画滑出屏幕左侧，再回调删除
-                                scope.launch {
-                                    offset.animateTo(
-                                        targetValue = -fullWidthPx,
-                                        animationSpec = tween(durationMillis = 250),
-                                    )
-                                    onDelete()
+                .then(
+                    if (enabled) {
+                        Modifier.pointerInput(Unit) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    val reached = rawDrag >= thresholdPx
+                                    if (reached) {
+                                        // 先动画滑出屏幕左侧，再回调删除
+                                        scope.launch {
+                                            offset.animateTo(
+                                                targetValue = -fullWidthPx,
+                                                animationSpec = tween(durationMillis = 250),
+                                            )
+                                            onDelete()
+                                        }
+                                    } else {
+                                        rawDrag = 0f
+                                        scope.launch {
+                                            offset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                                        }
+                                    }
+                                },
+                                onDragCancel = {
+                                    rawDrag = 0f
+                                    scope.launch {
+                                        offset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                                    }
+                                },
+                            ) { _, dragAmount ->
+                                // dragAmount < 0 为左滑（手指向左）；只允许左滑
+                                val next = (rawDrag - dragAmount).coerceAtLeast(0f)
+                                rawDrag = next
+                                // 超过阈值后施加阻尼：显示位移 = 阈值 + 超出部分 × 阻尼系数
+                                val displayed = if (next <= thresholdPx) {
+                                    next
+                                } else {
+                                    thresholdPx + (next - thresholdPx) * damping
                                 }
-                            } else {
-                                rawDrag = 0f
-                                scope.launch {
-                                    offset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                                }
+                                scope.launch { offset.snapTo(-displayed) }
                             }
-                        },
-                        onDragCancel = {
-                            rawDrag = 0f
-                            scope.launch {
-                                offset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                            }
-                        },
-                    ) { _, dragAmount ->
-                        // dragAmount < 0 为左滑（手指向左）；只允许左滑
-                        val next = (rawDrag - dragAmount).coerceAtLeast(0f)
-                        rawDrag = next
-                        // 超过阈值后施加阻尼：显示位移 = 阈值 + 超出部分 × 阻尼系数
-                        val displayed = if (next <= thresholdPx) {
-                            next
-                        } else {
-                            thresholdPx + (next - thresholdPx) * damping
                         }
-                        scope.launch { offset.snapTo(-displayed) }
+                    } else {
+                        Modifier
                     }
-                },
+                ),
         ) {
             content()
         }

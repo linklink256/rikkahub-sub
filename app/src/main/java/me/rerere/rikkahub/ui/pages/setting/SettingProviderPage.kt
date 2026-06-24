@@ -208,6 +208,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                             onDelete = {
                                 vm.updateSettings(settings.copy(providers = settings.providers - provider))
                             },
+                            enabled = provider.enabled,
                             modifier = Modifier
                                 .longPressDraggableHandle(
                                     onDragStarted = {
@@ -228,6 +229,11 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                                     AutoAIIcon(name = provider.name)
                                 },
                                 title = provider.name,
+                                containerColor = if (provider.enabled) {
+                                    CustomColors.cardColorsOnSurfaceContainer.containerColor
+                                } else {
+                                    MaterialTheme.colorScheme.errorContainer
+                                },
                                 tags = {
                                     Tag(type = if (provider.enabled) TagType.SUCCESS else TagType.WARNING) {
                                         Text(stringResource(if (provider.enabled) R.string.setting_provider_page_enabled else R.string.setting_provider_page_disabled))
