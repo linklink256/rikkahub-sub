@@ -50,8 +50,8 @@ import me.rerere.highlight.LocalHighlighter
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.richtext.HighlightCodeVisualTransformation
-import me.rerere.rikkahub.ui.components.ui.CardGroup
-import me.rerere.rikkahub.ui.components.ui.CardGroupScope
+import me.rerere.rikkahub.ui.components.ui.FormItem
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
@@ -130,15 +130,11 @@ fun SettingSearchDetailPage(
                         .fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    CardGroup(
-                        modifier = Modifier.fillMaxWidth(),
-                        title = { Text(stringResource(R.string.setting_page_search_config)) }
-                    ) {
-                        SearchServiceOptionsEditor(
-                            options = options,
-                            onUpdateOptions = { save(it) }
-                        )
-                    }
+                    SectionHeader(stringResource(R.string.setting_page_search_config))
+                    SearchServiceOptionsEditor(
+                        options = options,
+                        onUpdateOptions = { save(it) }
+                    )
 
                     ProvideTextStyle(MaterialTheme.typography.labelMedium) {
                         SearchService.getService(options).Description()
@@ -157,7 +153,8 @@ fun SettingSearchDetailPage(
 }
 
 @Suppress("UNCHECKED_CAST")
-private fun CardGroupScope.SearchServiceOptionsEditor(
+@Composable
+private fun SearchServiceOptionsEditor(
     options: SearchServiceOptions,
     onUpdateOptions: (SearchServiceOptions) -> Unit
 ) {
@@ -335,11 +332,12 @@ private fun SearchTestSection(
     }
 }
 
-internal fun CardGroupScope.TavilyOptions(
+@Composable
+internal fun TavilyOptions(
     options: SearchServiceOptions.TavilyOptions,
     onUpdateOptions: (SearchServiceOptions.TavilyOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -353,7 +351,7 @@ internal fun CardGroupScope.TavilyOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_depth))
         }
@@ -377,11 +375,12 @@ internal fun CardGroupScope.TavilyOptions(
     }
 }
 
-internal fun CardGroupScope.ExaOptions(
+@Composable
+internal fun ExaOptions(
     options: SearchServiceOptions.ExaOptions,
     onUpdateOptions: (SearchServiceOptions.ExaOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -396,11 +395,12 @@ internal fun CardGroupScope.ExaOptions(
     }
 }
 
-internal fun CardGroupScope.ZhipuOptions(
+@Composable
+internal fun ZhipuOptions(
     options: SearchServiceOptions.ZhipuOptions,
     onUpdateOptions: (SearchServiceOptions.ZhipuOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -415,11 +415,12 @@ internal fun CardGroupScope.ZhipuOptions(
     }
 }
 
-internal fun CardGroupScope.SearXNGOptions(
+@Composable
+internal fun SearXNGOptions(
     options: SearchServiceOptions.SearXNGOptions,
     onUpdateOptions: (SearchServiceOptions.SearXNGOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_url))
         }
@@ -433,7 +434,7 @@ internal fun CardGroupScope.SearXNGOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_engines))
         }
@@ -447,7 +448,7 @@ internal fun CardGroupScope.SearXNGOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_language))
         }
@@ -461,7 +462,7 @@ internal fun CardGroupScope.SearXNGOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_username))
         }
@@ -475,7 +476,7 @@ internal fun CardGroupScope.SearXNGOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_password))
         }
@@ -490,11 +491,12 @@ internal fun CardGroupScope.SearXNGOptions(
     }
 }
 
-internal fun CardGroupScope.SearchLinkUpOptions(
+@Composable
+internal fun SearchLinkUpOptions(
     options: SearchServiceOptions.LinkUpOptions,
     onUpdateOptions: (SearchServiceOptions.LinkUpOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -508,7 +510,7 @@ internal fun CardGroupScope.SearchLinkUpOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_depth))
         }
@@ -532,11 +534,12 @@ internal fun CardGroupScope.SearchLinkUpOptions(
     }
 }
 
-internal fun CardGroupScope.BraveOptions(
+@Composable
+internal fun BraveOptions(
     options: SearchServiceOptions.BraveOptions,
     onUpdateOptions: (SearchServiceOptions.BraveOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -551,11 +554,12 @@ internal fun CardGroupScope.BraveOptions(
     }
 }
 
-internal fun CardGroupScope.MetasoOptions(
+@Composable
+internal fun MetasoOptions(
     options: SearchServiceOptions.MetasoOptions,
     onUpdateOptions: (SearchServiceOptions.MetasoOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -570,11 +574,12 @@ internal fun CardGroupScope.MetasoOptions(
     }
 }
 
-internal fun CardGroupScope.OllamaOptions(
+@Composable
+internal fun OllamaOptions(
     options: SearchServiceOptions.OllamaOptions,
     onUpdateOptions: (SearchServiceOptions.OllamaOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -589,11 +594,12 @@ internal fun CardGroupScope.OllamaOptions(
     }
 }
 
-internal fun CardGroupScope.PerplexityOptions(
+@Composable
+internal fun PerplexityOptions(
     options: SearchServiceOptions.PerplexityOptions,
     onUpdateOptions: (SearchServiceOptions.PerplexityOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -607,7 +613,7 @@ internal fun CardGroupScope.PerplexityOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_max_tokens))
         }
@@ -622,7 +628,7 @@ internal fun CardGroupScope.PerplexityOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_max_tokens_per_page))
         }
@@ -638,11 +644,12 @@ internal fun CardGroupScope.PerplexityOptions(
     }
 }
 
-internal fun CardGroupScope.FirecrawlOptions(
+@Composable
+internal fun FirecrawlOptions(
     options: SearchServiceOptions.FirecrawlOptions,
     onUpdateOptions: (SearchServiceOptions.FirecrawlOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -657,11 +664,12 @@ internal fun CardGroupScope.FirecrawlOptions(
     }
 }
 
-internal fun CardGroupScope.JinaOptions(
+@Composable
+internal fun JinaOptions(
     options: SearchServiceOptions.JinaOptions,
     onUpdateOptions: (SearchServiceOptions.JinaOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -675,7 +683,7 @@ internal fun CardGroupScope.JinaOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_search_url))
         }
@@ -692,7 +700,7 @@ internal fun CardGroupScope.JinaOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_scrape_url))
         }
@@ -710,11 +718,12 @@ internal fun CardGroupScope.JinaOptions(
     }
 }
 
-internal fun CardGroupScope.BochaOptions(
+@Composable
+internal fun BochaOptions(
     options: SearchServiceOptions.BochaOptions,
     onUpdateOptions: (SearchServiceOptions.BochaOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -728,7 +737,7 @@ internal fun CardGroupScope.BochaOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_summary))
         },
@@ -746,11 +755,12 @@ internal fun CardGroupScope.BochaOptions(
     )
 }
 
-internal fun CardGroupScope.RikkaHubOptions(
+@Composable
+internal fun RikkaHubOptions(
     options: SearchServiceOptions.RikkaHubOptions,
     onUpdateOptions: (SearchServiceOptions.RikkaHubOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -764,7 +774,7 @@ internal fun CardGroupScope.RikkaHubOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_depth))
         }
@@ -788,11 +798,12 @@ internal fun CardGroupScope.RikkaHubOptions(
     }
 }
 
-internal fun CardGroupScope.TinyfishOptions(
+@Composable
+internal fun TinyfishOptions(
     options: SearchServiceOptions.TinyfishOptions,
     onUpdateOptions: (SearchServiceOptions.TinyfishOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -807,11 +818,12 @@ internal fun CardGroupScope.TinyfishOptions(
     }
 }
 
-internal fun CardGroupScope.GrokOptions(
+@Composable
+internal fun GrokOptions(
     options: SearchServiceOptions.GrokOptions,
     onUpdateOptions: (SearchServiceOptions.GrokOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_api_key))
         }
@@ -825,7 +837,7 @@ internal fun CardGroupScope.GrokOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_model))
         }
@@ -839,7 +851,7 @@ internal fun CardGroupScope.GrokOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_custom_url))
         }
@@ -853,7 +865,7 @@ internal fun CardGroupScope.GrokOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_system_prompt))
         }
@@ -869,11 +881,12 @@ internal fun CardGroupScope.GrokOptions(
     }
 }
 
-internal fun CardGroupScope.CustomJsOptions(
+@Composable
+internal fun CustomJsOptions(
     options: SearchServiceOptions.CustomJsOptions,
     onUpdateOptions: (SearchServiceOptions.CustomJsOptions) -> Unit
 ) {
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_name))
         }
@@ -888,7 +901,7 @@ internal fun CardGroupScope.CustomJsOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_search_script))
         }
@@ -912,7 +925,7 @@ internal fun CardGroupScope.CustomJsOptions(
         )
     }
 
-    formItem(
+    FormItem(
         label = {
             Text(stringResource(R.string.search_detail_scrape_script))
         },

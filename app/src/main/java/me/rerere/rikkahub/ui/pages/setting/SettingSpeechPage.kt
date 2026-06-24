@@ -653,12 +653,12 @@ private fun TTSProviderItem(
             containerColor = if (isSelected) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
-                CustomColors.listItemColors.containerColor
+                CustomColors.cardColorsOnSurfaceContainer.containerColor
             }
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
@@ -797,12 +797,12 @@ private fun ASRProviderItem(
             containerColor = if (isSelected) {
                 MaterialTheme.colorScheme.primaryContainer
             } else {
-                CustomColors.listItemColors.containerColor
+                CustomColors.cardColorsOnSurfaceContainer.containerColor
             }
         )
     ) {
         Column(
-            modifier = Modifier.padding(16.dp),
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(

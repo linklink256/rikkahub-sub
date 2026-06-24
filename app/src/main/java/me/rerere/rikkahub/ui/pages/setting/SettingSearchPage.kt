@@ -52,8 +52,9 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
-import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
+import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -373,12 +374,9 @@ private fun CommonOptions(
     var commonOptions by remember(settings.searchCommonOptions) {
         mutableStateOf(settings.searchCommonOptions)
     }
-    CardGroup(
-        title = {
-            Text(stringResource(R.string.setting_page_search_common_options))
-        }
-    ) {
-        formItem(
+    Column {
+        SectionHeader(stringResource(R.string.setting_page_search_common_options))
+        FormItem(
             label = {
                 Text(stringResource(R.string.setting_page_search_result_size))
             }
