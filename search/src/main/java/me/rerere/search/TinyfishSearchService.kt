@@ -28,14 +28,6 @@ object TinyfishSearchService : SearchService<SearchServiceOptions.TinyfishOption
     @Composable
     override fun Description() = ApiKeyButton("https://agent.tinyfish.ai/api-keys")
 
-    override fun parameters(options: SearchServiceOptions.TinyfishOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
     override fun scrapingParameters(options: SearchServiceOptions.TinyfishOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
@@ -53,7 +45,7 @@ object TinyfishSearchService : SearchService<SearchServiceOptions.TinyfishOption
         serviceOptions: SearchServiceOptions.TinyfishOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
             val url = "https://api.search.tinyfish.ai" +
                     "?query=${java.net.URLEncoder.encode(query, "UTF-8")}"
 

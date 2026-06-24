@@ -7,6 +7,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.model.QuickMessage
 import kotlin.uuid.Uuid
+import me.rerere.rikkahub.utils.move
 
 class QuickMessagesVM(
     private val settingsStore: SettingsStore
@@ -40,9 +41,7 @@ class QuickMessagesVM(
 
     fun reorderQuickMessages(from: Int, to: Int) {
         updateQuickMessages(
-            settings.value.quickMessages.toMutableList().apply {
-                add(to, removeAt(from))
-            }
+            settings.value.quickMessages.move(from, to)
         )
     }
 

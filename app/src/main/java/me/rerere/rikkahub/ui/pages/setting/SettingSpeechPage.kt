@@ -73,6 +73,7 @@ import me.rerere.rikkahub.ui.pages.setting.components.ASRProviderConfigure
 import me.rerere.rikkahub.ui.pages.setting.components.TTSProviderConfigure
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
+import me.rerere.rikkahub.utils.move
 import me.rerere.tts.provider.TTSProviderSetting
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -291,9 +292,7 @@ private fun TTSProviderList(
 ) {
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.ttsProviders.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
+        val newProviders = settings.ttsProviders.move(from.index, to.index)
         onUpdateSettings(settings.copy(ttsProviders = newProviders))
     }
 
@@ -352,9 +351,7 @@ private fun ASRProviderList(
 ) {
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.asrProviders.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
+        val newProviders = settings.asrProviders.move(from.index, to.index)
         onUpdateSettings(settings.copy(asrProviders = newProviders))
     }
 

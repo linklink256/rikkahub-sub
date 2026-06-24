@@ -21,6 +21,7 @@ import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.files.SkillMetadata
 import org.json.JSONArray
 import kotlin.collections.iterator
+import me.rerere.rikkahub.utils.move
 
 class SkillsVM(
     private val skillManager: SkillManager,
@@ -34,9 +35,7 @@ class SkillsVM(
     }
 
     fun reorderSkills(from: Int, to: Int) {
-        _skills.value = _skills.value.toMutableList().apply {
-            add(to, removeAt(from))
-        }
+        _skills.value = _skills.value.move(from, to)
     }
 
     private fun loadSkills() {

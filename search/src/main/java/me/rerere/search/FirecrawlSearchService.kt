@@ -83,7 +83,7 @@ object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOpti
         serviceOptions: SearchServiceOptions.FirecrawlOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
 
             val sources = params["sources"].asStringList()
             val categories = params["categories"].asStringList()
@@ -115,9 +115,7 @@ object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOpti
                 .build()
 
             val response = httpClient.newCall(request).await()
-            if (!response.isSuccessful) {
-                error("response failed #${response.code}")
-            }
+            response.requireSuccess()
 
             val bodyString = response.body.string()
             val payload = json.parseToJsonElement(bodyString).jsonObject
@@ -178,9 +176,7 @@ object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOpti
                 .build()
 
             val response = httpClient.newCall(request).await()
-            if (!response.isSuccessful) {
-                error("response failed #${response.code}")
-            }
+            response.requireSuccess()
 
             val bodyString = response.body.string()
             val payload = json.parseToJsonElement(bodyString).jsonObject

@@ -1,4 +1,5 @@
 package me.rerere.search
+import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -48,15 +49,13 @@ object ExaSearchService : SearchService<SearchServiceOptions.ExaOptions> {
             required = listOf("query")
         )
 
-    override fun scrapingParameters(options: SearchServiceOptions.ExaOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.ExaOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
             val body = buildJsonObject {
                 put("query", JsonPrimitive(query))
                 put("numResults", JsonPrimitive(commonOptions.resultSize))
@@ -73,32 +72,22 @@ object ExaSearchService : SearchService<SearchServiceOptions.ExaOptions> {
                 .addHeader("Authorization", "Bearer $apiKey")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (response.isSuccessful) {
-                val bodyRaw = response.body.string()
-                val response = runCatching {
-                    json.decodeFromString<ExaData>(bodyRaw)
-                }.onFailure {
-                    it.printStackTrace()
-                    println(bodyRaw)
-                    error("Failed to decode response: $bodyRaw")
-                }.getOrThrow()
+            val response = httpClient.newCall(request).await()
+            response.requireSuccess()
+            val bodyRaw = response.body.string()
+            val exaResponse = json.decodeOrThrow<ExaData>(bodyRaw)
 
-                return@withContext Result.success(
-                    SearchResult(
-                        answer = response.output?.content,
-                        items = response.results.map {
-                            SearchResultItem(
-                                title = it.title,
-                                url = it.url,
-                                text = it.text ?: ""
-                            )
-                        }
-                    ))
-            } else {
-                println(response.body.string())
-                error("response failed #${response.code}")
-            }
+            return@withContext Result.success(
+                SearchResult(
+                    answer = exaResponse.output?.content,
+                    items = exaResponse.results.map {
+                        SearchResultItem(
+                            title = it.title,
+                            url = it.url,
+                            text = it.text ?: ""
+                        )
+                    }
+                ))
         }
     }
 

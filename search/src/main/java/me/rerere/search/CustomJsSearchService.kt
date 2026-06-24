@@ -9,7 +9,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.common.js.injectFetch
@@ -24,34 +23,13 @@ object CustomJsSearchService : SearchService<SearchServiceOptions.CustomJsOption
         Text(stringResource(R.string.custom_js_desc))
     }
 
-    override fun parameters(options: SearchServiceOptions.CustomJsOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.CustomJsOptions): InputSchema? {
-        if (options.scrapeScript.isBlank()) return null
-        return InputSchema.Obj(
-            properties = buildJsonObject {
-                put("urls", buildJsonObject {
-                    put("type", "array")
-                    put("description", "urls to scrape")
-                })
-            },
-            required = listOf("urls")
-        )
-    }
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.CustomJsOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
             val script = serviceOptions.searchScript.ifBlank { error("Search script is empty") }
 
             val resultJson = executeScript(

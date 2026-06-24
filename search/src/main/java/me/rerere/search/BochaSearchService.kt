@@ -1,4 +1,5 @@
 package me.rerere.search
+import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -12,9 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -28,23 +27,13 @@ object BochaSearchService : SearchService<SearchServiceOptions.BochaOptions> {
     @Composable
     override fun Description() = ApiKeyButton("https://open.bochaai.com/")
 
-    override fun parameters(options: SearchServiceOptions.BochaOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.BochaOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.BochaOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
 
             val body = buildJsonObject {
                 put("query", JsonPrimitive(query))
@@ -59,36 +48,26 @@ object BochaSearchService : SearchService<SearchServiceOptions.BochaOptions> {
                 .addHeader("Content-Type", "application/json")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (response.isSuccessful) {
-                val bodyRaw = response.body.string()
-                val bochaResponse = runCatching {
-                    json.decodeFromString<BochaResponse>(bodyRaw)
-                }.onFailure {
-                    it.printStackTrace()
-                    println(bodyRaw)
-                    error("Failed to decode response: $bodyRaw")
-                }.getOrThrow()
+            val response = httpClient.newCall(request).await()
+            response.requireSuccess()
+            val bodyRaw = response.body.string()
+            val bochaResponse = json.decodeOrThrow<BochaResponse>(bodyRaw)
 
-                if (bochaResponse.code != 200) {
-                    error("Bocha API error: ${bochaResponse.msg ?: "Unknown error"}")
-                }
-
-                return@withContext Result.success(
-                    SearchResult(
-                        items = bochaResponse.data?.webPages?.value?.map {
-                            SearchResultItem(
-                                title = it.name,
-                                url = it.url,
-                                text = it.summary ?: it.snippet,
-                            )
-                        } ?: emptyList()
-                    )
-                )
-            } else {
-                println(response.body.string())
-                error("response failed #${response.code}")
+            if (bochaResponse.code != 200) {
+                error("Bocha API error: ${bochaResponse.msg ?: "Unknown error"}")
             }
+
+            return@withContext Result.success(
+                SearchResult(
+                    items = bochaResponse.data?.webPages?.value?.map {
+                        SearchResultItem(
+                            title = it.name,
+                            url = it.url,
+                            text = it.summary ?: it.snippet,
+                        )
+                    } ?: emptyList()
+                )
+            )
         }
     }
 

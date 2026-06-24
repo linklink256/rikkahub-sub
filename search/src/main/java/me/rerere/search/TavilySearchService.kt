@@ -68,7 +68,7 @@ object TavilySearchService : SearchService<SearchServiceOptions.TavilyOptions> {
         serviceOptions: SearchServiceOptions.TavilyOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
             val topic = params["topic"]?.jsonPrimitive?.contentOrNull ?: "general"
 
             // Validate topic

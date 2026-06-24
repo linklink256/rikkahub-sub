@@ -91,6 +91,7 @@ import me.rerere.rikkahub.ui.hooks.EditState
 import me.rerere.rikkahub.ui.hooks.useEditState
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
+import me.rerere.rikkahub.utils.move
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -158,9 +159,7 @@ private fun ModeInjectionTab(
 ) {
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newList = modeInjections.toMutableList()
-        val item = newList.removeAt(from.index)
-        newList.add(to.index, item)
+        val newList = modeInjections.move(from.index, to.index)
         onUpdate(newList)
     }
 

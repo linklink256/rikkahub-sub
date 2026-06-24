@@ -91,6 +91,7 @@ import me.rerere.rikkahub.ui.hooks.useEditState
 import me.rerere.rikkahub.ui.hooks.EditState
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
+import me.rerere.rikkahub.utils.move
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
@@ -157,9 +158,7 @@ private fun LorebookTab(
 ) {
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newList = lorebooks.toMutableList()
-        val item = newList.removeAt(from.index)
-        newList.add(to.index, item)
+        val newList = lorebooks.move(from.index, to.index)
         onUpdate(newList)
     }
 

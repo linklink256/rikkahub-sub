@@ -14,9 +14,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -32,16 +30,6 @@ object PerplexitySearchService : SearchService<SearchServiceOptions.PerplexityOp
     @Composable
     override fun Description() = ApiKeyButton("https://www.perplexity.ai/settings/api")
 
-    override fun parameters(options: SearchServiceOptions.PerplexityOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.PerplexityOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
@@ -52,8 +40,7 @@ object PerplexitySearchService : SearchService<SearchServiceOptions.PerplexityOp
                 error("Perplexity API key is required")
             }
 
-            val query = params["query"]?.jsonPrimitive?.content
-                ?: error("query is required")
+            val query = params.requireQuery()
 
             val body = buildJsonObject {
                 put("query", JsonPrimitive(query))

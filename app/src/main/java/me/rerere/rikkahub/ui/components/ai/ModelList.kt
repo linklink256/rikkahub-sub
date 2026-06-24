@@ -88,6 +88,7 @@ import me.rerere.rikkahub.ui.components.ui.icons.HeartIcon
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.extendColors
 import me.rerere.rikkahub.utils.toDp
+import me.rerere.rikkahub.utils.move
 import org.koin.compose.koinInject
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -388,9 +389,7 @@ private fun ColumnScope.ModelList(
         if (fromIndex >= 0 && toIndex >= 0 &&
             fromIndex < favoriteModels.size && toIndex < favoriteModels.size
         ) {
-            val newFavoriteModels = settings.value.favoriteModels.toMutableList().apply {
-                add(toIndex, removeAt(fromIndex))
-            }
+            val newFavoriteModels = settings.value.favoriteModels.move(fromIndex, toIndex)
             coroutineScope.launch {
                 settingsStore.update { oldSettings ->
                     oldSettings.copy(favoriteModels = newFavoriteModels)

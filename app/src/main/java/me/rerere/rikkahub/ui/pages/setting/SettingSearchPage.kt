@@ -59,6 +59,7 @@ import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
+import me.rerere.rikkahub.utils.move
 import me.rerere.search.SearchCommonOptions
 import me.rerere.search.SearchService
 import me.rerere.search.SearchServiceOptions
@@ -104,9 +105,7 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
             val toIndex = to.index
 
             if (fromIndex >= 0 && toIndex >= 0 && fromIndex < settings.searchServices.size && toIndex < settings.searchServices.size) {
-                val newServices = settings.searchServices.toMutableList().apply {
-                    add(toIndex, removeAt(fromIndex))
-                }
+                val newServices = settings.searchServices.move(fromIndex, toIndex)
                 vm.updateSettings(
                     settings.copy(searchServices = newServices)
                 )

@@ -10,10 +10,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -27,23 +23,13 @@ object BraveSearchService : SearchService<SearchServiceOptions.BraveOptions> {
     @Composable
     override fun Description() = ApiKeyButton("https://api.search.brave.com/")
 
-    override fun parameters(options: SearchServiceOptions.BraveOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.BraveOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.BraveOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
             val url = "https://api.search.brave.com/res/v1/web/search" +
                     "?q=${java.net.URLEncoder.encode(query, "UTF-8")}" +
                     "&count=${commonOptions.resultSize}"

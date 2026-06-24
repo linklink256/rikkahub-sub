@@ -8,6 +8,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.util.KeyRoulette
@@ -24,12 +25,33 @@ fun JsonObjectBuilder.queryField(description: String = "search keyword") {
     })
 }
 
+// ponytail: decode with debug-on-failure — dedup'd from 4 identical blocks
+inline fun <reified T> Json.decodeOrThrow(raw: String): T = runCatching {
+    decodeFromString<T>(raw)
+}.onFailure {
+    it.printStackTrace()
+    println(raw)
+    error("Failed to decode response: $raw")
+}.getOrThrow()
+
+// ponytail: query extraction — dedup'd from 17 identical blocks
+fun JsonObject.requireQuery(): String =
+    this["query"]?.jsonPrimitive?.content ?: error("query is required")
+
+// ponytail: response success guard — dedup'd from 8 identical blocks
+fun okhttp3.Response.requireSuccess() {
+    if (!isSuccessful) error("request failed #${code}")
+}
+
 interface SearchService<T : SearchServiceOptions> {
     val name: String
 
-    fun parameters(options: T): InputSchema?
+    fun parameters(options: T): InputSchema? = InputSchema.Obj(
+        properties = buildJsonObject { queryField() },
+        required = listOf("query")
+    )
 
-    fun scrapingParameters(options: T): InputSchema?
+    fun scrapingParameters(options: T): InputSchema? = null
 
     @Composable
     fun Description()

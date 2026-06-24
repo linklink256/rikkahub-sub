@@ -101,6 +101,7 @@ import me.rerere.rikkahub.ui.theme.extendColors
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import org.koin.compose.koinInject
+import me.rerere.rikkahub.utils.move
 
 @Composable
 fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
@@ -108,9 +109,7 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
     val mcpConfigs = settings.mcpServers
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newList = mcpConfigs.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
+        val newList = mcpConfigs.move(from.index, to.index)
         vm.updateSettings(settings.copy(mcpServers = newList))
     }
     val creationState = useEditState<McpServerConfig> {

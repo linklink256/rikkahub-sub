@@ -10,10 +10,6 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -33,16 +29,6 @@ object SearXNGService : SearchService<SearchServiceOptions.SearXNGOptions> {
         Text(stringResource(R.string.searxng_desc_2))
     }
 
-    override fun parameters(options: SearchServiceOptions.SearXNGOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.SearXNGOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
@@ -53,7 +39,7 @@ object SearXNGService : SearchService<SearchServiceOptions.SearXNGOptions> {
                 "SearXNG URL cannot be empty"
             }
 
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
 
             // 构建查询URL
             val baseUrl = serviceOptions.url.trimEnd('/')
@@ -109,8 +95,6 @@ object SearXNGService : SearchService<SearchServiceOptions.SearXNGOptions> {
 
                 return@withContext Result.success(SearchResult(items = items))
             } else {
-                val errorBody = response.body?.string()
-                println("SearXNG API error: ${response.code} - $errorBody")
                 error("SearXNG request failed with status ${response.code}")
             }
         }

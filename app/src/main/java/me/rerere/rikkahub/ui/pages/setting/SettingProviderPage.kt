@@ -63,6 +63,7 @@ import com.dokar.sonner.ToastType
 import io.github.g00fy2.quickie.QRResult
 import io.github.g00fy2.quickie.ScanQRCode
 import me.rerere.ai.provider.ProviderSetting
+import me.rerere.ai.provider.copyProvider
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
@@ -79,6 +80,7 @@ import me.rerere.rikkahub.ui.pages.setting.components.ProviderConfigure
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.ImageUtils
 import me.rerere.rikkahub.utils.plus
+import me.rerere.rikkahub.utils.move
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.Locale
@@ -94,9 +96,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
     var searchQuery by remember { mutableStateOf("") }
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.providers.toMutableList().apply {
-            add(to.index, removeAt(from.index))
-        }
+        val newProviders = settings.providers.move(from.index, to.index)
         vm.updateSettings(settings.copy(providers = newProviders))
     }
 

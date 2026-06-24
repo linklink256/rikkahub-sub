@@ -38,16 +38,6 @@ sealed class ProviderSetting {
     abstract fun editModel(model: Model): ProviderSetting
     abstract fun delModel(model: Model): ProviderSetting
     abstract fun moveMove(from: Int, to: Int): ProviderSetting
-    abstract fun copyProvider(
-        id: Uuid = this.id,
-        enabled: Boolean = this.enabled,
-        name: String = this.name,
-        models: List<Model> = this.models,
-        balanceOption: BalanceOption = this.balanceOption,
-        builtIn: Boolean = this.builtIn,
-        description: @Composable (() -> Unit) = this.description,
-        shortDescription: @Composable (() -> Unit) = this.shortDescription,
-    ): ProviderSetting
 
     @Serializable
     @SerialName("openai")
@@ -86,28 +76,6 @@ sealed class ProviderSetting {
                 val model = removeAt(from)
                 add(to, model)
             })
-        }
-
-        override fun copyProvider(
-            id: Uuid,
-            enabled: Boolean,
-            name: String,
-            models: List<Model>,
-            balanceOption: BalanceOption,
-            builtIn: Boolean,
-            description: @Composable (() -> Unit),
-            shortDescription: @Composable (() -> Unit),
-        ): ProviderSetting {
-            return this.copy(
-                id = id,
-                enabled = enabled,
-                name = name,
-                models = models,
-                builtIn = builtIn,
-                description = description,
-                balanceOption = balanceOption,
-                shortDescription = shortDescription
-            )
         }
     }
 
@@ -152,28 +120,6 @@ sealed class ProviderSetting {
                 add(to, model)
             })
         }
-
-        override fun copyProvider(
-            id: Uuid,
-            enabled: Boolean,
-            name: String,
-            models: List<Model>,
-            balanceOption: BalanceOption,
-            builtIn: Boolean,
-            description: @Composable (() -> Unit),
-            shortDescription: @Composable (() -> Unit),
-        ): ProviderSetting {
-            return this.copy(
-                id = id,
-                enabled = enabled,
-                name = name,
-                models = models,
-                builtIn = builtIn,
-                description = description,
-                shortDescription = shortDescription,
-                balanceOption = balanceOption
-            )
-        }
     }
 
     @Serializable
@@ -213,28 +159,6 @@ sealed class ProviderSetting {
                 add(to, model)
             })
         }
-
-        override fun copyProvider(
-            id: Uuid,
-            enabled: Boolean,
-            name: String,
-            models: List<Model>,
-            balanceOption: BalanceOption,
-            builtIn: Boolean,
-            description: @Composable (() -> Unit),
-            shortDescription: @Composable (() -> Unit),
-        ): ProviderSetting {
-            return this.copy(
-                id = id,
-                enabled = enabled,
-                name = name,
-                models = models,
-                balanceOption = balanceOption,
-                builtIn = builtIn,
-                description = description,
-                shortDescription = shortDescription,
-            )
-        }
     }
 
     companion object {
@@ -246,4 +170,20 @@ sealed class ProviderSetting {
             )
         }
     }
+}
+
+// ponytail: single extension replaces 3 identical copyProvider overrides
+fun ProviderSetting.copyProvider(
+    id: Uuid = this.id,
+    enabled: Boolean = this.enabled,
+    name: String = this.name,
+    models: List<Model> = this.models,
+    balanceOption: BalanceOption = this.balanceOption,
+    builtIn: Boolean = this.builtIn,
+    description: @Composable (() -> Unit) = this.description,
+    shortDescription: @Composable (() -> Unit) = this.shortDescription,
+): ProviderSetting = when (this) {
+    is ProviderSetting.OpenAI -> copy(id = id, enabled = enabled, name = name, models = models, builtIn = builtIn, description = description, balanceOption = balanceOption, shortDescription = shortDescription)
+    is ProviderSetting.Google -> copy(id = id, enabled = enabled, name = name, models = models, builtIn = builtIn, description = description, balanceOption = balanceOption, shortDescription = shortDescription)
+    is ProviderSetting.Claude -> copy(id = id, enabled = enabled, name = name, models = models, balanceOption = balanceOption, builtIn = builtIn, description = description, shortDescription = shortDescription)
 }

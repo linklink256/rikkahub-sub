@@ -13,9 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -36,23 +34,13 @@ object MetasoSearchService : SearchService<SearchServiceOptions.MetasoOptions> {
         })
     }
 
-    override fun parameters(options: SearchServiceOptions.MetasoOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.MetasoOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.MetasoOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
 
             val requestBody = buildJsonObject {
                 put("q", JsonPrimitive(query))
@@ -72,13 +60,7 @@ object MetasoSearchService : SearchService<SearchServiceOptions.MetasoOptions> {
             val response = httpClient.newCall(request).await()
             if (response.isSuccessful) {
                 val bodyRaw = response.body?.string() ?: error("Failed to get response body")
-                val searchResponse = runCatching {
-                    json.decodeFromString<MetasoSearchResponse>(bodyRaw)
-                }.onFailure {
-                    it.printStackTrace()
-                    println("Failed to decode Metaso response: $bodyRaw")
-                    error("Failed to decode response: $bodyRaw")
-                }.getOrThrow()
+                val searchResponse = json.decodeOrThrow<MetasoSearchResponse>(bodyRaw)
 
                 return@withContext Result.success(
                     SearchResult(
@@ -93,7 +75,6 @@ object MetasoSearchService : SearchService<SearchServiceOptions.MetasoOptions> {
                 )
             } else {
                 val errorBody = response.body?.string()
-                println("Metaso search failed with code ${response.code}: $errorBody")
                 error("Search request failed with code ${response.code}: $errorBody")
             }
         }

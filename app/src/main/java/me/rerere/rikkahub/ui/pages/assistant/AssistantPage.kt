@@ -84,6 +84,7 @@ import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.uuid.Uuid
 import androidx.compose.foundation.lazy.items as lazyItems
+import me.rerere.rikkahub.utils.move
 
 @Composable
 fun AssistantPage(vm: AssistantVM = koinViewModel()) {
@@ -144,9 +145,7 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
             val isFiltering = selectedTagIds.isNotEmpty() || searchQuery.isNotBlank()
             val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
                 if (!isFiltering) {
-                    val newAssistants = settings.assistants.toMutableList().apply {
-                        add(to.index, removeAt(from.index))
-                    }
+                    val newAssistants = settings.assistants.move(from.index, to.index)
                     vm.updateSettings(settings.copy(assistants = newAssistants))
                 }
             }
@@ -266,9 +265,7 @@ private fun AssistantTagsFilterRow(
     if (settings.assistantTags.isNotEmpty()) {
         val tagsListState = rememberLazyListState()
         val tagsReorderableState = rememberReorderableLazyListState(tagsListState) { from, to ->
-            val newTags = settings.assistantTags.toMutableList().apply {
-                add(to.index, removeAt(from.index))
-            }
+            val newTags = settings.assistantTags.move(from.index, to.index)
             vm.updateSettings(settings.copy(assistantTags = newTags))
         }
 

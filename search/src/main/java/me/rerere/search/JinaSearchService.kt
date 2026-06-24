@@ -29,14 +29,6 @@ object JinaSearchService : SearchService<SearchServiceOptions.JinaOptions> {
     @Composable
     override fun Description() = ApiKeyButton("https://jina.ai/")
 
-    override fun parameters(options: SearchServiceOptions.JinaOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
     override fun scrapingParameters(options: SearchServiceOptions.JinaOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
@@ -54,7 +46,7 @@ object JinaSearchService : SearchService<SearchServiceOptions.JinaOptions> {
         serviceOptions: SearchServiceOptions.JinaOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
 
             val body = buildJsonObject {
                 put("q", query)
@@ -71,25 +63,22 @@ object JinaSearchService : SearchService<SearchServiceOptions.JinaOptions> {
                 .build()
 
             val response = httpClient.newCall(request).await()
-            if (response.isSuccessful) {
-                val responseData = response.body.string().let {
-                    json.decodeFromString<JinaSearchResponse>(it)
-                }
-
-                return@withContext Result.success(
-                    SearchResult(
-                        items = responseData.data.take(commonOptions.resultSize).map {
-                            SearchResultItem(
-                                title = it.title,
-                                url = it.url,
-                                text = it.description
-                            )
-                        }
-                    )
-                )
-            } else {
-                error("response failed #${response.code}")
+            response.requireSuccess()
+            val responseData = response.body.string().let {
+                json.decodeFromString<JinaSearchResponse>(it)
             }
+
+            return@withContext Result.success(
+                SearchResult(
+                    items = responseData.data.take(commonOptions.resultSize).map {
+                        SearchResultItem(
+                            title = it.title,
+                            url = it.url,
+                            text = it.description
+                        )
+                    }
+                )
+            )
         }
     }
 

@@ -1,4 +1,5 @@
 package me.rerere.search
+import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -12,9 +13,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
-import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -28,23 +27,13 @@ object ZhipuSearchService : SearchService<SearchServiceOptions.ZhipuOptions> {
     @Composable
     override fun Description() = ApiKeyButton("https://bigmodel.cn/usercenter/proj-mgmt/apikeys")
 
-    override fun parameters(options: SearchServiceOptions.ZhipuOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
-    override fun scrapingParameters(options: SearchServiceOptions.ZhipuOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.ZhipuOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
 
             val body = buildJsonObject {
                 put("search_query", JsonPrimitive(query))
@@ -58,31 +47,21 @@ object ZhipuSearchService : SearchService<SearchServiceOptions.ZhipuOptions> {
                 .addHeader("Authorization", "Bearer ${serviceOptions.apiKey}")
                 .build()
 
-            val response = httpClient.newCall(request).execute()
-            if (response.isSuccessful) {
-                val bodyRaw = response.body?.string() ?: error("Failed to get response body")
-                val response = runCatching {
-                    json.decodeFromString<ZhipuDto>(bodyRaw)
-                }.onFailure {
-                    it.printStackTrace()
-                    println(bodyRaw)
-                    error("Failed to decode response: $bodyRaw")
-                }.getOrThrow()
+            val response = httpClient.newCall(request).await()
+            response.requireSuccess()
+            val bodyRaw = response.body?.string() ?: error("Failed to get response body")
+            val zhipuResponse = json.decodeOrThrow<ZhipuDto>(bodyRaw)
 
-                return@withContext Result.success(
-                    SearchResult(
-                        items = response.searchResult.map {
-                            SearchResultItem(
-                                title = it.title,
-                                url = it.link,
-                                text = it.content,
-                            )
-                        }
-                    ))
-            } else {
-                println(response.body?.string())
-                error("response failed #${response.code}")
-            }
+            return@withContext Result.success(
+                SearchResult(
+                    items = zhipuResponse.searchResult.map {
+                        SearchResultItem(
+                            title = it.title,
+                            url = it.link,
+                            text = it.content,
+                        )
+                    }
+                ))
         }
     }
 

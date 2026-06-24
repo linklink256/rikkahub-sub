@@ -31,14 +31,6 @@ object LinkUpService : SearchService<SearchServiceOptions.LinkUpOptions> {
     @Composable
     override fun Description() = ApiKeyButton("https://www.linkup.so/")
 
-    override fun parameters(options: SearchServiceOptions.LinkUpOptions): InputSchema? =
-        InputSchema.Obj(
-            properties = buildJsonObject {
-                queryField()
-            },
-            required = listOf("query")
-        )
-
     override fun scrapingParameters(options: SearchServiceOptions.LinkUpOptions): InputSchema? =
         InputSchema.Obj(
             properties = buildJsonObject {
@@ -56,7 +48,7 @@ object LinkUpService : SearchService<SearchServiceOptions.LinkUpOptions> {
         serviceOptions: SearchServiceOptions.LinkUpOptions
     ): Result<SearchResult> = withContext(Dispatchers.IO) {
         runCatching {
-            val query = params["query"]?.jsonPrimitive?.content ?: error("query is required")
+            val query = params.requireQuery()
             val body = buildJsonObject {
                 put("q", JsonPrimitive(query))
                 put("depth", JsonPrimitive(serviceOptions.depth))

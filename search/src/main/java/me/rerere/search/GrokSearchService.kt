@@ -16,7 +16,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
@@ -44,8 +43,6 @@ object GrokSearchService : SearchService<SearchServiceOptions.GrokOptions> {
             required = listOf("query")
         )
 
-    override fun scrapingParameters(options: SearchServiceOptions.GrokOptions): InputSchema? = null
-
     override suspend fun search(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
@@ -56,8 +53,7 @@ object GrokSearchService : SearchService<SearchServiceOptions.GrokOptions> {
                 error("Grok API key is required")
             }
 
-            val query = params["query"]?.jsonPrimitive?.content
-                ?: error("query is required")
+            val query = params.requireQuery()
 
             val body = buildJsonObject {
                 put("model", JsonPrimitive(serviceOptions.model))
