@@ -9,6 +9,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.ReorderableLazyListState
+import sh.calvin.reorderable.longPressDraggableHandle
 import me.rerere.rikkahub.ui.theme.CustomColors
 
 /**
