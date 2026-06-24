@@ -1,4 +1,5 @@
 package me.rerere.search
+import me.rerere.common.http.await
 
 import android.util.Log
 import androidx.compose.runtime.Composable
