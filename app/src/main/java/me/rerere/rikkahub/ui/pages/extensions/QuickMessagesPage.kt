@@ -33,10 +33,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -51,12 +48,11 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.model.QuickMessage
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
@@ -70,7 +66,6 @@ fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         vm.reorderQuickMessages(from.index, to.index)
     }
-    val haptic = LocalHapticFeedback.current
 
     Scaffold(
         topBar = {
@@ -125,40 +120,22 @@ fun QuickMessagesPage(vm: QuickMessagesVM = koinViewModel()) {
             }
 
             items(settings.quickMessages, key = { it.id }) { quickMessage ->
-                ReorderableItem(
+                ReorderableSwipeableItem(
+                    onDelete = { deleteTarget = quickMessage },
                     state = reorderableState,
                     key = quickMessage.id,
-                ) { isDragging ->
-                    SwipeToDeleteContainer(
-                        onDelete = { deleteTarget = quickMessage },
-                        modifier = Modifier
-                            .longPressDraggableHandle(
-                                onDragStarted = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                },
-                                onDragStopped = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                }
+                ) {
+                    ListCard(
+                        onClick = { editTarget = quickMessage },
+                        leading = {
+                            Icon(
+                                imageVector = HugeIcons.Zap,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
                             )
-                            .graphicsLayer {
-                                if (isDragging) {
-                                    scaleX = 0.95f
-                                    scaleY = 0.95f
-                                }
-                            },
-                    ) {
-                        ListCard(
-                            onClick = { editTarget = quickMessage },
-                            leading = {
-                                Icon(
-                                    imageVector = HugeIcons.Zap,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            },
-                            title = quickMessage.title.ifBlank { stringResource(R.string.quick_messages_page_untitled) },
-                        )
-                    }
+                        },
+                        title = quickMessage.title.ifBlank { stringResource(R.string.quick_messages_page_untitled) },
+                    )
                 }
             }
         }

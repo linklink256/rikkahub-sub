@@ -67,7 +67,7 @@ import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.components.ui.UIAvatar
@@ -150,7 +150,6 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                     vm.updateSettings(settings.copy(assistants = newAssistants))
                 }
             }
-            val haptic = LocalHapticFeedback.current
 
             // 搜索框
             OutlinedTextField(
@@ -193,81 +192,60 @@ fun AssistantPage(vm: AssistantVM = koinViewModel()) {
                 state = lazyListState,
             ) {
                 lazyItems(filteredAssistants, key = { assistant -> assistant.id }) { assistant ->
-                    ReorderableItem(
+                    ReorderableSwipeableItem(
+                        onDelete = { vm.removeAssistant(assistant) },
                         state = reorderableState,
                         key = assistant.id,
-                    ) { isDragging ->
+                        modifier = Modifier.animateItem(),
+                        dragEnabled = !isFiltering,
+                    ) {
                         val memories by vm.getMemories(assistant).collectAsStateWithLifecycle(
                             initialValue = emptyList(),
                         )
-                        SwipeToDeleteContainer(
-                            onDelete = {
-                                vm.removeAssistant(assistant)
+                        ListCard(
+                            onClick = {
+                                navController.navigate(Screen.AssistantDetail(id = assistant.id.toString()))
                             },
-                            modifier = Modifier
-                                .then(
-                                    if (!isFiltering) {
-                                        Modifier.longPressDraggableHandle(
-                                            onDragStarted = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                            },
-                                            onDragStopped = {
-                                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                            }
-                                        )
-                                    } else {
-                                        Modifier
-                                    }
+                            leading = {
+                                UIAvatar(
+                                    name = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
+                                    value = assistant.avatar,
+                                    modifier = Modifier
+                                        .heroAnimation("assistant_${assistant.id}")
                                 )
-                                .scale(if (isDragging) 0.95f else 1f)
-                                .fillMaxWidth()
-                                .animateItem(),
-                        ) {
-                            ListCard(
-                                onClick = {
-                                    navController.navigate(Screen.AssistantDetail(id = assistant.id.toString()))
-                                },
-                                leading = {
-                                    UIAvatar(
-                                        name = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
-                                        value = assistant.avatar,
-                                        modifier = Modifier
-                                            .heroAnimation("assistant_${assistant.id}")
-                                    )
-                                },
-                                title = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
-                                tags = {
-                                    if (assistant.enableMemory) {
-                                        Tag(type = TagType.SUCCESS) {
-                                            Text(stringResource(R.string.assistant_page_memory_count, memories.size))
-                                        }
+                            },
+                            title = assistant.name.ifBlank { stringResource(R.string.assistant_page_default_assistant) },
+                            tags = {
+                                if (assistant.enableMemory) {
+                                    Tag(type = TagType.SUCCESS) {
+                                        Text(stringResource(R.string.assistant_page_memory_count, memories.size))
                                     }
-                                    if (assistant.tags.isNotEmpty()) {
-                                        assistant.tags.take(2).fastForEach { tagId ->
-                                            val tag = settings.assistantTags.find { it.id == tagId }
-                                                ?: return@fastForEach
-                                            Surface(
-                                                shape = RoundedCornerShape(50),
-                                                color = MaterialTheme.colorScheme.tertiaryContainer,
-                                            ) {
-                                                Text(
-                                                    text = tag.name,
-                                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                )
-                                            }
-                                        }
-                                        if (assistant.tags.size > 2) {
+                                }
+                                if (assistant.tags.isNotEmpty()) {
+                                    assistant.tags.take(2).fastForEach { tagId ->
+                                        val tag = settings.assistantTags.find { it.id == tagId }
+                                            ?: return@fastForEach
+                                        Surface(
+                                            shape = RoundedCornerShape(50),
+                                            color = MaterialTheme.colorScheme.tertiaryContainer,
+                                        ) {
                                             Text(
-                                                text = "+${assistant.tags.size - 2}",
+                                                text = tag.name,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp),
                                                 style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
                                             )
                                         }
                                     }
-                                },
-                            )
-                        }
+                                    if (assistant.tags.size > 2) {
+                                        Text(
+                                            text = "+${assistant.tags.size - 2}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
             }

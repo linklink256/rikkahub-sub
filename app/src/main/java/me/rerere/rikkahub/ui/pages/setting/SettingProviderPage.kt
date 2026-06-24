@@ -53,11 +53,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -71,7 +68,7 @@ import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.ListCard
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.components.ui.decodeProviderSetting
@@ -83,7 +80,6 @@ import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.ImageUtils
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.Locale
 import kotlinx.coroutines.launch
@@ -199,61 +195,44 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                 state = lazyListState,
             ) {
                 items(filteredProviders, key = { it.id }) { provider ->
-                    ReorderableItem(
+                    ReorderableSwipeableItem(
+                        onDelete = { vm.updateSettings(settings.copy(providers = settings.providers - provider)) },
                         state = reorderableState,
-                        key = provider.id
-                    ) { isDragging ->
-                        val haptic = LocalHapticFeedback.current
-                        SwipeToDeleteContainer(
-                            onDelete = {
-                                vm.updateSettings(settings.copy(providers = settings.providers - provider))
+                        key = provider.id,
+                        swipeEnabled = provider.enabled,
+                    ) {
+                        ListCard(
+                            onClick = {
+                                navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
                             },
-                            enabled = provider.enabled,
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                    },
-                                    onDragStopped = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                    }
-                                )
-                                .scale(if (isDragging) 0.95f else 1f)
-                                .fillMaxWidth(),
-                        ) {
-                            ListCard(
-                                onClick = {
-                                    navController.navigate(Screen.SettingProviderDetail(providerId = provider.id.toString()))
-                                },
-                                leading = {
-                                    AutoAIIcon(name = provider.name)
-                                },
-                                title = provider.name,
-                                containerColor = if (provider.enabled) {
-                                    CustomColors.cardColorsOnSurfaceContainer.containerColor
-                                } else {
-                                    MaterialTheme.colorScheme.errorContainer
-                                },
-                                tags = {
-                                    Tag(type = if (provider.enabled) TagType.SUCCESS else TagType.WARNING) {
-                                        Text(stringResource(if (provider.enabled) R.string.setting_provider_page_enabled else R.string.setting_provider_page_disabled))
-                                    }
-                                    Tag(type = TagType.INFO) {
-                                        Text(
-                                            stringResource(
-                                                R.string.setting_provider_page_model_count,
-                                                provider.models.size
-                                            )
+                            leading = {
+                                AutoAIIcon(name = provider.name)
+                            },
+                            title = provider.name,
+                            containerColor = if (provider.enabled) {
+                                CustomColors.cardColorsOnSurfaceContainer.containerColor
+                            } else {
+                                MaterialTheme.colorScheme.errorContainer
+                            },
+                            tags = {
+                                Tag(type = if (provider.enabled) TagType.SUCCESS else TagType.WARNING) {
+                                    Text(stringResource(if (provider.enabled) R.string.setting_provider_page_enabled else R.string.setting_provider_page_disabled))
+                                }
+                                Tag(type = TagType.INFO) {
+                                    Text(
+                                        stringResource(
+                                            R.string.setting_provider_page_model_count,
+                                            provider.models.size
                                         )
+                                    )
+                                }
+                                if (provider.name == "AiHubMix") {
+                                    Tag(type = TagType.INFO) {
+                                        Text("10% 优惠")
                                     }
-                                    if (provider.name == "AiHubMix") {
-                                        Tag(type = TagType.INFO) {
-                                            Text("10% 优惠")
-                                        }
-                                    }
-                                },
-                            )
-                        }
+                                }
+                            },
+                        )
                     }
                 }
             }

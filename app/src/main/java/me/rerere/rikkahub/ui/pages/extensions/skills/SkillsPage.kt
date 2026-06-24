@@ -44,10 +44,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
@@ -66,8 +63,8 @@ import me.rerere.rikkahub.data.files.SkillMetadata
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -75,7 +72,6 @@ import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
@@ -94,7 +90,6 @@ fun SkillsPage() {
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
         vm.reorderSkills(from.index, to.index)
     }
-    val haptic = LocalHapticFeedback.current
     val fileImportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri ->
@@ -166,47 +161,29 @@ fun SkillsPage() {
             }
 
             items(skills, key = { it.name }) { skill ->
-                ReorderableItem(
+                ReorderableSwipeableItem(
+                    onDelete = { deleteTarget = skill },
                     state = reorderableState,
                     key = skill.name,
-                ) { isDragging ->
-                    SwipeToDeleteContainer(
-                        onDelete = { deleteTarget = skill },
-                        modifier = Modifier
-                            .longPressDraggableHandle(
-                                onDragStarted = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                },
-                                onDragStopped = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                }
+                ) {
+                    ListCard(
+                        onClick = { navController.navigate(Screen.SkillDetail(skill.name)) },
+                        leading = {
+                            Icon(
+                                imageVector = HugeIcons.Puzzle,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
                             )
-                            .graphicsLayer {
-                                if (isDragging) {
-                                    scaleX = 0.95f
-                                    scaleY = 0.95f
+                        },
+                        title = skill.name,
+                        tags = {
+                            if (!skill.compatibility.isNullOrBlank()) {
+                                Tag(type = TagType.DEFAULT) {
+                                    Text(skill.compatibility!!)
                                 }
-                            },
-                    ) {
-                        ListCard(
-                            onClick = { navController.navigate(Screen.SkillDetail(skill.name)) },
-                            leading = {
-                                Icon(
-                                    imageVector = HugeIcons.Puzzle,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                )
-                            },
-                            title = skill.name,
-                            tags = {
-                                if (!skill.compatibility.isNullOrBlank()) {
-                                    Tag(type = TagType.DEFAULT) {
-                                        Text(skill.compatibility!!)
-                                    }
-                                }
-                            },
-                        )
-                    }
+                            }
+                        },
+                    )
                 }
             }
         }

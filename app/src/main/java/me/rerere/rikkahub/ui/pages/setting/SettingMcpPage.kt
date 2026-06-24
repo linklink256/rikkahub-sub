@@ -68,9 +68,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,7 +90,7 @@ import me.rerere.rikkahub.data.ai.mcp.McpTool
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.hooks.EditState
@@ -102,7 +99,6 @@ import me.rerere.rikkahub.ui.hooks.useEditState
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.ui.theme.extendColors
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import org.koin.compose.koinInject
 
@@ -117,7 +113,6 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
         }
         vm.updateSettings(settings.copy(mcpServers = newList))
     }
-    val haptic = LocalHapticFeedback.current
     val creationState = useEditState<McpServerConfig> {
         vm.updateSettings(
             settings.copy(
@@ -192,38 +187,19 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
                 state = lazyListState,
             ) {
                 items(mcpConfigs, key = { it.id }) { mcpConfig ->
-                    ReorderableItem(
+                    ReorderableSwipeableItem(
+                        onDelete = {
+                            vm.updateSettings(
+                                settings.copy(mcpServers = mcpConfigs.filter { it.id != mcpConfig.id })
+                            )
+                        },
                         state = reorderableState,
                         key = mcpConfig.id,
-                    ) { isDragging ->
+                        modifier = Modifier.animateItem(),
+                    ) {
                         McpServerItem(
                             item = mcpConfig,
-                            onEdit = {
-                                editState.open(mcpConfig)
-                            },
-                            onDelete = {
-                                vm.updateSettings(
-                                    settings.copy(
-                                        mcpServers = mcpConfigs.filter { it.id != mcpConfig.id }
-                                    )
-                                )
-                            },
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                    },
-                                    onDragStopped = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                    }
-                                )
-                                .graphicsLayer {
-                                    if (isDragging) {
-                                        scaleX = 0.95f
-                                        scaleY = 0.95f
-                                    }
-                                }
-                                .animateItem()
+                            onEdit = { editState.open(mcpConfig) },
                         )
                     }
                 }
@@ -262,62 +238,55 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
 @Composable
 private fun McpServerItem(
     item: McpServerConfig,
-    modifier: Modifier = Modifier,
-    onDelete: () -> Unit,
     onEdit: (McpServerConfig) -> Unit,
 ) {
     val mcpManager = koinInject<McpManager>()
     val status by mcpManager.getStatus(item).collectAsStateWithLifecycle(McpStatus.Idle)
-    SwipeToDeleteContainer(
-        onDelete = onDelete,
-        modifier = modifier,
-    ) {
-        ListCard(
-            onClick = { onEdit(item) },
-            leading = {
-                when (status) {
-                    McpStatus.Idle -> Icon(HugeIcons.MessageBlocked, null)
-                    McpStatus.Connecting -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp)
-                    )
-                    McpStatus.Connected -> Icon(HugeIcons.McpServer, null)
-                    is McpStatus.Reconnecting -> CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp)
-                    )
-                    is McpStatus.Error -> Icon(HugeIcons.AlertCircle, null)
-                }
-            },
-            title = item.commonOptions.name,
-            titleEnd = {
-                val dotColor =
-                    if (item.commonOptions.enable) MaterialTheme.extendColors.green6 else MaterialTheme.extendColors.red6
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .drawWithContent {
-                            drawCircle(color = dotColor)
-                        }
+    ListCard(
+        onClick = { onEdit(item) },
+        leading = {
+            when (status) {
+                McpStatus.Idle -> Icon(HugeIcons.MessageBlocked, null)
+                McpStatus.Connecting -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp)
                 )
-            },
-            tags = {
-                Tag(type = TagType.SUCCESS) {
-                    when (item) {
-                        is McpServerConfig.SseTransportServer -> Text("SSE")
-                        is McpServerConfig.StreamableHTTPServer -> Text("Streamable HTTP")
+                McpStatus.Connected -> Icon(HugeIcons.McpServer, null)
+                is McpStatus.Reconnecting -> CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp)
+                )
+                is McpStatus.Error -> Icon(HugeIcons.AlertCircle, null)
+            }
+        },
+        title = item.commonOptions.name,
+        titleEnd = {
+            val dotColor =
+                if (item.commonOptions.enable) MaterialTheme.extendColors.green6 else MaterialTheme.extendColors.red6
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .drawWithContent {
+                        drawCircle(color = dotColor)
                     }
+            )
+        },
+        tags = {
+            Tag(type = TagType.SUCCESS) {
+                when (item) {
+                    is McpServerConfig.SseTransportServer -> Text("SSE")
+                    is McpServerConfig.StreamableHTTPServer -> Text("Streamable HTTP")
                 }
-                if (status is McpStatus.Error) {
-                    Tag(type = TagType.ERROR) {
-                        Text(
-                            text = (status as McpStatus.Error).message,
-                            maxLines = 3,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                    }
+            }
+            if (status is McpStatus.Error) {
+                Tag(type = TagType.ERROR) {
+                    Text(
+                        text = (status as McpStatus.Error).message,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-            },
-        )
-    }
+            }
+        },
+    )
 }
 
 @Composable

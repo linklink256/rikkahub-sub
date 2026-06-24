@@ -53,10 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,7 +65,7 @@ import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.ListCard
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalTTSState
@@ -78,7 +75,6 @@ import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import me.rerere.tts.provider.TTSProviderSetting
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
@@ -310,53 +306,38 @@ private fun TTSProviderList(
         state = lazyListState
     ) {
         items(settings.ttsProviders, key = { it.id }) { provider ->
-            ReorderableItem(
-                state = reorderableState,
-                key = provider.id
-            ) { isDragging ->
-                val haptic = LocalHapticFeedback.current
-                SwipeToDeleteContainer(
-                    onDelete = {
-                        val newProviders = settings.ttsProviders - provider
-                        val newSelectedId =
-                            if (settings.selectedTTSProviderId == provider.id) DEFAULT_SYSTEM_TTS_ID else settings.selectedTTSProviderId
-                        // 如果删除的是内置默认 TTS provider，记录到 hiddenTtsProviderIds 防止迁移回灌
-                        val newHidden = if (provider.id in DEFAULT_TTS_PROVIDER_IDS) {
-                            settings.hiddenTtsProviderIds + provider.id
-                        } else {
-                            settings.hiddenTtsProviderIds
-                        }
-                        onUpdateSettings(
-                            settings.copy(
-                                ttsProviders = newProviders,
-                                selectedTTSProviderId = newSelectedId,
-                                hiddenTtsProviderIds = newHidden,
-                            )
+            ReorderableSwipeableItem(
+                onDelete = {
+                    val newProviders = settings.ttsProviders - provider
+                    val newSelectedId =
+                        if (settings.selectedTTSProviderId == provider.id) DEFAULT_SYSTEM_TTS_ID else settings.selectedTTSProviderId
+                    // 如果删除的是内置默认 TTS provider，记录到 hiddenTtsProviderIds 防止迁移回灌
+                    val newHidden = if (provider.id in DEFAULT_TTS_PROVIDER_IDS) {
+                        settings.hiddenTtsProviderIds + provider.id
+                    } else {
+                        settings.hiddenTtsProviderIds
+                    }
+                    onUpdateSettings(
+                        settings.copy(
+                            ttsProviders = newProviders,
+                            selectedTTSProviderId = newSelectedId,
+                            hiddenTtsProviderIds = newHidden,
                         )
-                    },
-                    modifier = Modifier
-                        .scale(if (isDragging) 0.95f else 1f)
-                        .fillMaxWidth()
-                        .longPressDraggableHandle(
-                            onDragStarted = {
-                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                            },
-                            onDragStopped = {
-                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                            }
-                        ),
-                ) {
-                    TTSProviderItem(
-                        provider = provider,
-                        isSelected = settings.selectedTTSProviderId == provider.id,
-                        onSelect = {
-                            onUpdateSettings(settings.copy(selectedTTSProviderId = provider.id))
-                        },
-                        onEdit = {
-                            onEdit(provider)
-                        },
                     )
-                }
+                },
+                state = reorderableState,
+                key = provider.id,
+            ) {
+                TTSProviderItem(
+                    provider = provider,
+                    isSelected = settings.selectedTTSProviderId == provider.id,
+                    onSelect = {
+                        onUpdateSettings(settings.copy(selectedTTSProviderId = provider.id))
+                    },
+                    onEdit = {
+                        onEdit(provider)
+                    },
+                )
             }
         }
     }
@@ -386,50 +367,35 @@ private fun ASRProviderList(
         state = lazyListState
     ) {
         items(settings.asrProviders, key = { it.id }) { provider ->
-            ReorderableItem(
-                state = reorderableState,
-                key = provider.id
-            ) { isDragging ->
-                val haptic = LocalHapticFeedback.current
-                SwipeToDeleteContainer(
-                    onDelete = {
-                        val newProviders = settings.asrProviders - provider
-                        val newSelectedId =
-                            if (settings.selectedASRProviderId == provider.id) {
-                                newProviders.firstOrNull()?.id
-                            } else {
-                                settings.selectedASRProviderId
-                            }
-                        onUpdateSettings(
-                            settings.copy(
-                                asrProviders = newProviders,
-                                selectedASRProviderId = newSelectedId
-                            )
+            ReorderableSwipeableItem(
+                onDelete = {
+                    val newProviders = settings.asrProviders - provider
+                    val newSelectedId =
+                        if (settings.selectedASRProviderId == provider.id) {
+                            newProviders.firstOrNull()?.id
+                        } else {
+                            settings.selectedASRProviderId
+                        }
+                    onUpdateSettings(
+                        settings.copy(
+                            asrProviders = newProviders,
+                            selectedASRProviderId = newSelectedId
                         )
-                    },
-                    modifier = Modifier
-                        .scale(if (isDragging) 0.95f else 1f)
-                        .fillMaxWidth()
-                        .longPressDraggableHandle(
-                            onDragStarted = {
-                                haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                            },
-                            onDragStopped = {
-                                haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                            }
-                        ),
-                ) {
-                    ASRProviderItem(
-                        provider = provider,
-                        isSelected = settings.selectedASRProviderId == provider.id,
-                        onSelect = {
-                            onUpdateSettings(settings.copy(selectedASRProviderId = provider.id))
-                        },
-                        onEdit = {
-                            onEdit(provider)
-                        },
                     )
-                }
+                },
+                state = reorderableState,
+                key = provider.id,
+            ) {
+                ASRProviderItem(
+                    provider = provider,
+                    isSelected = settings.selectedASRProviderId == provider.id,
+                    onSelect = {
+                        onUpdateSettings(settings.copy(selectedASRProviderId = provider.id))
+                    },
+                    onEdit = {
+                        onEdit(provider)
+                    },
+                )
             }
         }
     }

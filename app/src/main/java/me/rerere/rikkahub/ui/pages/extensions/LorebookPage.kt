@@ -61,9 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -84,9 +81,9 @@ import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalToaster
@@ -95,7 +92,6 @@ import me.rerere.rikkahub.ui.hooks.EditState
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
@@ -197,34 +193,15 @@ private fun LorebookTab(
             }
         } else {
             items(lorebooks, key = { it.id }) { book ->
-                ReorderableItem(
+                ReorderableSwipeableItem(
+                    onDelete = { onUpdate(lorebooks - book) },
                     state = reorderableState,
-                    key = book.id
-                ) { isDragging ->
-                    val haptic = LocalHapticFeedback.current
-                    SwipeToDeleteContainer(
-                        onDelete = { onUpdate(lorebooks - book) },
-                        modifier = Modifier
-                            .longPressDraggableHandle(
-                                onDragStarted = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                },
-                                onDragStopped = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                }
-                            )
-                            .graphicsLayer {
-                                if (isDragging) {
-                                    scaleX = 0.95f
-                                    scaleY = 0.95f
-                                }
-                            },
-                    ) {
-                        LorebookCard(
-                            book = book,
-                            onEdit = { editState.open(book) },
-                        )
-                    }
+                    key = book.id,
+                ) {
+                    LorebookCard(
+                        book = book,
+                        onEdit = { editState.open(book) },
+                    )
                 }
             }
         }

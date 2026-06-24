@@ -40,10 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -55,8 +52,8 @@ import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalNavController
@@ -66,7 +63,6 @@ import me.rerere.search.SearchCommonOptions
 import me.rerere.search.SearchService
 import me.rerere.search.SearchServiceOptions
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.reflect.full.primaryConstructor
 
@@ -116,8 +112,6 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                 )
             }
         }
-        val haptic = LocalHapticFeedback.current
-
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -127,46 +121,32 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
             state = lazyListState
         ) {
             items(settings.searchServices, key = { it.id }) { service ->
-                ReorderableItem(
+                ReorderableSwipeableItem(
+                    onDelete = {
+                        if (settings.searchServices.size > 1) {
+                            val index = settings.searchServices.indexOf(service)
+                            val newServices = settings.searchServices.toMutableList()
+                            newServices.removeAt(index)
+                            vm.updateSettings(settings.copy(searchServices = newServices))
+                        }
+                    },
                     state = reorderableState,
-                    key = service.id
-                ) { isDragging ->
-                    SwipeToDeleteContainer(
-                        onDelete = {
-                            if (settings.searchServices.size > 1) {
-                                val index = settings.searchServices.indexOf(service)
-                                val newServices = settings.searchServices.toMutableList()
-                                newServices.removeAt(index)
-                                vm.updateSettings(
-                                    settings.copy(searchServices = newServices)
-                                )
-                            }
+                    key = service.id,
+                    modifier = Modifier.animateItem(),
+                    swipeEnabled = settings.searchServices.size > 1,
+                ) {
+                    ListCard(
+                        onClick = {
+                            nav.navigate(Screen.SettingSearchDetail(service.id.toString()))
                         },
-                        modifier = Modifier
-                            .scale(if (isDragging) 0.95f else 1f)
-                            .animateItem()
-                            .longPressDraggableHandle(
-                                onDragStarted = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                },
-                                onDragStopped = {
-                                    haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                }
-                            )
-                    ) {
-                        ListCard(
-                            onClick = {
-                                nav.navigate(Screen.SettingSearchDetail(service.id.toString()))
-                            },
-                            leading = {
-                                AutoAIIcon(name = service.displayName)
-                            },
-                            title = service.displayName,
-                            tags = {
-                                SearchAbilityTagLine(options = service)
-                            },
-                        )
-                    }
+                        leading = {
+                            AutoAIIcon(name = service.displayName)
+                        },
+                        title = service.displayName,
+                        tags = {
+                            SearchAbilityTagLine(options = service)
+                        },
+                    )
                 }
             }
 

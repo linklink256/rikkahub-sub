@@ -61,9 +61,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -84,9 +81,9 @@ import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
-import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalToaster
@@ -95,7 +92,6 @@ import me.rerere.rikkahub.ui.hooks.useEditState
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
@@ -198,34 +194,15 @@ private fun ModeInjectionTab(
                 }
             } else {
                 items(modeInjections, key = { it.id }) { injection ->
-                    ReorderableItem(
+                    ReorderableSwipeableItem(
+                        onDelete = { onUpdate(modeInjections - injection) },
                         state = reorderableState,
-                        key = injection.id
-                    ) { isDragging ->
-                        val haptic = LocalHapticFeedback.current
-                        SwipeToDeleteContainer(
-                            onDelete = { onUpdate(modeInjections - injection) },
-                            modifier = Modifier
-                                .longPressDraggableHandle(
-                                    onDragStarted = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureThresholdActivate)
-                                    },
-                                    onDragStopped = {
-                                        haptic.performHapticFeedback(HapticFeedbackType.GestureEnd)
-                                    }
-                                )
-                                .graphicsLayer {
-                                    if (isDragging) {
-                                        scaleX = 0.95f
-                                        scaleY = 0.95f
-                                    }
-                                },
-                        ) {
-                            ModeInjectionCard(
-                                injection = injection,
-                                onEdit = { editState.open(injection) },
-                            )
-                        }
+                        key = injection.id,
+                    ) {
+                        ModeInjectionCard(
+                            injection = injection,
+                            onEdit = { editState.open(injection) },
+                        )
                     }
                 }
             }
