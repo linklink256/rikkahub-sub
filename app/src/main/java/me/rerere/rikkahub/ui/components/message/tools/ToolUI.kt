@@ -99,6 +99,8 @@ object ToolUIRegistry {
         SkillFCToolUI,
         GetLogsToolUI,
         FetchToolUI,
+        RecentChatsToolUI,
+        ConversationSearchToolUI,
         EditFileToolUI,
         ReadFileToolUI,
         WriteFileToolUI,

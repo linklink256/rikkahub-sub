@@ -75,6 +75,7 @@ import me.rerere.rikkahub.data.ai.subagent.removeSubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import me.rerere.rikkahub.data.ai.tools.LocalTools
+import me.rerere.rikkahub.data.ai.tools.createConversationTools
 import me.rerere.rikkahub.data.ai.tools.createSearchTools
 import me.rerere.rikkahub.data.ai.tools.createSkillTools
 import me.rerere.rikkahub.data.ai.tools.createWorkspaceReadOnlyTools
@@ -601,13 +602,15 @@ class ChatService(
                     if (delegateOnly) {
                         // 纯决策模式：主代理保留「只读」能力以便快速查看上下文，
                         // 但不持有写入/编辑能力——实际执行（写文件、跑脚本等）交由子代理。
-                        // 搜索 / workspace_read_file / workspace_shell(cat,ls,grep) / time_info / clipboard
                         if (settings.enableWebSearch) {
                             addAll(createSearchTools(settings))
                         }
                         addAll(localTools.getTools(assistant.localTools.filter {
                             it == LocalToolOption.AskUser || it == LocalToolOption.TimeInfo || it == LocalToolOption.Clipboard || it == LocalToolOption.Logs
                         }))
+                        if (assistant.enableRecentChatsReference) {
+                            addAll(createConversationTools(conversationRepo, assistant.id))
+                        }
                         addAll(createWorkspaceToolsIfReady(
                             assistant.workspaceId?.toString(),
                             conversation.workspaceCwd,
@@ -741,6 +744,9 @@ class ChatService(
                 addAll(createSearchTools(settings))
             }
             addAll(localTools.getTools(assistant.localTools))
+            if (assistant.enableRecentChatsReference) {
+                addAll(createConversationTools(conversationRepo, assistant.id))
+            }
             addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
 
             val allInstalledSkills = skillManager.listSkills()
