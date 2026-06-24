@@ -1,8 +1,11 @@
 package me.rerere.rikkahub.ui.components.ui
 
-import androidx.compose.foundation.background
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -15,16 +18,23 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Card
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.rikkahub.ui.theme.CustomColors
@@ -106,10 +116,17 @@ fun ListCard(
 }
 
 /**
- * 滑动删除容器 — 仅右→左滑；超过阈值自动删除，不超过回弹。
- * 背景为红色删除预警（纯视觉，无点击功能）。
+ * 弹性滑动删除容器 — 仅右→左滑，具有弹力手感。
  *
- * @param onDelete   滑动超过阈值时回调
+ * 交互行为：
+ * 1. 向左滑动时，背景红色预警随滑动距离渐变加深
+ * 2. 达到阈值时，红色达到最大饱和度，不再继续加深
+ * 3. 超过阈值后继续滑动会受到阻力（阻尼系数 0.3），产生弹力感
+ * 4. 在阻力区域松手 → 删除；未过阈值松手 → 弹性回弹
+ * 5. 向右滑始终回弹
+ * 6. 删除只在松手时触发
+ *
+ * @param onDelete   松手时且滑动超过阈值时回调
  * @param modifier   传入 longPressDraggableHandle 等拖拽修饰符
  * @param content     卡片内容（通常是 ListCard）
  */
@@ -119,40 +136,80 @@ fun SwipeToDeleteContainer(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val dismissState = rememberSwipeToDismissBoxState(
-        initialValue = SwipeToDismissBoxValue.Settled,
-    )
+    val density = LocalDensity.current
+    val scope = rememberCoroutineScope()
 
-    LaunchedEffect(dismissState.currentValue) {
-        if (dismissState.currentValue == SwipeToDismissBoxValue.EndToStart) {
-            onDelete()
+    // 阻尼系数：超过阈值后每像素手指只移动 0.3 像素 → 阻力感
+    val damping = 0.3f
+
+    // 显示位移（负值 = 左移），用 Animatable 支持弹性回弹动画
+    val offset = remember { Animatable(0f) }
+    // 累计原始左滑量（正值），用于计算红色 alpha 和判断是否过阈值
+    var rawDrag by remember { mutableFloatStateOf(0f) }
+
+    BoxWithConstraints(modifier) {
+        // 阈值 = 卡片宽度的 30%
+        val thresholdPx = with(density) { maxWidth.toPx() * 0.3f }
+
+        // 背景层：红色预警
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawBehind {
+                    val alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f)
+                    drawRect(MaterialTheme.colorScheme.error.copy(alpha = alpha))
+                },
+            contentAlignment = Alignment.CenterEnd,
+        ) {
+            Icon(
+                imageVector = HugeIcons.Delete01,
+                contentDescription = null,
+                modifier = Modifier.padding(end = 20.dp),
+                tint = MaterialTheme.colorScheme.onError.copy(
+                    alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f),
+                ),
+            )
         }
-    }
 
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        MaterialTheme.colorScheme.errorContainer,
-                        MaterialTheme.shapes.medium,
-                    )
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd,
-            ) {
-                Icon(
-                    imageVector = HugeIcons.Delete01,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onErrorContainer,
-                )
-            }
-        },
-        enableDismissFromStartToEnd = false,
-        enableDismissFromEndToStart = true,
-        modifier = modifier,
-    ) {
-        content()
+        // 前景层：卡片内容，跟随手指左移
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .graphicsLayer { translationX = offset.value }
+                .pointerInput(Unit) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val reached = rawDrag >= thresholdPx
+                            if (reached) {
+                                onDelete()
+                            } else {
+                                rawDrag = 0f
+                                scope.launch {
+                                    offset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                                }
+                            }
+                        },
+                        onDragCancel = {
+                            rawDrag = 0f
+                            scope.launch {
+                                offset.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                            }
+                        },
+                    ) { _, dragAmount ->
+                        // dragAmount < 0 为左滑（手指向左）；只允许左滑
+                        val next = (rawDrag - dragAmount).coerceAtLeast(0f)
+                        rawDrag = next
+                        // 超过阈值后施加阻尼：显示位移 = 阈值 + 超出部分 × 阻尼系数
+                        val displayed = if (next <= thresholdPx) {
+                            next
+                        } else {
+                            thresholdPx + (next - thresholdPx) * damping
+                        }
+                        scope.launch { offset.snapTo(-displayed) }
+                    }
+                },
+        ) {
+            content()
+        }
     }
 }
