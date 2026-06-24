@@ -120,6 +120,37 @@ sealed class TTSProviderSetting {
         val stability: Float = 0.5f,
         val similarityBoost: Float = 0.75f,
     ) : TTSProviderSetting()
+
+    /**
+     * 阶跃星辰 Step TTS (step-tts-mini / step-tts-vivid / stepaudio-2.5-tts)。
+     *
+     * 与 Step ASR 共用同一个 baseUrl 与鉴权方式 (Authorization: Bearer sk-xxx),
+     * 走 OpenAI 兼容的 [POST /v1/audio/speech] 非流式接口, 服务端一次性返回完整音频
+     * 二进制 (默认 mp3, 也可选 wav/pcm/opus/flac)。客户端把整段音频包成一个 AudioChunk
+     * 发出, 由 TtsSynthesizer 统一收集后交给播放器。
+     *
+     * 仅 stepaudio-2.5-tts 模型支持 [instruction] 字段 (全局语境, ≤200 字符), 其它模型
+     * (step-tts-mini / step-tts-vivid / step-tts-2) 会忽略该字段, 留空时不下发。
+     *
+     * 官方文档:
+     * - 模型总览: https://platform.stepfun.com/docs/zh/guides/models/stepaudio-2.5-tts
+     * - 开发指南: https://platform.stepfun.com/docs/zh/guides/developer/tts
+     */
+    @Serializable
+    @SerialName("step")
+    data class Step(
+        override var id: Uuid = Uuid.random(),
+        override var name: String = "Step TTS",
+        val apiKey: String = "",
+        val baseUrl: String = "https://api.stepfun.com",
+        val model: String = "step-tts-mini",
+        val voice: String = "elegantgentle-female",
+        val responseFormat: String = "mp3",
+        val speed: Float = 1.0f,
+        val volume: Float = 1.0f,
+        val sampleRate: Int = 24000,
+        val instruction: String = "",
+    ) : TTSProviderSetting()
     companion object {
         val Types by lazy {
             listOf(
@@ -132,6 +163,7 @@ sealed class TTSProviderSetting {
                 XAI::class,
                 MiMo::class,
                 ElevenLabs::class,
+                Step::class,
             )
         }
     }
@@ -151,4 +183,5 @@ fun TTSProviderSetting.copyProvider(
     is TTSProviderSetting.XAI -> copy(id = id, name = name)
     is TTSProviderSetting.MiMo -> copy(id = id, name = name)
     is TTSProviderSetting.ElevenLabs -> copy(id = id, name = name)
+    is TTSProviderSetting.Step -> copy(id = id, name = name)
 }
