@@ -150,15 +150,18 @@ fun SwipeToDeleteContainer(
 
         // 删除图标：固定在容器右侧，随红色渐显
         if (rawDrag > 0f) {
-            Icon(
-                imageVector = HugeIcons.Delete01,
-                contentDescription = null,
+            Box(
                 modifier = Modifier
-                    .matchParentSize()
+                    .fillMaxWidth()
                     .wrapContentSize(Alignment.CenterEnd)
                     .padding(end = 20.dp),
-                tint = onErrorColor.copy(alpha = redProgress),
-            )
+            ) {
+                Icon(
+                    imageVector = HugeIcons.Delete01,
+                    contentDescription = null,
+                    tint = onErrorColor.copy(alpha = redProgress),
+                )
+            }
         }
 
         // 前景层：红色尾巴 + 卡片内容，整体跟随手指左移
@@ -166,7 +169,7 @@ fun SwipeToDeleteContainer(
         // 红色右端圆角（贴合卡片风格），左端直角（被卡片自然遮挡 → 无缝粘连）
         Box(
             modifier = Modifier
-                .matchParentSize()
+                .fillMaxWidth()
                 .graphicsLayer { translationX = offset.value }
                 .drawBehind {
                     val slideDistance = -offset.value
