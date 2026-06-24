@@ -1236,5 +1236,6 @@
   <string name="setting_asr_configure_step_hotwords_desc">고유명사/도메인 용어 인식 정확도를 높이기 위한 쉼표로 구분된 핫워드 목록</string>
   <string name="log_page_record_requests">요청 기록</string>
   <string name="log_page_record_requests_desc">요청 헤더, 본문 및 응답 메타데이터를 기록합니다.</string>
+  <string name="assistant_page_context_message_truncation_warning">컨텍스트를 제한하면 빈번한 컨텍스트 절단이 발생하고 프롬프트 캐싱을 방해할 수 있습니다.</string>
 </resources>
 
