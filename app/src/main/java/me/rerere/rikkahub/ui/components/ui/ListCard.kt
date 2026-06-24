@@ -4,6 +4,7 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,11 +13,12 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,11 +30,14 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
@@ -46,14 +51,6 @@ import me.rerere.rikkahub.ui.theme.CustomColors
  * 统一列表卡片 — 所有列表页面的卡片视觉规格以此为准。
  *
  * 结构：Card > Row(leading 32dp + Column(title + tags) + trailing)
- *
- * @param onClick          整卡点击（进入详情页）
- * @param leading          左侧图标/头像，会被约束为 32dp
- * @param title            标题（titleMedium）
- * @param titleEnd         标题右侧附加内容（如状态圆点），可选
- * @param tags             标签行（FlowRow 内），不需要时传空 lambda
- * @param trailing         右侧操作区（按钮等），可选
- * @param containerColor   卡片背景色，默认 surfaceBright；可传入自定义颜色（如禁用态橘色）
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -65,12 +62,12 @@ fun ListCard(
     titleEnd: (@Composable () -> Unit)? = null,
     tags: @Composable RowScope.() -> Unit = {},
     trailing: @Composable () -> Unit = {},
-    containerColor: androidx.compose.ui.graphics.Color = CustomColors.cardColorsOnSurfaceContainer.containerColor,
+    containerColor: Color = CustomColors.cardColorsOnSurfaceContainer.containerColor,
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
         onClick = onClick,
-        colors = androidx.compose.material3.CardDefaults.cardColors(containerColor = containerColor),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Row(
             modifier = Modifier
@@ -79,7 +76,6 @@ fun ListCard(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // leading — 统一 32dp
             if (leading != null) {
                 Box(
                     modifier = Modifier.size(32.dp),
@@ -89,7 +85,6 @@ fun ListCard(
                 }
             }
 
-            // 中间内容区
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -114,7 +109,6 @@ fun ListCard(
                 }
             }
 
-            // trailing — 自定义按钮区
             trailing()
         }
     }
@@ -123,17 +117,13 @@ fun ListCard(
 /**
  * 弹性滑动删除容器 — 仅右→左滑，具有弹力手感。
  *
- * 交互行为：
- * 1. 向左滑动时，背景红色预警随滑动距离渐变加深
- * 2. 达到阈值时，红色达到最大饱和度，不再继续加深
- * 3. 超过阈值后继续滑动会受到阻力（阻尼系数 0.3），产生弹力感
- * 4. 在阻力区域松手 → 删除；未过阈值松手 → 弹性回弹
- * 5. 向右滑始终回弹
- * 6. 删除只在松手时触发
+ * 红色预警"粘"在卡片右边缘：卡片左滑时红色从右边缘向右延伸（不受容器宽度限制），
+ * 红色右端圆角贴合卡片风格，左端被卡片自然遮挡（无缝粘连）。
+ * 删除时卡片和红色一起向左滑出消失。
  *
  * @param onDelete   松手时且滑动超过阈值时回调
  * @param modifier   传入 longPressDraggableHandle 等拖拽修饰符
- * @param enabled    是否允许滑动删除（false 时卡片不可滑动，纯展示）
+ * @param enabled    是否允许滑动删除（false 时卡片不可滑动）
  * @param content     卡片内容（通常是 ListCard）
  */
 @Composable
@@ -146,64 +136,85 @@ fun SwipeToDeleteContainer(
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
 
-    // 阻尼系数：超过阈值后每像素手指只移动 0.3 像素 → 阻力感
     val damping = 0.3f
-
-    // 阻尼回弹动画
     val offset = remember { Animatable(0f) }
-    // 累计原始左滑量（正值），用于计算红色 alpha 和判断是否过阈值
     var rawDrag by remember { mutableFloatStateOf(0f) }
-    // 卡片圆角，与 Card 默认 shapes.medium 一致
-    val cardShape = MaterialTheme.shapes.medium
 
     BoxWithConstraints(modifier.fillMaxWidth()) {
-        // 阈值 = 卡片宽度的 30%
         val thresholdPx = with(density) { maxWidth.toPx() * 0.3f }
-        // 卡片完整宽度（用于滑出动画目标值）
         val fullWidthPx = with(density) { maxWidth.toPx() }
-        // 提前在 Composable 上下文中取色，供 drawBehind 使用
+        val cornerRadiusPx = with(density) { 12.dp.toPx() }
         val errorColor = MaterialTheme.colorScheme.error
         val onErrorColor = MaterialTheme.colorScheme.onError
-
-        // 红色预警的渐变进度（0~1，到阈值后固定为 1）
         val redProgress = (rawDrag / thresholdPx).coerceIn(0f, 1f)
 
-        // 背景层：红色预警 — "粘"在卡片右边缘，随卡片左滑而拉伸
-        // 拖拽阶段：红色左边缘 = 卡片右边缘 (fullWidth + offset)，右边缘 = 容器右边 (fullWidth)
-        // 滑出阶段：整个背景也跟随卡片左移（一起消失）
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(cardShape)
-                .drawBehind {
-                    // offset.value 为负值（左移量）。卡片右边缘在 fullWidth + offset 处。
-                    // 红色从卡片右边缘延伸到容器右边
-                    val redLeft = (fullWidthPx + offset.value).coerceAtLeast(0f)
-                    val redRight = fullWidthPx
-                    val redWidth = (redRight - redLeft).coerceAtLeast(0f)
-                    if (redWidth > 0f) {
-                        drawRect(
-                            color = errorColor.copy(alpha = redProgress),
-                            topLeft = Offset(redLeft, 0f),
-                            size = androidx.compose.ui.geometry.Size(redWidth, size.height),
-                        )
-                    }
-                },
-            contentAlignment = Alignment.CenterEnd,
-        ) {
+        // 删除图标：固定在容器右侧，随红色渐显
+        if (rawDrag > 0f) {
             Icon(
                 imageVector = HugeIcons.Delete01,
                 contentDescription = null,
-                modifier = Modifier.padding(end = 20.dp),
+                modifier = Modifier
+                    .matchParentSize()
+                    .wrapContentSize(Alignment.CenterEnd)
+                    .padding(end = 20.dp),
                 tint = onErrorColor.copy(alpha = redProgress),
             )
         }
 
-        // 前景层：卡片内容，跟随手指左移
+        // 前景层：红色尾巴 + 卡片内容，整体跟随手指左移
+        // 红色用 drawBehind 画在卡片右边缘向右延伸，不受容器宽度限制
+        // 红色右端圆角（贴合卡片风格），左端直角（被卡片自然遮挡 → 无缝粘连）
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .graphicsLayer { translationX = offset.value }
+                .drawBehind {
+                    val slideDistance = -offset.value
+                    if (slideDistance > 0f) {
+                        val redLeft = fullWidthPx
+                        val redWidth = slideDistance
+                        val redHeight = size.height
+                        val r = cornerRadiusPx
+
+                        // 构建路径：左端直角，右端圆角
+                        val path = Path().apply {
+                            moveTo(redLeft, 0f)
+                            lineTo(redLeft + redWidth - r, 0f)
+                            arcTo(
+                                rect = Rect(
+                                    left = redLeft + redWidth - r,
+                                    top = 0f,
+                                    right = redLeft + redWidth,
+                                    bottom = r,
+                                ),
+                                startAngleDegrees = -90f,
+                                sweepAngleDegrees = 90f,
+                                forceMoveTo = false,
+                            )
+                            lineTo(redLeft + redWidth, redHeight - r)
+                            arcTo(
+                                rect = Rect(
+                                    left = redLeft + redWidth - r,
+                                    top = redHeight - r,
+                                    right = redLeft + redWidth,
+                                    bottom = redHeight,
+                                ),
+                                startAngleDegrees = 0f,
+                                sweepAngleDegrees = 90f,
+                                forceMoveTo = false,
+                            )
+                            lineTo(redLeft, redHeight)
+                            close()
+                        }
+                        clipPath(path) {
+                            drawRect(
+                                color = errorColor.copy(alpha = redProgress),
+                                topLeft = Offset(redLeft, 0f),
+                                size = Size(redWidth, redHeight),
+                            )
+                        }
+                    }
+                }
                 .then(
                     if (enabled) {
                         Modifier.pointerInput(Unit) {
@@ -211,7 +222,6 @@ fun SwipeToDeleteContainer(
                                 onDragEnd = {
                                     val reached = rawDrag >= thresholdPx
                                     if (reached) {
-                                        // 先动画滑出屏幕左侧，再回调删除
                                         scope.launch {
                                             offset.animateTo(
                                                 targetValue = -fullWidthPx,
@@ -233,10 +243,8 @@ fun SwipeToDeleteContainer(
                                     }
                                 },
                             ) { _, dragAmount ->
-                                // dragAmount < 0 为左滑（手指向左）；只允许左滑
                                 val next = (rawDrag - dragAmount).coerceAtLeast(0f)
                                 rawDrag = next
-                                // 超过阈值后施加阻尼：显示位移 = 阈值 + 超出部分 × 阻尼系数
                                 val displayed = if (next <= thresholdPx) {
                                     next
                                 } else {
