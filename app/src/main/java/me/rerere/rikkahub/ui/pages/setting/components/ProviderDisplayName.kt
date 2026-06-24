@@ -23,6 +23,7 @@ fun TTSProviderSetting.typeDisplayName(): String = when (this) {
     is TTSProviderSetting.Groq -> "Groq"
     is TTSProviderSetting.XAI -> "xAI"
     is TTSProviderSetting.MiMo -> "MiMo"
+    is TTSProviderSetting.ElevenLabs -> "ElevenLabs"
 }
 
 /**

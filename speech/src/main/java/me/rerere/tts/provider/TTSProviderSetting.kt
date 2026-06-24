@@ -106,6 +106,20 @@ sealed class TTSProviderSetting {
         val voice: String = "mimo_default"
     ) : TTSProviderSetting() {
     }
+
+
+    @Serializable
+    @SerialName("elevenlabs")
+    data class ElevenLabs(
+        override var id: Uuid = Uuid.random(),
+        override var name: String = "ElevenLabs TTS",
+        val apiKey: String = "",
+        val baseUrl: String = "https://api.elevenlabs.io",
+        val model: String = "eleven_multilingual_v2",
+        val voiceId: String = "JBFqnCBsd6RMkjVDRZzb",
+        val stability: Float = 0.5f,
+        val similarityBoost: Float = 0.75f,
+    ) : TTSProviderSetting()
     companion object {
         val Types by lazy {
             listOf(
@@ -117,6 +131,7 @@ sealed class TTSProviderSetting {
                 Groq::class,
                 XAI::class,
                 MiMo::class,
+                ElevenLabs::class,
             )
         }
     }
@@ -135,4 +150,5 @@ fun TTSProviderSetting.copyProvider(
     is TTSProviderSetting.Groq -> copy(id = id, name = name)
     is TTSProviderSetting.XAI -> copy(id = id, name = name)
     is TTSProviderSetting.MiMo -> copy(id = id, name = name)
+    is TTSProviderSetting.ElevenLabs -> copy(id = id, name = name)
 }
