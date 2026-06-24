@@ -148,25 +148,9 @@ fun SwipeToDeleteContainer(
         val onErrorColor = MaterialTheme.colorScheme.onError
         val redProgress = (rawDrag / thresholdPx).coerceIn(0f, 1f)
 
-        // 删除图标：固定在容器右侧，随红色渐显
-        if (rawDrag > 0f) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentSize(Alignment.CenterEnd)
-                    .padding(end = 20.dp),
-            ) {
-                Icon(
-                    imageVector = HugeIcons.Delete01,
-                    contentDescription = null,
-                    tint = onErrorColor.copy(alpha = redProgress),
-                )
-            }
-        }
-
         // 前景层：红色尾巴 + 卡片内容，整体跟随手指左移
-        // 红色用 drawBehind 画在卡片右边缘向右延伸，不受容器宽度限制
-        // 红色右端圆角（贴合卡片风格），左端直角（被卡片自然遮挡 → 无缝粘连）
+        // 红色用 drawBehind 画在卡片中间向右延伸，不受容器宽度限制
+        // 红色右端圆角（贴合卡片风格），左端从卡片中间开始（被卡片右半部分遮挡 → 无缝粘连）
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -174,8 +158,9 @@ fun SwipeToDeleteContainer(
                 .drawBehind {
                     val slideDistance = -offset.value
                     if (slideDistance > 0f) {
-                        val redLeft = fullWidthPx
-                        val redWidth = slideDistance
+                        // 红色左端从卡片中间开始
+                        val redLeft = fullWidthPx / 2f
+                        val redWidth = slideDistance + fullWidthPx / 2f
                         val redHeight = size.height
                         val r = cornerRadiusPx
 
@@ -262,6 +247,23 @@ fun SwipeToDeleteContainer(
                 ),
         ) {
             content()
+        }
+
+        // 删除图标：固定在容器右侧（不跟随卡片移动），随红色渐显
+        // 放在前景 Box 之后（叠加在上层），用 matchParentSize 匹配前景 Box 的尺寸
+        if (rawDrag > 0f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .wrapContentSize(Alignment.CenterEnd)
+                    .padding(end = 20.dp),
+            ) {
+                Icon(
+                    imageVector = HugeIcons.Delete01,
+                    contentDescription = null,
+                    tint = onErrorColor.copy(alpha = redProgress),
+                )
+            }
         }
     }
 }
