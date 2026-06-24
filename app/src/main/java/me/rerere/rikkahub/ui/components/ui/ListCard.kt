@@ -150,6 +150,9 @@ fun SwipeToDeleteContainer(
     BoxWithConstraints(modifier) {
         // 阈值 = 卡片宽度的 30%
         val thresholdPx = with(density) { maxWidth.toPx() * 0.3f }
+        // 提前在 Composable 上下文中取色，供 drawBehind 使用
+        val errorColor = MaterialTheme.colorScheme.error
+        val onErrorColor = MaterialTheme.colorScheme.onError
 
         // 背景层：红色预警
         Box(
@@ -157,7 +160,7 @@ fun SwipeToDeleteContainer(
                 .fillMaxSize()
                 .drawBehind {
                     val alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f)
-                    drawRect(MaterialTheme.colorScheme.error.copy(alpha = alpha))
+                    drawRect(errorColor.copy(alpha = alpha))
                 },
             contentAlignment = Alignment.CenterEnd,
         ) {
@@ -165,7 +168,7 @@ fun SwipeToDeleteContainer(
                 imageVector = HugeIcons.Delete01,
                 contentDescription = null,
                 modifier = Modifier.padding(end = 20.dp),
-                tint = MaterialTheme.colorScheme.onError.copy(
+                tint = onErrorColor.copy(
                     alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f),
                 ),
             )
