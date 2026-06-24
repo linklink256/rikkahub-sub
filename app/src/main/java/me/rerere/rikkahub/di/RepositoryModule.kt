@@ -55,7 +55,7 @@ val repositoryModule = module {
                     ),
                     WorkspaceBindMount(
                         source = File(context.filesDir, FileFolders.UPLOAD).apply { mkdirs() },
-                        target = "/uploads",
+                        target = "/upload",
                     ),
                 ),
             )
