@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
@@ -164,14 +165,29 @@ fun SwipeToDeleteContainer(
         val errorColor = MaterialTheme.colorScheme.error
         val onErrorColor = MaterialTheme.colorScheme.onError
 
-        // 背景层：红色预警（matchParentSize 确保与前景卡片完全等大）
+        // 红色预警的渐变进度（0~1，到阈值后固定为 1）
+        val redProgress = (rawDrag / thresholdPx).coerceIn(0f, 1f)
+
+        // 背景层：红色预警 — "粘"在卡片右边缘，随卡片左滑而拉伸
+        // 拖拽阶段：红色左边缘 = 卡片右边缘 (fullWidth + offset)，右边缘 = 容器右边 (fullWidth)
+        // 滑出阶段：整个背景也跟随卡片左移（一起消失）
         Box(
             modifier = Modifier
                 .matchParentSize()
                 .clip(cardShape)
                 .drawBehind {
-                    val alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f)
-                    drawRect(errorColor.copy(alpha = alpha))
+                    // offset.value 为负值（左移量）。卡片右边缘在 fullWidth + offset 处。
+                    // 红色从卡片右边缘延伸到容器右边
+                    val redLeft = (fullWidthPx + offset.value).coerceAtLeast(0f)
+                    val redRight = fullWidthPx
+                    val redWidth = (redRight - redLeft).coerceAtLeast(0f)
+                    if (redWidth > 0f) {
+                        drawRect(
+                            color = errorColor.copy(alpha = redProgress),
+                            topLeft = Offset(redLeft, 0f),
+                            size = androidx.compose.ui.geometry.Size(redWidth, size.height),
+                        )
+                    }
                 },
             contentAlignment = Alignment.CenterEnd,
         ) {
@@ -179,9 +195,7 @@ fun SwipeToDeleteContainer(
                 imageVector = HugeIcons.Delete01,
                 contentDescription = null,
                 modifier = Modifier.padding(end = 20.dp),
-                tint = onErrorColor.copy(
-                    alpha = (rawDrag / thresholdPx).coerceIn(0f, 1f),
-                ),
+                tint = onErrorColor.copy(alpha = redProgress),
             )
         }
 
