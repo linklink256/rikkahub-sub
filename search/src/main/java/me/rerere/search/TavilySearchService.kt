@@ -31,16 +31,7 @@ object TavilySearchService : SearchService<SearchServiceOptions.TavilyOptions> {
     override val name: String = "Tavily"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://app.tavily.com/home")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://app.tavily.com/home")
 
     override fun parameters(options: SearchServiceOptions.TavilyOptions): InputSchema? =
         InputSchema.Obj(

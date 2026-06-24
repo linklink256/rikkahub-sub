@@ -26,16 +26,7 @@ object JinaSearchService : SearchService<SearchServiceOptions.JinaOptions> {
     override val name: String = "Jina"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://jina.ai/")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://jina.ai/")
 
     override fun parameters(options: SearchServiceOptions.JinaOptions): InputSchema? =
         InputSchema.Obj(

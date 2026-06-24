@@ -29,16 +29,7 @@ object PerplexitySearchService : SearchService<SearchServiceOptions.PerplexityOp
     override val name: String = "Perplexity"
 
     @Composable
-    override fun Description() {
-        val uriHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                uriHandler.openUri("https://www.perplexity.ai/settings/api")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://www.perplexity.ai/settings/api")
 
     override fun parameters(options: SearchServiceOptions.PerplexityOptions): InputSchema? =
         InputSchema.Obj(

@@ -26,16 +26,7 @@ object BochaSearchService : SearchService<SearchServiceOptions.BochaOptions> {
     override val name: String = "Bocha"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://open.bochaai.com/")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://open.bochaai.com/")
 
     override fun parameters(options: SearchServiceOptions.BochaOptions): InputSchema? =
         InputSchema.Obj(

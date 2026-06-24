@@ -60,84 +60,34 @@ class ConversationRepository(
             }
     }
 
-    fun getConversationsOfAssistantPaging(assistantId: Uuid): Flow<PagingData<Conversation>> = Pager(
-        config = PagingConfig(
-            pageSize = PAGE_SIZE,
-            initialLoadSize = INITIAL_LOAD_SIZE,
-            enablePlaceholders = false
-        ),
-        pagingSourceFactory = { conversationDAO.getConversationsOfAssistantPaging(assistantId.toString()) }
-    ).flow.map { pagingData ->
-        pagingData.map { entity ->
-            conversationSummaryToConversation(entity)
-        }
-    }
+    fun getConversationsOfAssistantPaging(assistantId: Uuid): Flow<PagingData<Conversation>> =
+        conversationPagingFlow { conversationDAO.getConversationsOfAssistantPaging(assistantId.toString()) }
 
     suspend fun getConversationsOfAssistantPage(
         assistantId: Uuid,
         offset: Int,
         limit: Int,
-    ): ConversationPageResult {
-        val pagingSource = conversationDAO.getConversationsOfAssistantPaging(assistantId.toString())
-        return try {
-            when (
-                val result = pagingSource.load(
-                    PagingSource.LoadParams.Refresh(
-                        key = if (offset == 0) null else offset,
-                        loadSize = limit,
-                        placeholdersEnabled = false
-                    )
-                )
-            ) {
-                is PagingSource.LoadResult.Page -> ConversationPageResult(
-                    items = result.data.map { entity ->
-                        conversationSummaryToConversation(entity)
-                    },
-                    nextOffset = result.nextKey
-                )
-
-                is PagingSource.LoadResult.Error -> throw result.throwable
-                is PagingSource.LoadResult.Invalid -> ConversationPageResult(emptyList(), null)
-            }
-        } finally {
-            pagingSource.invalidate()
-        }
-    }
+    ): ConversationPageResult =
+        loadConversationPage(
+            conversationDAO.getConversationsOfAssistantPaging(assistantId.toString()),
+            offset,
+            limit
+        )
 
     suspend fun searchConversationsOfAssistantPage(
         assistantId: Uuid,
         titleKeyword: String,
         offset: Int,
         limit: Int,
-    ): ConversationPageResult {
-        val pagingSource = conversationDAO.searchConversationsOfAssistantPaging(
-            assistantId = assistantId.toString(),
-            searchText = titleKeyword
+    ): ConversationPageResult =
+        loadConversationPage(
+            conversationDAO.searchConversationsOfAssistantPaging(
+                assistantId = assistantId.toString(),
+                searchText = titleKeyword
+            ),
+            offset,
+            limit
         )
-        return try {
-            when (
-                val result = pagingSource.load(
-                    PagingSource.LoadParams.Refresh(
-                        key = if (offset == 0) null else offset,
-                        loadSize = limit,
-                        placeholdersEnabled = false
-                    )
-                )
-            ) {
-                is PagingSource.LoadResult.Page -> ConversationPageResult(
-                    items = result.data.map { entity ->
-                        conversationSummaryToConversation(entity)
-                    },
-                    nextOffset = result.nextKey
-                )
-
-                is PagingSource.LoadResult.Error -> throw result.throwable
-                is PagingSource.LoadResult.Invalid -> ConversationPageResult(emptyList(), null)
-            }
-        } finally {
-            pagingSource.invalidate()
-        }
-    }
 
     fun searchConversations(titleKeyword: String): Flow<List<Conversation>> {
         return conversationDAO
@@ -149,18 +99,8 @@ class ConversationRepository(
             }
     }
 
-    fun searchConversationsPaging(titleKeyword: String): Flow<PagingData<Conversation>> = Pager(
-        config = PagingConfig(
-            pageSize = PAGE_SIZE,
-            initialLoadSize = INITIAL_LOAD_SIZE,
-            enablePlaceholders = false
-        ),
-        pagingSourceFactory = { conversationDAO.searchConversationsPaging(titleKeyword) }
-    ).flow.map { pagingData ->
-        pagingData.map { entity ->
-            conversationSummaryToConversation(entity)
-        }
-    }
+    fun searchConversationsPaging(titleKeyword: String): Flow<PagingData<Conversation>> =
+        conversationPagingFlow { conversationDAO.searchConversationsPaging(titleKeyword) }
 
     fun searchConversationsOfAssistant(assistantId: Uuid, titleKeyword: String): Flow<List<Conversation>> {
         return conversationDAO
@@ -173,22 +113,11 @@ class ConversationRepository(
     }
 
     fun searchConversationsOfAssistantPaging(assistantId: Uuid, titleKeyword: String): Flow<PagingData<Conversation>> =
-        Pager(
-            config = PagingConfig(
-                pageSize = PAGE_SIZE,
-                initialLoadSize = INITIAL_LOAD_SIZE,
-                enablePlaceholders = false
-            ),
-            pagingSourceFactory = {
-                conversationDAO.searchConversationsOfAssistantPaging(
-                    assistantId.toString(),
-                    titleKeyword
-                )
-            }
-        ).flow.map { pagingData ->
-            pagingData.map { entity ->
-                conversationSummaryToConversation(entity)
-            }
+        conversationPagingFlow {
+            conversationDAO.searchConversationsOfAssistantPaging(
+                assistantId.toString(),
+                titleKeyword
+            )
         }
 
     suspend fun getConversationById(uuid: Uuid): Conversation? {
@@ -323,6 +252,50 @@ class ConversationRepository(
             id = conversationId.toString(),
             isPinned = !(getConversationById(conversationId)?.isPinned ?: false)
         )
+    }
+
+    // ponytail: shared paging helpers — dedup'd from 2 manual load + 3 Pager blocks
+    private fun conversationPagingFlow(
+        pagingSourceFactory: () -> PagingSource<Int, LightConversationEntity>
+    ): Flow<PagingData<Conversation>> = Pager(
+        config = PagingConfig(
+            pageSize = PAGE_SIZE,
+            initialLoadSize = INITIAL_LOAD_SIZE,
+            enablePlaceholders = false
+        ),
+        pagingSourceFactory = pagingSourceFactory
+    ).flow.map { pagingData ->
+        pagingData.map { entity ->
+            conversationSummaryToConversation(entity)
+        }
+    }
+
+    private suspend fun loadConversationPage(
+        pagingSource: PagingSource<Int, LightConversationEntity>,
+        offset: Int,
+        limit: Int
+    ): ConversationPageResult = try {
+        when (
+            val result = pagingSource.load(
+                PagingSource.LoadParams.Refresh(
+                    key = if (offset == 0) null else offset,
+                    loadSize = limit,
+                    placeholdersEnabled = false
+                )
+            )
+        ) {
+            is PagingSource.LoadResult.Page -> ConversationPageResult(
+                items = result.data.map { entity ->
+                    conversationSummaryToConversation(entity)
+                },
+                nextOffset = result.nextKey
+            )
+
+            is PagingSource.LoadResult.Error -> throw result.throwable
+            is PagingSource.LoadResult.Invalid -> ConversationPageResult(emptyList(), null)
+        }
+    } finally {
+        pagingSource.invalidate()
     }
 
     private fun conversationSummaryToConversation(entity: LightConversationEntity): Conversation {

@@ -11,31 +11,19 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoField
 import java.util.Locale
 
-fun Instant.toLocalDate(): String {
-    val zoneId = ZoneId.systemDefault()
-    val localDateTime = this.atZone(zoneId).toLocalDateTime()
+fun Instant.toLocalDate(): String =
+    toLocalFormatted(DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM))
 
-    return DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-        .withLocale(Locale.getDefault())
-        .format(localDateTime)
-}
+fun Instant.toLocalDateTime(): String =
+    toLocalFormatted(DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM))
 
-fun Instant.toLocalDateTime(): String {
-    val zoneId = ZoneId.systemDefault()
-    val localDateTime = this.atZone(zoneId).toLocalDateTime()
+fun Instant.toLocalTime(): String =
+    toLocalFormatted(DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM))
 
-    return DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM)
-        .withLocale(Locale.getDefault())
-        .format(localDateTime)
-}
-
-fun Instant.toLocalTime(): String {
-    val zoneId = ZoneId.systemDefault()
-    val localDateTime = this.atZone(zoneId).toLocalDateTime()
-
-    return DateTimeFormatter.ofLocalizedTime(FormatStyle.MEDIUM)
-        .withLocale(Locale.getDefault())
-        .format(localDateTime)
+// ponytail: shared zone+format skeleton for the 3 Instant.toLocal* variants
+private fun Instant.toLocalFormatted(formatter: DateTimeFormatter): String {
+    val localDateTime = this.atZone(ZoneId.systemDefault()).toLocalDateTime()
+    return formatter.withLocale(Locale.getDefault()).format(localDateTime)
 }
 
 fun LocalDateTime.toLocalString(): String {

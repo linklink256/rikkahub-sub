@@ -12,10 +12,10 @@ class SingleFileCacheStore<K : Any, V : Any>(
     private val file: File,
     private val keySerializer: KSerializer<K>,
     private val valueSerializer: KSerializer<V>,
-    private val json: Json = Json { prettyPrint = false; ignoreUnknownKeys = true; allowStructuredMapKeys = true }
+    private val json: Json = Json { prettyPrint = false; ignoreUnknownKeys = true; explicitNulls = false; allowStructuredMapKeys = true }
 ) : CacheStore<K, V> {
     private val lock = ReentrantLock()
-    private val entrySerializer = cacheEntrySerializer(valueSerializer)
+    private val entrySerializer = CacheEntry.serializer(valueSerializer)
     private val mapEntrySerializer = MapSerializer(keySerializer, entrySerializer)
 
     override fun loadEntry(key: K): CacheEntry<V>? = lock.withLock {
@@ -70,4 +70,3 @@ class SingleFileCacheStore<K : Any, V : Any>(
         atomicWrite(file, text)
     }
 }
-

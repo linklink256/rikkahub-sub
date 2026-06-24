@@ -24,16 +24,7 @@ object BraveSearchService : SearchService<SearchServiceOptions.BraveOptions> {
     override val name: String = "Brave"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://api.search.brave.com/")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://api.search.brave.com/")
 
     override fun parameters(options: SearchServiceOptions.BraveOptions): InputSchema? =
         InputSchema.Obj(

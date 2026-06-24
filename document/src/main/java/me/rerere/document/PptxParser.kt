@@ -292,25 +292,7 @@ object PptxParser {
 
         // Convert to markdown table
         if (rows.isNotEmpty()) {
-            val maxCols = rows.maxOfOrNull { it.size } ?: 0
-
-            for ((index, row) in rows.withIndex()) {
-                result.append("| ")
-                for (colIndex in 0 until maxCols) {
-                    val cellContent = if (colIndex < row.size) row[colIndex] else ""
-                    result.append("$cellContent | ")
-                }
-                result.append("\n")
-
-                // Add separator after first row (header)
-                if (index == 0) {
-                    result.append("| ")
-                    repeat(maxCols) {
-                        result.append("--- | ")
-                    }
-                    result.append("\n")
-                }
-            }
+            result.append(rows.toMarkdownTable())
             result.append("\n")
         }
     }

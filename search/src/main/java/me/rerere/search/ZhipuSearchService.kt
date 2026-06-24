@@ -26,16 +26,7 @@ object ZhipuSearchService : SearchService<SearchServiceOptions.ZhipuOptions> {
     override val name: String = "Zhipu"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://bigmodel.cn/usercenter/proj-mgmt/apikeys")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://bigmodel.cn/usercenter/proj-mgmt/apikeys")
 
     override fun parameters(options: SearchServiceOptions.ZhipuOptions): InputSchema? =
         InputSchema.Obj(

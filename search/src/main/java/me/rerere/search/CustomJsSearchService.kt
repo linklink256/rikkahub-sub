@@ -6,6 +6,7 @@ import androidx.compose.ui.res.stringResource
 import com.whl.quickjs.wrapper.QuickJSContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -58,7 +59,7 @@ object CustomJsSearchService : SearchService<SearchServiceOptions.CustomJsOption
 
             val resultJson = executeScript(
                 userScript = script,
-                invocation = "search(${quoteJsString(query)}, ${commonOptions.resultSize})"
+                invocation = "search(${json.encodeToString(String.serializer(), query)}, ${commonOptions.resultSize})"
             )
 
             json.decodeFromString<SearchResult>(resultJson)
@@ -95,21 +96,4 @@ object CustomJsSearchService : SearchService<SearchServiceOptions.CustomJsOption
             context.destroy()
         }
     }
-
-    private fun quoteJsString(s: String): String {
-        val sb = StringBuilder("\"")
-        for (ch in s) {
-            when (ch) {
-                '"' -> sb.append("\\\"")
-                '\\' -> sb.append("\\\\")
-                '\n' -> sb.append("\\n")
-                '\r' -> sb.append("\\r")
-                '\t' -> sb.append("\\t")
-                else -> sb.append(ch)
-            }
-        }
-        sb.append("\"")
-        return sb.toString()
-    }
-
 }

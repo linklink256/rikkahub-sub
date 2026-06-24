@@ -89,34 +89,15 @@ private fun mergeJsonObjects(base: JsonObject, overlay: JsonObject): JsonObject 
 }
 
 /**
- * 从 JsonElement 中移除或保留指定的键
- * @param keys 要操作的键列表
- * @param keepOnly 如果为 true，则只保留指定的键；如果为 false，则移除指定的键
- * @return 处理后的 JsonElement
+ * 递归移除 JsonObject 中所有层级的指定键; 数组元素与其余 JsonElement 原样透传
+ * ponytail: 仅保留 remove 模式 (keepOnly 分支无调用方, YAGNI)
  */
-fun JsonElement.removeElements(keys: List<String>, keepOnly: Boolean = false): JsonElement {
-    return when (this) {
-        is JsonObject -> {
-            val newContent = if (keepOnly) {
-                // 只保留指定的键（且键存在）
-                keys.mapNotNull { key ->
-                    get(key)?.let { key to it }
-                }.toMap()
-            } else {
-                // 移除指定的键
-                toMap().filterKeys { key -> key !in keys }
-            }
+fun JsonObject.removeKeys(keys: Set<String>): JsonObject =
+    JsonObject(toMap().filterKeys { it !in keys }.mapValues { (_, v) -> v.removeKeysDeep(keys) })
 
-            // 递归处理嵌套的 JsonElement
-            JsonObject(newContent.mapValues { (_, value) ->
-                value.removeElements(keys, keepOnly)
-            })
-        }
-
-        is JsonArray -> {
-            JsonArray(map { it.removeElements(keys, keepOnly) })
-        }
-
-        else -> this // 基本类型直接返回
+fun JsonElement.removeKeysDeep(keys: Set<String>): JsonElement =
+    when (this) {
+        is JsonObject -> removeKeys(keys)
+        is JsonArray -> JsonArray(map { it.removeKeysDeep(keys) })
+        else -> this
     }
-}

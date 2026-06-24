@@ -28,16 +28,7 @@ object LinkUpService : SearchService<SearchServiceOptions.LinkUpOptions> {
     override val name: String = "LinkUp"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://www.linkup.so/")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://www.linkup.so/")
 
     override fun parameters(options: SearchServiceOptions.LinkUpOptions): InputSchema? =
         InputSchema.Obj(

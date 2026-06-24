@@ -31,16 +31,7 @@ object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOpti
     override val name: String = "Firecrawl"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://docs.firecrawl.dev/features/search")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://docs.firecrawl.dev/features/search")
 
     override fun parameters(options: SearchServiceOptions.FirecrawlOptions): InputSchema? =
         InputSchema.Obj(

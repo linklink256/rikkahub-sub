@@ -30,16 +30,7 @@ object GrokSearchService : SearchService<SearchServiceOptions.GrokOptions> {
     override val name: String = "Grok"
 
     @Composable
-    override fun Description() {
-        val uriHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                uriHandler.openUri("https://console.x.ai/")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://console.x.ai/")
 
     override fun parameters(options: SearchServiceOptions.GrokOptions): InputSchema? =
         InputSchema.Obj(

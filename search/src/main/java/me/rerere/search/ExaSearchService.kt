@@ -29,16 +29,7 @@ object ExaSearchService : SearchService<SearchServiceOptions.ExaOptions> {
     override val name: String = "Exa"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://dashboard.exa.ai/api-keys")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://dashboard.exa.ai/api-keys")
 
     override fun parameters(options: SearchServiceOptions.ExaOptions): InputSchema? =
         InputSchema.Obj(

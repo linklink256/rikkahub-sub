@@ -6,7 +6,7 @@ import java.util.Locale
  * 构建 Accept-Language 头值的实用类。
  *
  * 主要特性：
- * 1) 支持 Android 和 JVM 环境的系统语言获取。
+ * 1) 支持 Android 系统语言获取。
  * 2) 支持将 "zh-CN" 展开为 ["zh-CN", "zh"]（可配置）。
  * 3) 去重并按优先级降权生成 q 参数（IETF RFC 7231）。
  * 4) 结果形如： "zh-CN, zh;q=0.9, en-US;q=0.8, en;q=0.7"
@@ -30,13 +30,6 @@ class AcceptLanguageBuilder private constructor(
     )
 
     companion object {
-        /** 直接从 JVM（桌面/服务器）系统环境创建。*/
-        fun fromJvmSystem(options: Options = Options()): AcceptLanguageBuilder {
-            val primary = Locale.getDefault()
-            // JVM 通常只提供一个主 Locale；如果需要自定义列表，可自行传入 withLocales。
-            return AcceptLanguageBuilder(listOf(primary), options)
-        }
-
         /**
          * 从 Android 系统环境创建。
          * @param context 建议传入应用或当前上下文，以获取用户“应用内语言”/系统语言首选列表
@@ -46,20 +39,10 @@ class AcceptLanguageBuilder private constructor(
             return AcceptLanguageBuilder(locales, options)
         }
 
-        /** 使用调用方自定义的 Locale 列表（按优先顺序）创建。*/
-        fun withLocales(locales: List<Locale>, options: Options = Options()): AcceptLanguageBuilder {
-            return AcceptLanguageBuilder(locales, options)
-        }
-
-        // Android 的系统 Locale 列表获取
+        // Android 的系统 Locale 列表获取（minSdk 26，直接使用 LocaleList API）
         private fun systemLocalesAndroid(context: android.content.Context): List<Locale> {
-            val cfg = context.resources.configuration
-            return if (android.os.Build.VERSION.SDK_INT >= 24) {
-                val list = cfg.locales
-                (0 until list.size()).map { idx -> list[idx] }
-            } else {
-                listOf(cfg.locale)
-            }
+            val list = context.resources.configuration.locales
+            return (0 until list.size()).map { idx -> list[idx] }
         }
     }
 
@@ -68,12 +51,15 @@ class AcceptLanguageBuilder private constructor(
         // 1) 先将 Locale 转成语言标签，并按需展开“通用语言码”
         val tags = mutableListOf<String>()
         for (loc in localesInPreference) {
-            val full = toLanguageTagCompat(loc)
+            val full = loc.toLanguageTag()
             if (full.isNotBlank()) tags += full
 
             if (options.includeGenericLanguage) {
-                val generic = genericLanguageOf(full)
-                if (generic != null) tags += generic
+                val idx = full.indexOf('-')
+                if (idx > 0) {
+                    val head = full.substring(0, idx)
+                    if (head.isNotBlank()) tags += head
+                }
             }
         }
 
@@ -98,41 +84,9 @@ class AcceptLanguageBuilder private constructor(
         return parts.joinToString(separator = ", ")
     }
 
-    // --- 辅助方法 ---
-
-    private fun toLanguageTagCompat(locale: Locale): String {
-        // JVM 7+ 提供 Locale#toLanguageTag；为安全起见仍保底手拼
-        val tag = locale.toLanguageTag()
-        if (tag.isNotBlank()) return tag
-
-        val language = locale.language ?: return ""
-        val country = locale.country
-        val variant = locale.variant
-
-        return buildString {
-            append(language)
-            if (!country.isNullOrBlank()) append("-").append(country)
-            if (!variant.isNullOrBlank()) append("-").append(variant)
-        }
-    }
-
-    /** 从 "zh-CN" 得到 "zh"；从 "en" 则返回 null（无更通用层级）。*/
-    private fun genericLanguageOf(tag: String): String? {
-        val idx = tag.indexOf('-')
-        if (idx <= 0) return null
-        val head = tag.substring(0, idx)
-        // 忽略诸如 "zh-Hans-CN" 的更复杂情况，仅退一级即可
-        return if (head.isNotBlank()) head else null
-    }
-
     /** q 值格式：最多保留 3 位小数，去掉多余 0 与小数点。*/
     private fun formatQ(value: Double): String {
         val s = String.format(java.util.Locale.ROOT, "%.3f", value)
         return s.trimEnd('0').trimEnd('.')
     }
-}
-
-fun main() {
-    val builder = AcceptLanguageBuilder.fromJvmSystem()
-    println(builder.build())
 }

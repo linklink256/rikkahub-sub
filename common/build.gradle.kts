@@ -47,8 +47,6 @@ dependencies {
     api(libs.kotlinx.coroutines.core)
     api(libs.kotlinx.datetime)
 
-    // apache commons
-    api(libs.commons.text)
 
     // floating
     // https://github.com/Petterpx/FloatingX

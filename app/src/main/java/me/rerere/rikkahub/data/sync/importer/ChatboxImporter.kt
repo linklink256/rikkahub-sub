@@ -23,6 +23,8 @@ import me.rerere.ai.ui.UIMessage
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.data.model.MessageNode
+import me.rerere.common.http.jsonArrayOrNull
+import me.rerere.common.http.jsonObjectOrNull
 import me.rerere.rikkahub.utils.JsonInstant
 import me.rerere.rikkahub.utils.JsonInstantPretty
 import java.io.File
@@ -578,12 +580,6 @@ object ChatboxImporter {
 
     private fun stableUuid(value: String): Uuid =
         Uuid.parse(UUID.nameUUIDFromBytes(value.toByteArray(StandardCharsets.UTF_8)).toString())
-
-    private val JsonElement.jsonObjectOrNull: JsonObject?
-        get() = this as? JsonObject
-
-    private val JsonElement.jsonArrayOrNull: JsonArray?
-        get() = this as? JsonArray
 
     private val JsonElement.asString: String?
         get() = (this as? JsonPrimitive)?.contentOrNull

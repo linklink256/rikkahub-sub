@@ -26,12 +26,7 @@ object OllamaSearchService : SearchService<SearchServiceOptions.OllamaOptions> {
     override val name: String = "Ollama"
 
     @Composable
-    override fun Description() {
-        val uriHandler = LocalUriHandler.current
-        TextButton(onClick = { uriHandler.openUri("https://ollama.com/settings/keys") }) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://ollama.com/settings/keys")
 
     override fun parameters(options: SearchServiceOptions.OllamaOptions): InputSchema? =
         InputSchema.Obj(

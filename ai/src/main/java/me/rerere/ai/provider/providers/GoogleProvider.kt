@@ -56,7 +56,7 @@ import me.rerere.ai.util.parseErrorBody
 import me.rerere.ai.util.encodeBase64
 import me.rerere.ai.util.json
 import me.rerere.ai.util.mergeCustomBody
-import me.rerere.ai.util.removeElements
+import me.rerere.ai.util.removeKeysDeep
 import me.rerere.ai.util.stringSafe
 import me.rerere.ai.util.toHeaders
 import me.rerere.common.http.await
@@ -71,7 +71,6 @@ import okhttp3.Response
 import okhttp3.sse.EventSource
 import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
-import org.apache.commons.text.StringEscapeUtils
 import kotlin.time.Clock
 import kotlin.uuid.Uuid
 
@@ -100,7 +99,7 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
         return if (providerSetting.vertexAI && providerSetting.useServiceAccount) {
             val accessToken = serviceAccountTokenProvider.fetchAccessToken(
                 serviceAccountEmail = providerSetting.serviceAccountEmail.trim(),
-                privateKeyPem = StringEscapeUtils.unescapeJson(providerSetting.privateKey.trim()),
+                privateKeyPem = providerSetting.privateKey.trim().replace("\\n", "\n"),
             )
             request.newBuilder()
                 .addHeader("Authorization", "Bearer $accessToken")
@@ -417,8 +416,8 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                                 put(
                                     key = "parameters",
                                     element = json.encodeToJsonElement(tool.parameters())
-                                        .removeElements(
-                                            listOf(
+                                        .removeKeysDeep(
+                                            setOf(
                                                 "const",
                                                 "exclusiveMaximum",
                                                 "exclusiveMinimum",

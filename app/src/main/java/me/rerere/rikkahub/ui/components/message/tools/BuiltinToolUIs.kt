@@ -56,7 +56,7 @@ import me.rerere.rikkahub.ui.components.ui.Favicon
 import me.rerere.rikkahub.ui.components.ui.FaviconRow
 import me.rerere.rikkahub.ui.modifier.shimmer
 import me.rerere.rikkahub.utils.JsonInstantPretty
-import me.rerere.rikkahub.utils.jsonPrimitiveOrNull
+import me.rerere.common.http.jsonPrimitiveOrNull
 import me.rerere.rikkahub.utils.openUrl
 import org.koin.compose.koinInject
 

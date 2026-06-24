@@ -25,16 +25,7 @@ object TinyfishSearchService : SearchService<SearchServiceOptions.TinyfishOption
     override val name: String = "Tinyfish"
 
     @Composable
-    override fun Description() {
-        val urlHandler = LocalUriHandler.current
-        TextButton(
-            onClick = {
-                urlHandler.openUri("https://agent.tinyfish.ai/api-keys")
-            }
-        ) {
-            Text(stringResource(R.string.click_to_get_api_key))
-        }
-    }
+    override fun Description() = ApiKeyButton("https://agent.tinyfish.ai/api-keys")
 
     override fun parameters(options: SearchServiceOptions.TinyfishOptions): InputSchema? =
         InputSchema.Obj(
