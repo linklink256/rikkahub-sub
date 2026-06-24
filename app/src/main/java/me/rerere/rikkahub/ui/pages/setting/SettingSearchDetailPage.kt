@@ -205,6 +205,9 @@ private fun SearchServiceOptionsEditor(
         is SearchServiceOptions.TinyfishOptions -> {
             TinyfishOptions(options) { onUpdateOptions(it) }
         }
+        is SearchServiceOptions.SerperOptions -> {
+            SerperOptions(options) { onUpdateOptions(it) }
+        }
         is SearchServiceOptions.CustomJsOptions -> {
             CustomJsOptions(options) { onUpdateOptions(it) }
         }
@@ -493,6 +496,26 @@ internal fun BraveOptions(
         apiKey = options.apiKey,
         onApiKeyChange = { onUpdateOptions(options.copy(apiKey = it)) }
     )
+}
+
+@Composable
+internal fun SerperOptions(
+    options: SearchServiceOptions.SerperOptions,
+    onUpdateOptions: (SearchServiceOptions.SerperOptions) -> Unit
+) {
+    FormItem(
+        label = {
+            Text(stringResource(R.string.search_detail_api_key))
+        }
+    ) {
+        OutlinedTextField(
+            value = options.apiKey,
+            onValueChange = {
+                onUpdateOptions(options.copy(apiKey = it))
+            },
+            modifier = Modifier.fillMaxWidth()
+        )
+    }
 }
 
 @Composable
