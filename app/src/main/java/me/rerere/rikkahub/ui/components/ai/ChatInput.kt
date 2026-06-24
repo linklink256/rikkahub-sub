@@ -307,11 +307,11 @@ fun ChatInput(
                                                 asrPermission.requestPermissions()
                                             } else {
                                                 asrBaseText = state.textContent.text.toString()
-                                                asr.start { transcript ->
+                                                asr.start(onTranscriptChange = { transcript ->
                                                     val spacer =
                                                         if (asrBaseText.isBlank() || transcript.isBlank()) "" else " "
                                                     state.setMessageText(asrBaseText + spacer + transcript)
-                                                }
+                                                })
                                             }
                                         }
 

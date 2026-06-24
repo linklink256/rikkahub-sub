@@ -2,7 +2,7 @@ name: Build Fork APK
 
 on:
   push:
-    branches: [master, main, fix/skills-use-skill-only]
+    branches: [master, main, fix/skills-use-skill-only, feat/system-asr, feat/voice-call]
   workflow_dispatch:
 
 jobs:

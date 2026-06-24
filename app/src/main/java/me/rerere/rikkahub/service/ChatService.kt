@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -206,7 +207,10 @@ class ChatService(
     }
 
     // 生成完成流
-    private val _generationDoneFlow = MutableSharedFlow<Uuid>()
+    private val _generationDoneFlow = MutableSharedFlow<Uuid>(
+        extraBufferCapacity = 1,
+        onBufferOverflow = BufferOverflow.DROP_OLDEST
+    )
     val generationDoneFlow: SharedFlow<Uuid> = _generationDoneFlow.asSharedFlow()
 
     // 前台状态管理
@@ -373,7 +377,10 @@ class ChatService(
                     handleMessageComplete(conversationId)
                 }
 
+                Logging.log("ChatService", "Generation done, emitting for conversation $conversationId")
                 _generationDoneFlow.emit(conversationId)
+            } catch (e: CancellationException) {
+                throw e  // 不要吞掉取消异常 — 用户主动打断时不应显示错误
             } catch (e: Exception) {
                 e.printStackTrace()
                 addError(e, conversationId, title = context.getString(R.string.error_title_send_message))
@@ -662,14 +669,19 @@ class ChatService(
             Logging.log(TAG, "handleMessageComplete: $it")
             Logging.log(TAG, it.stackTraceToString())
         }.onSuccess {
-            val finalConversation = getConversationFlow(conversationId).value
-            saveConversation(conversationId, finalConversation)
+            runCatching {
+                val finalConversation = getConversationFlow(conversationId).value
+                saveConversation(conversationId, finalConversation)
 
-            launchWithConversationReference(conversationId) {
-                generateTitle(conversationId, finalConversation)
-            }
-            launchWithConversationReference(conversationId) {
-                generateSuggestion(conversationId, finalConversation)
+                launchWithConversationReference(conversationId) {
+                    generateTitle(conversationId, finalConversation)
+                }
+                launchWithConversationReference(conversationId) {
+                    generateSuggestion(conversationId, finalConversation)
+                }
+            }.onFailure { e ->
+                e.printStackTrace()
+                addError(e, conversationId, title = context.getString(R.string.error_title_send_message))
             }
         }
     }

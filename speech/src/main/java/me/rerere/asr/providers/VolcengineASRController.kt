@@ -27,6 +27,7 @@ import me.rerere.asr.ASRState
 import me.rerere.asr.ASRStatus
 import me.rerere.asr.appendAmplitude
 import me.rerere.asr.calculateRmsAmplitude
+import me.rerere.common.android.Logging
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -59,9 +60,21 @@ class VolcengineASRController(
     private var recorderJob: Job? = null
     private var audioRecord: AudioRecord? = null
     private var onTranscriptChange: ((String) -> Unit)? = null
+    private var onTranscriptComplete: ((String) -> Unit)? = null
     private var lastText = ""
 
-    override fun start(onTranscriptChange: (String) -> Unit) {
+    // stop() 幂等保护: 防止重复调用导致 close 触发 onFailure 报错
+    @Volatile
+    private var isStopping = false
+
+    // 客户端 VAD 自动分句 (火山引擎 SAUC bigmodel 无 server-side VAD)
+    @Volatile
+    private var autoStoppedByVad = false
+
+    override fun start(
+        onTranscriptChange: (String) -> Unit,
+        onTranscriptComplete: ((String) -> Unit)?
+    ) {
         if (state.value.isRecording) return
         if (ContextCompat.checkSelfPermission(
                 context,
@@ -73,7 +86,10 @@ class VolcengineASRController(
         }
 
         this.onTranscriptChange = onTranscriptChange
+        this.onTranscriptComplete = onTranscriptComplete
         lastText = ""
+        isStopping = false
+        autoStoppedByVad = false
         _state.update {
             ASRState(
                 status = ASRStatus.Connecting,
@@ -112,6 +128,11 @@ class VolcengineASRController(
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e(TAG, "Volcengine ASR websocket failed", t)
                 releaseRecorder()
+                // 主动关闭过程中触发的 onFailure 不算错误 (stop 导致的异步关闭)
+                if (isStopping) {
+                    Logging.log(TAG, "onFailure ignored during stopping: ${t.message}")
+                    return
+                }
                 setError(t.message ?: "ASR websocket failed")
             }
 
@@ -123,6 +144,14 @@ class VolcengineASRController(
     }
 
     override fun stop() {
+        // 幂等保护: 已在关闭中则跳过, 避免重复 close 触发 onFailure
+        if (isStopping) {
+            Logging.log(TAG, "stop() called but already stopping, ignored")
+            return
+        }
+        isStopping = true
+        val triggeredByVad = autoStoppedByVad
+        Logging.log(TAG, "stop() called, triggeredByVad=$triggeredByVad")
         recorderJob?.cancel()
         releaseRecorder()
         val socket = webSocket
@@ -216,11 +245,37 @@ class VolcengineASRController(
                     return
                 }
 
-                val text = json.optJSONObject("result")?.optString("text", "") ?: ""
+                val result = json.optJSONObject("result")
+                val text = result?.optString("text", "") ?: ""
                 if (text.isNotEmpty() && text != lastText) {
                     lastText = text
                     _state.update { it.copy(transcript = text, errorMessage = null) }
                     scope.launch { onTranscriptChange?.invoke(text) }
+
+                    // 火山引擎 SAUC bigmodel 的完成信号有两个来源:
+                    // 1) 服务器 VAD 分句: utterances[].definite=true (仅 bigmodel_async 模式支持)
+                    // 2) 客户端触发的最终响应: 客户端发送 FLAG_LAST_PACKET 负包后,
+                    //    服务器返回的最后一包响应, messageFlags=0b0011 (sequence 负数)
+                    // 普通模式下 definite 不会自动变 true, 必须靠客户端 VAD 检测用户说完话
+                    // 后主动调用 stop() 发负包, 让服务器返回最终结果触发 onTranscriptComplete。
+                    val utterances = result?.optJSONArray("utterances")
+                    val definiteFromUtterance = if (utterances != null && utterances.length() > 0) {
+                        val lastUtterance = utterances.optJSONObject(utterances.length() - 1)
+                        lastUtterance?.optBoolean("definite", false) ?: false
+                    } else {
+                        false
+                    }
+                    // message type specific flags = 0b0011 表示最后一包结果 (客户端 stop() 触发)
+                    val isLastPacket = (messageFlags and 0x03) == 0x03
+                    Logging.log(
+                        TAG,
+                        "Response: definite=$definiteFromUtterance, isLastPacket=$isLastPacket, flags=0x${messageFlags.toString(16)}, text=${text.take(50)}"
+                    )
+
+                    if (definiteFromUtterance || isLastPacket) {
+                        Logging.log(TAG, "Transcript complete (definite=$definiteFromUtterance, lastPacket=$isLastPacket): $text")
+                        scope.launch { onTranscriptComplete?.invoke(text) }
+                    }
                 }
             }
 
@@ -266,14 +321,45 @@ class VolcengineASRController(
             )
             audioRecord = recorder
 
+            // 客户端 VAD: 检测用户说完话后自动 stop (发负包触发服务器返回最终结果)
+            // 火山引擎 SAUC bigmodel 默认无 server-side VAD, definite=true 只在分句时返回;
+            // 在普通模式不会自动分句, 必须由客户端告知服务器"我说完了" → 发 FLAG_LAST_PACKET。
+            var speechDetected = false
+            var silenceChunks = 0
+            // chunkSize 每 chunk ~200ms → 4 个静音 chunk ≈ 800ms 静音判定说完话
+            val silenceChunkLimit = 4
+            // 归一化 RMS 阈值 (0.0~1.0, 来源于 calculateRmsAmplitude: -60..0 dB 映射)
+            // 0.15 ≈ -39dB; VOICE_COMMUNICATION 已启用硬件 AEC, 环境噪声经 AEC 后通常 < 0.1
+            val speechRmsThreshold = 0.15f
+
             try {
                 recorder.startRecording()
+                Logging.log(TAG, "AudioRecord started, chunkMs=200, vadThreshold=$speechRmsThreshold, silenceChunkLimit=$silenceChunkLimit")
                 val buffer = ByteArray(chunkSize)
                 while (isActive) {
                     val read = recorder.read(buffer, 0, buffer.size)
                     if (read > 0) {
                         val amplitude = calculateRmsAmplitude(buffer, read)
                         _state.update { it.copy(amplitudes = it.amplitudes.appendAmplitude(amplitude)) }
+
+                        // 客户端 VAD 状态机: 说话 → 静音 800ms → 自动 stop
+                        if (amplitude >= speechRmsThreshold) {
+                            if (!speechDetected) {
+                                Logging.log(TAG, "VAD: speech start detected, amp=${"%.3f".format(amplitude)}")
+                            }
+                            speechDetected = true
+                            silenceChunks = 0
+                        } else if (speechDetected) {
+                            silenceChunks++
+                            if (silenceChunks >= silenceChunkLimit && !autoStoppedByVad) {
+                                Logging.log(TAG, "VAD: ${silenceChunks * 200}ms silence after speech, auto-stop ASR")
+                                autoStoppedByVad = true
+                                // 在主 scope 调 stop() 发最后一包并等待服务器最终响应
+                                scope.launch(Dispatchers.Main.immediate) { stop() }
+                                break
+                            }
+                        }
+
                         if (socket.queueSize() < MAX_WEBSOCKET_QUEUE_BYTES) {
                             val frame = buildFrame(
                                 messageType = MSG_AUDIO_ONLY,
@@ -292,7 +378,9 @@ class VolcengineASRController(
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Audio recording failed", e)
-                setError(e.message ?: "Audio recording failed")
+                if (!isStopping) {
+                    setError(e.message ?: "Audio recording failed")
+                }
             } finally {
                 releaseRecorder()
             }

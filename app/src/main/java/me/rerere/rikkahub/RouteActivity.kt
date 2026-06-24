@@ -97,6 +97,7 @@ import me.rerere.rikkahub.ui.pages.extensions.LorebookPage
 import me.rerere.rikkahub.ui.pages.extensions.ModeInjectionPage
 import me.rerere.rikkahub.ui.pages.extensions.QuickMessagesPage
 import me.rerere.rikkahub.ui.pages.extensions.skills.SkillDetailPage
+import me.rerere.rikkahub.ui.pages.voicecall.VoiceCallPage
 import me.rerere.rikkahub.ui.pages.extensions.skills.SkillsPage
 import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspacePage
 import me.rerere.rikkahub.ui.pages.extensions.workspace.WorkspaceDetailPage
@@ -521,6 +522,10 @@ class RouteActivity : ComponentActivity() {
                             entry<Screen.Stats> {
                                 StatsPage()
                             }
+
+                            entry<Screen.VoiceCall> { key ->
+                                VoiceCallPage(conversationId = key.conversationId)
+                            }
                         }
                     )
                     if (BuildConfig.DEBUG) {
@@ -723,4 +728,7 @@ sealed interface Screen : NavKey {
 
     @Serializable
     data object Stats : Screen
+
+    @Serializable
+    data class VoiceCall(val conversationId: String) : Screen
 }
