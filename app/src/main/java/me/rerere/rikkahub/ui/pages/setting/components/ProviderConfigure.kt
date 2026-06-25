@@ -197,6 +197,7 @@ fun ProviderCommonFields(
     modifier: Modifier = Modifier,
     showApiKey: Boolean = true,
     showBaseUrl: Boolean = true,
+    showEnabled: Boolean = true,
     nameMaxLines: Int = 1,
     baseUrlIsError: Boolean = false,
     baseUrlSupportingText: @Composable (() -> Unit)? = null,
@@ -235,16 +236,18 @@ fun ProviderCommonFields(
             )
         }
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Text(stringResource(R.string.setting_provider_page_enable))
-            Switch(
-                checked = enabled,
-                onCheckedChange = onEnabledChange
-            )
+        if (showEnabled) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(stringResource(R.string.setting_provider_page_enable))
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = onEnabledChange
+                )
+            }
         }
     }
 }
@@ -267,6 +270,7 @@ private fun ProviderConfigureOpenAI(
         onBaseUrlChange = { onEdit(provider.copy(baseUrl = it.trim())) },
         enabled = provider.enabled,
         onEnabledChange = { onEdit(provider.copy(enabled = it)) },
+        showEnabled = false,
         baseUrlIsError = provider.baseUrl.isNotBlank() && !provider.baseUrl.isValidBaseUrl(),
     )
 
@@ -277,6 +281,18 @@ private fun ProviderConfigureOpenAI(
             label = { Text(stringResource(R.string.setting_provider_page_api_path)) },
             modifier = Modifier.fillMaxWidth(),
             enabled = !provider.builtIn,
+        )
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(stringResource(R.string.setting_provider_page_enable))
+        Switch(
+            checked = provider.enabled,
+            onCheckedChange = { onEdit(provider.copy(enabled = it)) }
         )
     }
 
