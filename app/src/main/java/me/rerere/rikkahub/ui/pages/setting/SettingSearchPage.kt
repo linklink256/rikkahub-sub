@@ -122,17 +122,14 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
             items(settings.searchServices, key = { it.id }) { service ->
                 ReorderableSwipeableItem(
                     onDelete = {
-                        if (settings.searchServices.size > 1) {
-                            val index = settings.searchServices.indexOf(service)
-                            val newServices = settings.searchServices.toMutableList()
-                            newServices.removeAt(index)
-                            vm.updateSettings(settings.copy(searchServices = newServices))
-                        }
+                        val index = settings.searchServices.indexOf(service)
+                        val newServices = settings.searchServices.toMutableList()
+                        newServices.removeAt(index)
+                        vm.updateSettings(settings.copy(searchServices = newServices))
                     },
                     state = reorderableState,
                     key = service.id,
                     modifier = Modifier.animateItem(),
-                    swipeEnabled = settings.searchServices.size > 1,
                 ) {
                     ListCard(
                         onClick = {
