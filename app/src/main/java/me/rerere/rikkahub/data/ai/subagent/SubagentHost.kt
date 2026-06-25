@@ -2,8 +2,10 @@ package me.rerere.rikkahub.data.ai.subagent
 
 import android.util.Log
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import kotlinx.serialization.json.JsonElement
 import me.rerere.ai.core.MessageRole
 import me.rerere.ai.core.TokenUsage
@@ -211,54 +213,57 @@ class SubagentHost(
         initialMessages: List<UIMessage>,
         onProgress: ((List<UIMessage>) -> Unit)?,
     ): RunCompletion {
-        // 流式进度节流。
+        // 流式进度更新 —— 异步化，不阻塞 flow emit。
         //
-        // 背景：onProgress -> ChatService.updateSubagentProgress 会在 UI 侧把子代理当前
-        // 的【全部】消息重建为 transcript、整体 JSON 序列化（含搜索结果等大体积工具输出）、
-        // 拷贝整个父对话并触发 Compose 重新渲染 ChainOfThought + MarkdownBlock。若逐 token
-        // 调用，生成摘要时 transcript 已达到最大，主线程被压垮，表现为「开了流式但子代理不
-        // 流式输出」——UI 冻结，结束后一次性 dump。
+        // 根因：此前 throttledProgress 在 onEach 中同步调用 onProgress →
+        // updateSubagentProgress（buildTranscript + JSON 序列化 + CAS 更新父对话 StateFlow
+        // + 触发 Compose 重组）。由于 flow emit 是同步的，onProgress 执行完毕前下一个
+        // stream chunk 无法被 collect，形成背压 —— LLM 在等 UI 更新，表现为子代理"卡"。
         //
-        // 策略：按时间节流（默认 120ms 一次，约 8Hz），降低生产/消费两侧的每 token 开销；
-        // 同时在 transcript 【结构变化】（新增 part / 新增 assistant 消息 —— 即新思维链、
-        // 新工具调用、新步骤）时立即放行，保证工具调用与思维链即时可见，仅对逐 token 增长
-        // 的正文文本做时间节流。最终结果由工具返回值覆盖，节流不会丢失终态。
-        val throttledProgress = onProgress?.let { cb ->
-            var lastEmitTime = 0L
-            var lastSignature = -1
-            val minIntervalMs = 120L
-            { messages: List<UIMessage> ->
-                val now = System.currentTimeMillis()
-                // 结构签名：所有 assistant 消息的 part 总数。
-                // 新增 part（reasoning/tool/text）时变化 -> 立即放行；
-                // 同一 part 增长（逐 token 文本）时不变 -> 时间节流。
-                val signature = messages.sumOf { msg ->
-                    if (msg.role == MessageRole.ASSISTANT) msg.parts.size else 0
-                }
-                if (signature != lastSignature || now - lastEmitTime >= minIntervalMs) {
-                    lastEmitTime = now
-                    lastSignature = signature
-                    cb(messages)
-                }
-            }
-        }
+        // 修复：onProgress 在独立的 SupervisorJob scope 中 launch 执行，emit 不等待其完成。
+        // 节流逻辑（结构签名 + 时间间隔）仍在 onEach 中同步判断，只把耗时的回调本身异步化。
+        // 最终结果由工具返回值覆盖，异步进度更新被取消也不影响正确性。
+        val progressScope = kotlinx.coroutines.CoroutineScope(
+            kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
+        )
+        var lastEmitTime = 0L
+        var lastSignature = -1
+        val minIntervalMs = 250L  // 从 120ms 提高到 250ms，降低 UI 更新频率
 
-        val finalMessages = generationHandler.generateText(
-            settings = settings,
-            model = model,
-            messages = initialMessages,
-            assistant = assistant,
-            tools = tools,
-            maxSteps = profile.maxSteps.coerceIn(1, 256),
-            memories = emptyList(),
-        ).onEach { chunk ->
-            if (chunk is GenerationChunk.Messages) {
-                throttledProgress?.invoke(chunk.messages)
+        val finalMessages = try {
+            generationHandler.generateText(
+                settings = settings,
+                model = model,
+                messages = initialMessages,
+                assistant = assistant,
+                tools = tools,
+                maxSteps = profile.maxSteps.coerceIn(1, 256),
+                memories = emptyList(),
+            ).onEach { chunk ->
+                if (chunk is GenerationChunk.Messages && onProgress != null) {
+                    val now = System.currentTimeMillis()
+                    // 结构签名：所有 assistant 消息的 part 总数。
+                    // 新增 part（reasoning/tool/text）时变化 -> 立即放行；
+                    // 同一 part 增长（逐 token 文本）时不变 -> 时间节流。
+                    val signature = chunk.messages.sumOf { msg ->
+                        if (msg.role == MessageRole.ASSISTANT) msg.parts.size else 0
+                    }
+                    if (signature != lastSignature || now - lastEmitTime >= minIntervalMs) {
+                        lastEmitTime = now
+                        lastSignature = signature
+                        // 异步调用，不阻塞 emit / flow
+                        val msgs = chunk.messages
+                        progressScope.launch { onProgress.invoke(msgs) }
+                    }
+                }
+            }.fold(initialMessages) { _, chunk ->
+                when (chunk) {
+                    is GenerationChunk.Messages -> chunk.messages
+                }
             }
-        }.fold(initialMessages) { _, chunk ->
-            when (chunk) {
-                is GenerationChunk.Messages -> chunk.messages
-            }
+        } finally {
+            // 取消未完成的进度更新协程；最终结果由调用方设置，不依赖最后一个进度 tick
+            progressScope.cancel()
         }
 
         return RunCompletion(
