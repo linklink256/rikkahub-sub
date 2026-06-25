@@ -348,6 +348,21 @@ fun VoiceCallPage(conversationId: String) {
         }
     }
 
+    // SPEAKING 超时保护: 若 120 秒内状态未从 SPEAKING 切走 (兜底: TTS 早退/合成失败未触发 isSpeaking 变化时)
+    LaunchedEffect(state.status) {
+        if (state.status == VoiceCallStatus.SPEAKING) {
+            withTimeoutOrNull(120_000L) {
+                vm.state.first { it.status != VoiceCallStatus.SPEAKING }
+            } ?: run {
+                if (vm.state.value.status == VoiceCallStatus.SPEAKING) {
+                    Logging.log("VoiceCall", "SPEAKING timeout (120s), back to LISTENING")
+                    tts.stop()
+                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                }
+            }
+        }
+    }
+
     // ASR 错误提示
     LaunchedEffect(asrState.errorMessage) {
         if (!asrState.errorMessage.isNullOrBlank()) {
