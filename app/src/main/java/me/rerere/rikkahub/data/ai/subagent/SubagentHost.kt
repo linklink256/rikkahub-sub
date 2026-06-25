@@ -38,6 +38,20 @@ the parent agent does not need to re-run your work.
 private val NO_APPROVAL: (JsonElement) -> Boolean = { false }
 
 /**
+ * 决定摘要追问（continuation）轮应使用的工具集。
+ *
+ * 恒返回空列表 —— 追问轮是一次纯文本扩写（"把摘要写长"），不应再发起工具调用。
+ *
+ * 根因：此前传入了完整 [childTools]，导致 GenerationHandler.generateText 的 step 循环
+ * 不提前终止（模型可继续调工具），相当于又跑了一整轮最多 maxSteps 步的 agent 循环
+ * （内置 profile maxSteps 高达 48/64），近倍增加墙钟时间。传入空列表后，模型无法
+ * 产出工具调用，循环在 1 步内终止，把近倍惩罚降为单次文本生成。
+ *
+ * @param childTools 子代理首轮使用的完整工具集（保留参数以与首轮对照，明确"刻意不用"）
+ */
+internal fun selectContinuationTools(childTools: List<Tool>): List<Tool> = emptyList()
+
+/**
  * Subagent 宿主 —— 移植自 kimi-code 的 SessionSubagentHost。
  *
  * 它负责把一个 [SubagentProfile] + 任务描述，编译成一个子 [Assistant]，
@@ -142,7 +156,7 @@ class SubagentHost(
                     settings = settings,
                     model = childModel,
                     assistant = childAssistant,
-                    tools = childTools,
+                    tools = selectContinuationTools(childTools),
                     initialMessages = continuationMessages,
                     onProgress = onProgress,
                 )
