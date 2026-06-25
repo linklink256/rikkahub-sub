@@ -343,10 +343,13 @@ private fun ChatListNormal(
                             onFork = remember(onForkMessage, msg) { { onForkMessage(msg) } },
                             onDelete = remember(onDelete, msg) { { onDelete(msg) } },
                             onShare = remember(node) {
-                                selecting = true
-                                selectedItems.clear()
-                                val ids = currentConv.value.messageNodes.map { it.id }
-                                selectedItems.addAll(ids.subList(0, ids.indexOf(node.id) + 1))
+                                {
+                                    selecting = true
+                                    selectedItems.clear()
+                                    val ids = currentConv.value.messageNodes.map { it.id }
+                                    selectedItems.addAll(ids.subList(0, ids.indexOf(node.id) + 1))
+                                    Unit
+                                }
                             },
                             onUpdate = onUpdateMessage,
                             isFavorite = node.isFavorite,
