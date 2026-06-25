@@ -795,7 +795,10 @@ private fun Paragraph(
             else Modifier
         )
     ) {
-        val annotatedString = remember(content, enableLatexRendering, latexColorArgb) {
+        // ponytail: 原 key 只有全文 content，流式时每 token 所有段落全部 miss；
+        // 改用本段落文本片段做 key，已完成段落文本不变 → 缓存命中，只有正在生成的段落重建
+        val segment = content.substring(node.startOffset, node.endOffset)
+        val annotatedString = remember(segment, enableLatexRendering, latexColorArgb) {
             buildAnnotatedString {
                 node.children.fastForEach { child ->
                     appendMarkdownNodeContent(

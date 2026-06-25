@@ -316,6 +316,14 @@ class ChatVM(
         }
     }
 
+    // ponytail: 把 UI 回调里捕获的 conversation.map 下沉到 VM，让 ChatPage 的回调能 remember 稳定
+    fun updateMessageNode(newNode: MessageNode) {
+        chatService.updateConversationState(_conversationId) { conv ->
+            conv.copy(messageNodes = conv.messageNodes.map { if (it.id == newNode.id) newNode else it })
+        }
+        saveConversationAsync()
+    }
+
     fun toggleMessageFavorite(node: MessageNode) {
         viewModelScope.launch {
             val currentlyFavorited = favoriteRepository.isNodeFavorited(_conversationId, node.id)

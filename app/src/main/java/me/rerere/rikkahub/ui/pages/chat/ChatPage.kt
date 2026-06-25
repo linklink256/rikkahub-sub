@@ -416,64 +416,43 @@ private fun ChatPageContent(
                 errors = errors,
                 onDismissError = onDismissError,
                 onClearAllErrors = onClearAllErrors,
-                onRegenerate = {
-                    vm.regenerateAtMessage(it)
+                onRegenerate = remember(vm) { { vm.regenerateAtMessage(it) } },
+                onEdit = remember(inputState) {
+                    { inputState.run { editingMessage = it.id; setContents(it.parts) } }
                 },
-                onEdit = {
-                    inputState.editingMessage = it.id
-                    inputState.setContents(it.parts)
-                },
-                onForkMessage = {
-                    scope.launch {
-                        val fork = vm.forkMessage(message = it)
-                        navigateToChatPage(navController, chatId = fork.id)
+                onForkMessage = remember(vm, scope, navController) {
+                    {
+                        scope.launch {
+                            val fork = vm.forkMessage(message = it)
+                            navigateToChatPage(navController, chatId = fork.id)
+                        }
                     }
                 },
-                onDelete = {
-                    if (loadingJob != null) {
-                        vm.showDeleteBlockedWhileGeneratingError()
-                    } else {
-                        vm.deleteMessage(it)
+                onDelete = remember(vm, loadingJob) {
+                    {
+                        if (loadingJob != null) {
+                            vm.showDeleteBlockedWhileGeneratingError()
+                        } else {
+                            vm.deleteMessage(it)
+                        }
                     }
                 },
-                onUpdateMessage = { newNode ->
-                    vm.updateConversation(
-                        conversation.copy(
-                            messageNodes = conversation.messageNodes.map { node ->
-                                if (node.id == newNode.id) {
-                                    newNode
-                                } else {
-                                    node
-                                }
-                            }
-                        ))
-                    vm.saveConversationAsync()
-                },
+                onUpdateMessage = remember(vm) { { newNode -> vm.updateMessageNode(newNode) } },
                 onClickSuggestion = { suggestion ->
                     inputState.editingMessage = null
                     inputState.setMessageText(suggestion)
                 },
-                onTranslate = { message, locale ->
-                    vm.translateMessage(message, locale)
-                },
-                onClearTranslation = { message ->
-                    vm.clearTranslationField(message.id)
-                },
+                onTranslate = remember(vm) { { message, locale -> vm.translateMessage(message, locale) } },
+                onClearTranslation = remember(vm) { { message -> vm.clearTranslationField(message.id) } },
                 onJumpToMessage = { index ->
                     previewMode = false
                     scope.launch {
                         chatListState.animateScrollToItem(index)
                     }
                 },
-                onToolApproval = { toolCallId, approved, reason ->
-                    vm.handleToolApproval(toolCallId, approved, reason)
-                },
-                onToolAnswer = { toolCallId, answer ->
-                    vm.handleToolAnswer(toolCallId, answer)
-                },
-                onToggleFavorite = { node ->
-                    vm.toggleMessageFavorite(node)
-                },
+                onToolApproval = remember(vm) { { toolCallId, approved, reason -> vm.handleToolApproval(toolCallId, approved, reason) } },
+                onToolAnswer = remember(vm) { { toolCallId, answer -> vm.handleToolAnswer(toolCallId, answer) } },
+                onToggleFavorite = remember(vm) { { node -> vm.toggleMessageFavorite(node) } },
                 onConversationSystemPromptChange = { newPrompt ->
                     vm.updateConversation(conversation.copy(customSystemPrompt = newPrompt))
                     vm.saveConversationAsync()

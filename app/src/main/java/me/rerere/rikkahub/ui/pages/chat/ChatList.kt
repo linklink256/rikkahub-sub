@@ -316,6 +316,10 @@ private fun ChatListNormal(
                 items = conversation.messageNodes,
                 key = { index, item -> item.id },
             ) { index, node ->
+                // ponytail: per-item 回调 remember 化，key 用上层稳定回调 + 稳定 msg；上层(ChatPage)已 remember
+                // 否则 ChatMessage 因 11 个不稳定 lambda 永远无法 skip，流式时所有可见消息每 token 全量重组
+                val msg = remember(node) { node.currentMessage }
+                val currentConv = rememberUpdatedState(conversation)
                 Column {
                     ListSelectableItem(
                         key = node.id,
@@ -334,31 +338,19 @@ private fun ChatListNormal(
                             model = node.currentMessage.modelId?.let(modelById::get),
                             assistant = assistant,
                             loading = loading && index == lastMessageIndex,
-                            onRegenerate = {
-                                onRegenerate(node.currentMessage)
-                            },
-                            onEdit = {
-                                onEdit(node.currentMessage)
-                            },
-                            onFork = {
-                                onForkMessage(node.currentMessage)
-                            },
-                            onDelete = {
-                                onDelete(node.currentMessage)
-                            },
-                            onShare = {
-                                selecting = true  // 使用 CoroutineScope 延迟状态更新
+                            onRegenerate = remember(onRegenerate, msg) { { onRegenerate(msg) } },
+                            onEdit = remember(onEdit, msg) { { onEdit(msg) } },
+                            onFork = remember(onForkMessage, msg) { { onForkMessage(msg) } },
+                            onDelete = remember(onDelete, msg) { { onDelete(msg) } },
+                            onShare = remember(node) {
+                                selecting = true
                                 selectedItems.clear()
-                                selectedItems.addAll(conversation.messageNodes.map { it.id }
-                                    .subList(0, conversation.messageNodes.indexOf(node) + 1))
+                                val ids = currentConv.value.messageNodes.map { it.id }
+                                selectedItems.addAll(ids.subList(0, ids.indexOf(node.id) + 1))
                             },
-                            onUpdate = {
-                                onUpdateMessage(it)
-                            },
+                            onUpdate = onUpdateMessage,
                             isFavorite = node.isFavorite,
-                            onToggleFavorite = {
-                                onToggleFavorite?.invoke(node)
-                            },
+                            onToggleFavorite = remember(onToggleFavorite, node) { { onToggleFavorite?.invoke(node) } },
                             onTranslate = onTranslate,
                             onClearTranslation = onClearTranslation,
                             onToolApproval = onToolApproval,

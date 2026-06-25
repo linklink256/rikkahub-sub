@@ -32,6 +32,9 @@ fun String.stripMarkdown(): String {
         .trim()
 }
 
+// 提取 reasoning 标题用的加粗行正则，提升为顶层常量避免每次调用重新编译
+private val BOLD_LINE_REGEX = Regex("^\\*\\*(.+?)\\*\\*$")
+
 fun String.extractThinkingTitle(): String? {
     // 按行分割文本
     val lines = this.lines()
@@ -41,8 +44,7 @@ fun String.extractThinkingTitle(): String? {
         val line = lines[i].trim()
 
         // 检查是否为加粗格式且独占一整行
-        val boldPattern = Regex("^\\*\\*(.+?)\\*\\*$")
-        val match = boldPattern.find(line)
+        val match = BOLD_LINE_REGEX.find(line)
 
         if (match != null) {
             // 返回加粗标记内的文本内容
