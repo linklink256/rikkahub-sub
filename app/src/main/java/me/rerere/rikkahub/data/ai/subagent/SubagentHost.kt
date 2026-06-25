@@ -2,6 +2,9 @@ package me.rerere.rikkahub.data.ai.subagent
 
 import android.util.Log
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.fold
 import kotlinx.coroutines.flow.onEach
@@ -223,8 +226,8 @@ class SubagentHost(
         // 修复：onProgress 在独立的 SupervisorJob scope 中 launch 执行，emit 不等待其完成。
         // 节流逻辑（结构签名 + 时间间隔）仍在 onEach 中同步判断，只把耗时的回调本身异步化。
         // 最终结果由工具返回值覆盖，异步进度更新被取消也不影响正确性。
-        val progressScope = kotlinx.coroutines.CoroutineScope(
-            kotlinx.coroutines.SupervisorJob() + Dispatchers.IO
+        val progressScope = CoroutineScope(
+            SupervisorJob() + Dispatchers.IO
         )
         var lastEmitTime = 0L
         var lastSignature = -1
