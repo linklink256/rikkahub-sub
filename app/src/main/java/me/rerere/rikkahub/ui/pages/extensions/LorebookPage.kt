@@ -2,10 +2,7 @@ package me.rerere.rikkahub.ui.pages.extensions
 
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
-import me.rerere.hugeicons.stroke.Book01
 import me.rerere.hugeicons.stroke.ArrowDown01
-import me.rerere.hugeicons.stroke.Download01
-import me.rerere.hugeicons.stroke.FileDownload
 import me.rerere.hugeicons.stroke.FileImport
 import me.rerere.hugeicons.stroke.Tools
 import me.rerere.hugeicons.stroke.Share03
@@ -17,43 +14,29 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.ui.Alignment
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.InputChip
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -61,7 +44,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
@@ -71,140 +53,87 @@ import kotlinx.coroutines.launch
 import me.rerere.ai.core.MessageRole
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.export.LorebookSerializer
-import me.rerere.rikkahub.data.export.ModeInjectionSerializer
 import me.rerere.rikkahub.data.export.rememberExporter
 import me.rerere.rikkahub.data.export.rememberImporter
 import me.rerere.rikkahub.data.model.InjectionPosition
 import me.rerere.rikkahub.data.model.Lorebook
 import me.rerere.rikkahub.data.model.PromptInjection
-import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
-import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
+import me.rerere.rikkahub.ui.components.ui.ReorderableListScaffold
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
-import me.rerere.rikkahub.ui.components.ui.Select
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.hooks.useEditState
 import me.rerere.rikkahub.ui.hooks.EditState
-import me.rerere.rikkahub.ui.theme.CustomColors
-import me.rerere.rikkahub.utils.plus
 import me.rerere.rikkahub.utils.move
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun LorebookPage(vm: PromptVM = koinViewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val lorebooks = settings.lorebooks
     val toaster = LocalToaster.current
     val importSuccessMsg = stringResource(R.string.export_import_success)
     val importFailedMsg = stringResource(R.string.export_import_failed)
     val importer = rememberImporter(LorebookSerializer) { result ->
         result.onSuccess { imported ->
-            vm.updateSettings(settings.copy(lorebooks = lorebooks + imported))
+            vm.addOrUpdateLorebook(imported)
             toaster.show(importSuccessMsg)
         }.onFailure { error ->
             toaster.show(importFailedMsg.format(error.message))
         }
     }
     val editState = useEditState<Lorebook> { edited ->
-        val index = lorebooks.indexOfFirst { it.id == edited.id }
-        if (index >= 0) {
-            vm.updateSettings(settings.copy(lorebooks = lorebooks.toMutableList().apply { set(index, edited) }))
-        } else {
-            vm.updateSettings(settings.copy(lorebooks = lorebooks + edited))
-        }
+        vm.addOrUpdateLorebook(edited)
     }
 
-    Scaffold(
-        topBar = {
-            LargeFlexibleTopAppBar(
-                navigationIcon = { BackButton() },
-                title = { Text(stringResource(R.string.prompt_page_lorebook_tab)) },
-                actions = {
-                    IconButton(onClick = { editState.open(Lorebook()) }) {
-                        Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.add))
-                    }
-                    IconButton(onClick = { importer.importFromFile() }) {
-                        Icon(HugeIcons.FileImport, contentDescription = null)
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = CustomColors.topBarColors,
+    ReorderableListScaffold(
+        title = stringResource(R.string.prompt_page_lorebook_tab),
+        items = lorebooks,
+        itemKey = { it.id },
+        onReorder = { from, to ->
+            vm.reorderLorebooks(from, to)
+        },
+        onDelete = { vm.deleteLorebook(it) },
+        onBack = {},
+        actions = {
+            IconButton(onClick = { editState.open(Lorebook()) }) {
+                Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.add))
+            }
+            IconButton(onClick = { importer.importFromFile() }) {
+                Icon(HugeIcons.FileImport, contentDescription = null)
+            }
+        },
+        emptyContent = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.prompt_page_lorebook_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.prompt_page_empty_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+        },
+        itemContent = { book ->
+            LorebookCard(
+                book = book,
+                onEdit = { editState.open(book) },
             )
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor,
-    ) { innerPadding ->
-        LorebookTab(
-            lorebooks = lorebooks,
-            onUpdate = { vm.updateSettings(settings.copy(lorebooks = it)) },
-            editState = editState,
-            contentPadding = innerPadding,
-        )
-    }
-}
-
-@Composable
-private fun LorebookTab(
-    lorebooks: List<Lorebook>,
-    onUpdate: (List<Lorebook>) -> Unit,
-    editState: EditState<Lorebook>,
-    contentPadding: PaddingValues = PaddingValues(0.dp)
-) {
-    val lazyListState = rememberLazyListState()
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newList = lorebooks.move(from.index, to.index)
-        onUpdate(newList)
-    }
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize(),
-        contentPadding = contentPadding + PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        state = lazyListState
-    ) {
-        if (lorebooks.isEmpty()) {
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillParentMaxHeight(0.8f)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        text = stringResource(R.string.prompt_page_lorebook_empty),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = stringResource(R.string.prompt_page_empty_hint),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
-            }
-        } else {
-            items(lorebooks, key = { it.id }) { book ->
-                ReorderableSwipeableItem(
-                    onDelete = { onUpdate(lorebooks - book) },
-                    state = reorderableState,
-                    key = book.id,
-                ) {
-                    LorebookCard(
-                        book = book,
-                        onEdit = { editState.open(book) },
-                    )
-                }
-            }
-        }
-    }
+    )
 
     if (editState.isEditing) {
         editState.currentState?.let { state ->
@@ -212,7 +141,7 @@ private fun LorebookTab(
                 book = state,
                 onDismiss = { editState.dismiss() },
                 onConfirm = { editState.confirm() },
-                onEdit = { editState.currentState = it }
+                onEdit = { editState.currentState = it },
             )
         }
     }

@@ -1,31 +1,17 @@
 package me.rerere.rikkahub.ui.pages.extensions.workspace
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Card
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,106 +20,70 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
-import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.Edit01
 import me.rerere.hugeicons.stroke.File02
-import me.rerere.hugeicons.stroke.MoreVertical
+import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.db.entity.WorkspaceEntity
-import androidx.compose.ui.res.stringResource
-import me.rerere.rikkahub.R
-import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ListCard
-import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
+import me.rerere.rikkahub.ui.components.ui.ReorderableListScaffold
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
-import me.rerere.rikkahub.ui.pages.extensions.workspace.toShellStatusLabel
 import me.rerere.rikkahub.ui.context.LocalNavController
-import me.rerere.rikkahub.ui.theme.CustomColors
-import me.rerere.rikkahub.utils.plus
+import me.rerere.rikkahub.ui.pages.extensions.workspace.toShellStatusLabel
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun WorkspacePage(vm: WorkspaceVM = koinViewModel()) {
     val navController = LocalNavController.current
     val workspaces by vm.workspaces.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     var showAddDialog by rememberSaveable { mutableStateOf(false) }
     var editTarget by remember { mutableStateOf<WorkspaceEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<WorkspaceEntity?>(null) }
-    val lazyListState = rememberLazyListState()
-    val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        // 暂时只做内存重排（无持久化 order 字段）
-    }
 
-    Scaffold(
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = { Text(stringResource(R.string.workspace_page_title)) },
-                navigationIcon = { BackButton() },
-                actions = {
-                    IconButton(onClick = { showAddDialog = true }) {
-                        Icon(HugeIcons.Add01, contentDescription = null)
+    ReorderableListScaffold(
+        title = stringResource(R.string.workspace_page_title),
+        items = workspaces,
+        itemKey = { it.id },
+        onReorder = { _, _ -> /* 暂时只做内存重排（无持久化 order 字段）*/ },
+        onDelete = { deleteTarget = it },
+        onBack = {},
+        actions = {
+            IconButton(onClick = { showAddDialog = true }) {
+                Icon(HugeIcons.Add01, contentDescription = null)
+            }
+        },
+        emptyContent = { EmptyWorkspaceState() },
+        itemContent = { workspace ->
+            ListCard(
+                onClick = { navController.navigate(Screen.WorkspaceDetail(workspace.id)) },
+                leading = {
+                    Icon(
+                        imageVector = HugeIcons.File02,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                    )
+                },
+                title = workspace.name,
+                tags = {
+                    Tag(type = TagType.DEFAULT) {
+                        Text(workspace.shellStatus.toShellStatusLabel())
                     }
                 },
-                scrollBehavior = scrollBehavior,
-                colors = CustomColors.topBarColors,
+                trailing = {
+                    IconButton(onClick = { editTarget = workspace }) {
+                        Icon(HugeIcons.Edit01, contentDescription = null)
+                    }
+                },
             )
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor,
-    ) { innerPadding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = innerPadding + PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            state = lazyListState,
-        ) {
-            if (workspaces.isEmpty()) {
-                item {
-                    EmptyWorkspaceState()
-                }
-            }
-
-            items(workspaces, key = { it.id }) { workspace ->
-                ReorderableSwipeableItem(
-                    onDelete = { deleteTarget = workspace },
-                    state = reorderableState,
-                    key = workspace.id,
-                ) {
-                    ListCard(
-                        onClick = { navController.navigate(Screen.WorkspaceDetail(workspace.id)) },
-                        leading = {
-                            Icon(
-                                imageVector = HugeIcons.File02,
-                                contentDescription = null,
-                                tint = MaterialTheme.colorScheme.primary,
-                            )
-                        },
-                        title = workspace.name,
-                        tags = {
-                            Tag(type = TagType.DEFAULT) {
-                                Text(workspace.shellStatus.toShellStatusLabel())
-                            }
-                        },
-                        trailing = {
-                            IconButton(onClick = { editTarget = workspace }) {
-                                Icon(HugeIcons.Edit01, contentDescription = null)
-                            }
-                        },
-                    )
-                }
-            }
-        }
-    }
+    )
 
     if (showAddDialog) {
         EditWorkspaceDialog(

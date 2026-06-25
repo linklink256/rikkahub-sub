@@ -80,7 +80,6 @@ import me.rerere.rikkahub.ui.pages.setting.components.ProviderConfigure
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.ImageUtils
 import me.rerere.rikkahub.utils.plus
-import me.rerere.rikkahub.utils.move
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import java.util.Locale
@@ -96,8 +95,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
     var searchQuery by remember { mutableStateOf("") }
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.providers.move(from.index, to.index)
-        vm.updateSettings(settings.copy(providers = newProviders))
+        vm.reorderProviders(from.index, to.index)
     }
 
     val filteredProviders = remember(settings.providers, searchQuery) {
@@ -135,18 +133,10 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
                         }
                     }
                     ImportProviderButton {
-                        vm.updateSettings(
-                            settings.copy(
-                                providers = listOf(it.copyProvider(Uuid.random())) + settings.providers
-                            )
-                        )
+                        vm.addProvider(it.copyProvider(Uuid.random()))
                     }
                     AddButton {
-                        vm.updateSettings(
-                            settings.copy(
-                                providers = listOf(it) + settings.providers
-                            )
-                        )
+                        vm.addProvider(it)
                     }
                 },
                 scrollBehavior = scrollBehavior,
@@ -196,7 +186,7 @@ fun SettingProviderPage(vm: SettingVM = koinViewModel()) {
             ) {
                 items(filteredProviders, key = { it.id }) { provider ->
                     ReorderableSwipeableItem(
-                        onDelete = { vm.updateSettings(settings.copy(providers = settings.providers - provider)) },
+                        onDelete = { vm.deleteProvider(provider) },
                         state = reorderableState,
                         key = provider.id,
                         swipeEnabled = provider.enabled,

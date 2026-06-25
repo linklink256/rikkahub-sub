@@ -48,16 +48,7 @@ fun TTSProviderConfigure(
                 onExpandedChange = { expanded = !expanded }
             ) {
                 OutlinedTextField(
-                    value = when (setting) {
-                        is TTSProviderSetting.OpenAI -> "OpenAI"
-                        is TTSProviderSetting.Gemini -> "Gemini"
-                        is TTSProviderSetting.SystemTTS -> "System TTS"
-                        is TTSProviderSetting.MiniMax -> "MiniMax"
-                        is TTSProviderSetting.Qwen -> "Qwen"
-                        is TTSProviderSetting.Groq -> "Groq"
-                        is TTSProviderSetting.XAI -> "xAI"
-                        is TTSProviderSetting.MiMo -> "MiMo"
-                    },
+                    value = setting.typeDisplayName(),
                     onValueChange = {},
                     readOnly = true,
                     trailingIcon = {

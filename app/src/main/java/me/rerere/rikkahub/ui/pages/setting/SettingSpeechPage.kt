@@ -12,20 +12,15 @@ import me.rerere.hugeicons.stroke.Delete01
 import me.rerere.hugeicons.stroke.VolumeHigh
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -35,16 +30,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.SheetValue
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -59,21 +50,20 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import me.rerere.rikkahub.R
 import me.rerere.asr.ASRProviderSetting
-import me.rerere.rikkahub.data.datastore.DEFAULT_SYSTEM_TTS_ID
-import me.rerere.rikkahub.data.datastore.DEFAULT_TTS_PROVIDER_IDS
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ProviderEditSheet
 import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalTTSState
 import me.rerere.rikkahub.ui.pages.setting.components.ASRProviderConfigure
 import me.rerere.rikkahub.ui.pages.setting.components.TTSProviderConfigure
+import me.rerere.rikkahub.ui.pages.setting.components.typeDisplayName
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.plus
-import me.rerere.rikkahub.utils.move
 import me.rerere.tts.provider.TTSProviderSetting
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
@@ -96,20 +86,11 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
                 actions = {
                     if (selectedPage == 0) {
                         AddTTSProviderButton {
-                            vm.updateSettings(
-                                settings.copy(
-                                    ttsProviders = listOf(it) + settings.ttsProviders
-                                )
-                            )
+                            vm.addTtsProvider(it)
                         }
                     } else {
                         AddASRProviderButton {
-                            vm.updateSettings(
-                                settings.copy(
-                                    asrProviders = listOf(it) + settings.asrProviders,
-                                    selectedASRProviderId = settings.selectedASRProviderId ?: it.id
-                                )
-                            )
+                            vm.addAsrProvider(it)
                         }
                     }
                 },
@@ -141,14 +122,18 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
         when (selectedPage) {
             0 -> TTSProviderList(
                 settings = settings,
-                onUpdateSettings = vm::updateSettings,
+                onReorder = vm::reorderTtsProviders,
+                onDelete = vm::deleteTtsProvider,
+                onSelect = vm::selectTtsProvider,
                 onEdit = { editingTTSProvider = it },
                 modifier = Modifier.padding(innerPadding)
             )
 
             1 -> ASRProviderList(
                 settings = settings,
-                onUpdateSettings = vm::updateSettings,
+                onReorder = vm::reorderAsrProviders,
+                onDelete = vm::deleteAsrProvider,
+                onSelect = vm::selectAsrProvider,
                 onEdit = { editingASRProvider = it },
                 modifier = Modifier.padding(innerPadding)
             )
@@ -157,143 +142,58 @@ fun SettingSpeechPage(vm: SettingVM = koinViewModel()) {
 
     // Edit TTS Provider Bottom Sheet
     editingTTSProvider?.let { provider ->
-        val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
-        var currentProvider by remember(provider) { mutableStateOf(provider) }
-
-        ModalBottomSheet(
-            onDismissRequest = {
+        ProviderEditSheet(
+            title = stringResource(R.string.setting_tts_page_edit_provider),
+            confirmText = stringResource(R.string.chat_page_save),
+            setting = provider,
+            onConfirm = { edited ->
+                vm.updateTtsProvider(edited)
                 editingTTSProvider = null
             },
-            sheetState = bottomSheetState,
-            dragHandle = {
-                BottomSheetDefaults.DragHandle()
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .fillMaxHeight(0.8f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.setting_tts_page_edit_provider),
-                    style = MaterialTheme.typography.headlineSmall
-                )
-
+            onDismiss = { editingTTSProvider = null },
+            configure = { setting, onValueChange, modifier ->
                 TTSProviderConfigure(
-                    setting = currentProvider,
-                    onValueChange = { newState ->
-                        currentProvider = newState
-                    },
-                    modifier = Modifier.weight(1f)
+                    setting = setting,
+                    onValueChange = onValueChange,
+                    modifier = modifier,
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TextButton(
-                        onClick = {
-                            editingTTSProvider = null
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-
-                    TextButton(
-                        onClick = {
-                            val newProviders = settings.ttsProviders.map {
-                                if (it.id == provider.id) currentProvider else it
-                            }
-                            vm.updateSettings(settings.copy(ttsProviders = newProviders))
-                            editingTTSProvider = null
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.chat_page_save))
-                    }
-                }
-            }
-        }
+            },
+        )
     }
 
     editingASRProvider?.let { provider ->
-        val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
-        var currentProvider by remember(provider) { mutableStateOf(provider) }
-
-        ModalBottomSheet(
-            onDismissRequest = {
+        ProviderEditSheet(
+            title = stringResource(R.string.setting_asr_page_edit_provider),
+            confirmText = stringResource(R.string.chat_page_save),
+            setting = provider,
+            onConfirm = { edited ->
+                vm.updateAsrProvider(edited)
                 editingASRProvider = null
             },
-            sheetState = bottomSheetState,
-            dragHandle = {
-                BottomSheetDefaults.DragHandle()
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .fillMaxHeight(0.8f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.setting_asr_page_edit_provider),
-                    style = MaterialTheme.typography.headlineSmall
-                )
-
+            onDismiss = { editingASRProvider = null },
+            configure = { setting, onValueChange, modifier ->
                 ASRProviderConfigure(
-                    setting = currentProvider,
-                    onValueChange = { newState ->
-                        currentProvider = newState
-                    },
-                    modifier = Modifier.weight(1f)
+                    setting = setting,
+                    onValueChange = onValueChange,
+                    modifier = modifier,
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TextButton(
-                        onClick = {
-                            editingASRProvider = null
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-
-                    TextButton(
-                        onClick = {
-                            val newProviders = settings.asrProviders.map {
-                                if (it.id == provider.id) currentProvider else it
-                            }
-                            vm.updateSettings(settings.copy(asrProviders = newProviders))
-                            editingASRProvider = null
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.chat_page_save))
-                    }
-                }
-            }
-        }
+            },
+        )
     }
 }
 
 @Composable
 private fun TTSProviderList(
     settings: Settings,
-    onUpdateSettings: (Settings) -> Unit,
+    onReorder: (Int, Int) -> Unit,
+    onDelete: (TTSProviderSetting) -> Unit,
+    onSelect: (TTSProviderSetting) -> Unit,
     onEdit: (TTSProviderSetting) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.ttsProviders.move(from.index, to.index)
-        onUpdateSettings(settings.copy(ttsProviders = newProviders))
+        onReorder(from.index, to.index)
     }
 
     LazyColumn(
@@ -306,33 +206,14 @@ private fun TTSProviderList(
     ) {
         items(settings.ttsProviders, key = { it.id }) { provider ->
             ReorderableSwipeableItem(
-                onDelete = {
-                    val newProviders = settings.ttsProviders - provider
-                    val newSelectedId =
-                        if (settings.selectedTTSProviderId == provider.id) DEFAULT_SYSTEM_TTS_ID else settings.selectedTTSProviderId
-                    // 如果删除的是内置默认 TTS provider，记录到 hiddenTtsProviderIds 防止迁移回灌
-                    val newHidden = if (provider.id in DEFAULT_TTS_PROVIDER_IDS) {
-                        settings.hiddenTtsProviderIds + provider.id
-                    } else {
-                        settings.hiddenTtsProviderIds
-                    }
-                    onUpdateSettings(
-                        settings.copy(
-                            ttsProviders = newProviders,
-                            selectedTTSProviderId = newSelectedId,
-                            hiddenTtsProviderIds = newHidden,
-                        )
-                    )
-                },
+                onDelete = { onDelete(provider) },
                 state = reorderableState,
                 key = provider.id,
             ) {
                 TTSProviderItem(
                     provider = provider,
                     isSelected = settings.selectedTTSProviderId == provider.id,
-                    onSelect = {
-                        onUpdateSettings(settings.copy(selectedTTSProviderId = provider.id))
-                    },
+                    onSelect = { onSelect(provider) },
                     onEdit = {
                         onEdit(provider)
                     },
@@ -345,14 +226,15 @@ private fun TTSProviderList(
 @Composable
 private fun ASRProviderList(
     settings: Settings,
-    onUpdateSettings: (Settings) -> Unit,
+    onReorder: (Int, Int) -> Unit,
+    onDelete: (ASRProviderSetting) -> Unit,
+    onSelect: (ASRProviderSetting) -> Unit,
     onEdit: (ASRProviderSetting) -> Unit,
     modifier: Modifier = Modifier
 ) {
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newProviders = settings.asrProviders.move(from.index, to.index)
-        onUpdateSettings(settings.copy(asrProviders = newProviders))
+        onReorder(from.index, to.index)
     }
 
     LazyColumn(
@@ -365,30 +247,14 @@ private fun ASRProviderList(
     ) {
         items(settings.asrProviders, key = { it.id }) { provider ->
             ReorderableSwipeableItem(
-                onDelete = {
-                    val newProviders = settings.asrProviders - provider
-                    val newSelectedId =
-                        if (settings.selectedASRProviderId == provider.id) {
-                            newProviders.firstOrNull()?.id
-                        } else {
-                            settings.selectedASRProviderId
-                        }
-                    onUpdateSettings(
-                        settings.copy(
-                            asrProviders = newProviders,
-                            selectedASRProviderId = newSelectedId
-                        )
-                    )
-                },
+                onDelete = { onDelete(provider) },
                 state = reorderableState,
                 key = provider.id,
             ) {
                 ASRProviderItem(
                     provider = provider,
                     isSelected = settings.selectedASRProviderId == provider.id,
-                    onSelect = {
-                        onUpdateSettings(settings.copy(selectedASRProviderId = provider.id))
-                    },
+                    onSelect = { onSelect(provider) },
                     onEdit = {
                         onEdit(provider)
                     },
@@ -401,11 +267,9 @@ private fun ASRProviderList(
 @Composable
 private fun AddTTSProviderButton(onAdd: (TTSProviderSetting) -> Unit) {
     var showBottomSheet by remember { mutableStateOf(false) }
-    var currentProvider: TTSProviderSetting by remember { mutableStateOf(TTSProviderSetting.SystemTTS()) }
 
     IconButton(
         onClick = {
-            currentProvider = TTSProviderSetting.SystemTTS()
             showBottomSheet = true
         }
     ) {
@@ -413,61 +277,23 @@ private fun AddTTSProviderButton(onAdd: (TTSProviderSetting) -> Unit) {
     }
 
     if (showBottomSheet) {
-        val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
-        ModalBottomSheet(
-            onDismissRequest = {
+        ProviderEditSheet<TTSProviderSetting>(
+            title = stringResource(R.string.setting_tts_page_add_provider),
+            confirmText = stringResource(R.string.setting_tts_page_add),
+            setting = TTSProviderSetting.SystemTTS(),
+            onConfirm = {
+                onAdd(it)
                 showBottomSheet = false
             },
-            sheetState = bottomSheetState,
-            dragHandle = {
-                BottomSheetDefaults.DragHandle()
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .fillMaxHeight(0.8f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.setting_tts_page_add_provider),
-                    style = MaterialTheme.typography.headlineSmall
-                )
-
+            onDismiss = { showBottomSheet = false },
+            configure = { setting, onValueChange, modifier ->
                 TTSProviderConfigure(
-                    setting = currentProvider,
-                    onValueChange = { newState ->
-                        currentProvider = newState
-                    },
-                    modifier = Modifier.weight(1f)
+                    setting = setting,
+                    onValueChange = onValueChange,
+                    modifier = modifier,
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TextButton(
-                        onClick = {
-                            showBottomSheet = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-
-                    TextButton(
-                        onClick = {
-                            onAdd(currentProvider)
-                            showBottomSheet = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.setting_tts_page_add))
-                    }
-                }
-            }
-        }
+            },
+        )
     }
 }
 
@@ -475,7 +301,7 @@ private fun AddTTSProviderButton(onAdd: (TTSProviderSetting) -> Unit) {
 private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var showTypeMenu by remember { mutableStateOf(false) }
-    var currentProvider: ASRProviderSetting by remember { mutableStateOf(ASRProviderSetting.OpenAIRealtime()) }
+    var initialProvider by remember { mutableStateOf<ASRProviderSetting>(ASRProviderSetting.OpenAIRealtime()) }
 
     Box {
         IconButton(
@@ -490,7 +316,7 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
             DropdownMenuItem(
                 text = { Text("OpenAI Realtime") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.OpenAIRealtime()
+                    initialProvider = ASRProviderSetting.OpenAIRealtime()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -498,7 +324,7 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
             DropdownMenuItem(
                 text = { Text("DashScope") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.DashScope()
+                    initialProvider = ASRProviderSetting.DashScope()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -506,7 +332,7 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
             DropdownMenuItem(
                 text = { Text("Volcengine") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.Volcengine()
+                    initialProvider = ASRProviderSetting.Volcengine()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -514,7 +340,7 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
             DropdownMenuItem(
                 text = { Text("MiMo") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.MiMo()
+                    initialProvider = ASRProviderSetting.MiMo()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -522,7 +348,7 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
             DropdownMenuItem(
                 text = { Text("Step") },
                 onClick = {
-                    currentProvider = ASRProviderSetting.Step()
+                    initialProvider = ASRProviderSetting.Step()
                     showTypeMenu = false
                     showBottomSheet = true
                 }
@@ -531,61 +357,23 @@ private fun AddASRProviderButton(onAdd: (ASRProviderSetting) -> Unit) {
     }
 
     if (showBottomSheet) {
-        val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden, enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded))
-        ModalBottomSheet(
-            onDismissRequest = {
+        ProviderEditSheet(
+            title = stringResource(R.string.setting_asr_page_add_provider),
+            confirmText = stringResource(R.string.setting_tts_page_add),
+            setting = initialProvider,
+            onConfirm = {
+                onAdd(it)
                 showBottomSheet = false
             },
-            sheetState = bottomSheetState,
-            dragHandle = {
-                BottomSheetDefaults.DragHandle()
-            }
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-                    .fillMaxHeight(0.8f),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.setting_asr_page_add_provider),
-                    style = MaterialTheme.typography.headlineSmall
-                )
-
+            onDismiss = { showBottomSheet = false },
+            configure = { setting, onValueChange, modifier ->
                 ASRProviderConfigure(
-                    setting = currentProvider,
-                    onValueChange = { newState ->
-                        currentProvider = newState
-                    },
-                    modifier = Modifier.weight(1f)
+                    setting = setting,
+                    onValueChange = onValueChange,
+                    modifier = modifier,
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    TextButton(
-                        onClick = {
-                            showBottomSheet = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.cancel))
-                    }
-
-                    TextButton(
-                        onClick = {
-                            onAdd(currentProvider)
-                            showBottomSheet = false
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(stringResource(R.string.setting_tts_page_add))
-                    }
-                }
-            }
-        }
+            },
+        )
     }
 }
 
@@ -600,16 +388,7 @@ private fun TTSProviderItem(
     val tts = LocalTTSState.current
     val isSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
     val isAvailable by tts.isAvailable.collectAsStateWithLifecycle()
-    val providerType = when (provider) {
-        is TTSProviderSetting.OpenAI -> stringResource(R.string.setting_tts_page_provider_openai)
-        is TTSProviderSetting.Gemini -> stringResource(R.string.setting_tts_page_provider_gemini)
-        is TTSProviderSetting.MiniMax -> "MiniMax"
-        is TTSProviderSetting.SystemTTS -> stringResource(R.string.setting_tts_page_provider_system)
-        is TTSProviderSetting.Qwen -> "Qwen"
-        is TTSProviderSetting.Groq -> "Groq"
-        is TTSProviderSetting.XAI -> "xAI"
-        is TTSProviderSetting.MiMo -> "MiMo"
-    }
+    val providerType = provider.typeDisplayName()
     ListCard(
         onClick = onEdit,
         modifier = modifier,
@@ -662,13 +441,7 @@ private fun ASRProviderItem(
     onSelect: () -> Unit,
     onEdit: () -> Unit,
 ) {
-    val providerType = when (provider) {
-        is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
-        is ASRProviderSetting.DashScope -> "DashScope"
-        is ASRProviderSetting.Volcengine -> "Volcengine"
-        is ASRProviderSetting.MiMo -> "MiMo"
-        is ASRProviderSetting.Step -> "Step"
-    }
+    val providerType = provider.typeDisplayName()
     ListCard(
         onClick = onEdit,
         modifier = modifier,

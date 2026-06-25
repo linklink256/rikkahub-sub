@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -32,13 +33,7 @@ fun ASRProviderConfigure(
             description = { Text(stringResource(R.string.setting_asr_configure_provider_type_desc)) }
         ) {
             OutlinedTextField(
-                value = when (setting) {
-                    is ASRProviderSetting.OpenAIRealtime -> "OpenAI Realtime"
-                    is ASRProviderSetting.DashScope -> "DashScope"
-                    is ASRProviderSetting.Volcengine -> "Volcengine"
-                    is ASRProviderSetting.MiMo -> "MiMo"
-                    is ASRProviderSetting.Step -> "Step"
-                },
+                value = setting.typeDisplayName(),
                 onValueChange = {},
                 readOnly = true,
                 modifier = Modifier.fillMaxWidth()
@@ -68,120 +63,146 @@ fun ASRProviderConfigure(
     }
 }
 
+/**
+ * ASR 配置表单通用文本字段: FormItem(label + description) 包裹 OutlinedTextField。
+ *
+ * label / description / placeholder 均为已解析字符串, 由调用方传入, 以保留各 provider
+ * 间描述与占位符的差异。替代 5 个子配置函数里重复的 FormItem + OutlinedTextField 块。
+ */
+@Composable
+fun AsrTextField(
+    label: String,
+    description: String,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    placeholder: String? = null,
+    minLines: Int = 1
+) {
+    FormItem(
+        label = { Text(label) },
+        description = { Text(description) }
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            modifier = modifier.fillMaxWidth(),
+            minLines = minLines,
+            placeholder = if (placeholder != null) {
+                { Text(placeholder) }
+            } else {
+                null
+            }
+        )
+    }
+}
+
+/**
+ * ASR 配置表单通用数字字段: FormItem(label + description) 包裹 OutlinedNumberInput。
+ *
+ * [range] 为空时不做范围校验; 否则仅当值落在范围内时才回调, 保留原有的字段校验逻辑
+ * (UI 层不报错, 仅静默丢弃越界值)。numberLabel 为 OutlinedNumberInput 内部浮动标签。
+ */
+@Composable
+fun <T> AsrNumberField(
+    label: String,
+    description: String,
+    value: T,
+    onValueChange: (T) -> Unit,
+    modifier: Modifier = Modifier,
+    range: ClosedRange<T>? = null,
+    numberLabel: String = ""
+) where T : Number, T : Comparable<T> {
+    FormItem(
+        label = { Text(label) },
+        description = { Text(description) }
+    ) {
+        OutlinedNumberInput(
+            value = value,
+            onValueChange = { v ->
+                if (range == null || v in range) {
+                    onValueChange(v)
+                }
+            },
+            modifier = modifier.fillMaxWidth(),
+            label = numberLabel
+        )
+    }
+}
+
 @Composable
 private fun OpenAIRealtimeASRConfiguration(
     setting: ASRProviderSetting.OpenAIRealtime,
     onValueChange: (ASRProviderSetting) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_api_key)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_openai_api_key_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.apiKey,
-                onValueChange = { onValueChange(setting.copy(apiKey = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("sk-...") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_api_key),
+            description = stringResource(R.string.setting_asr_configure_openai_api_key_desc),
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
+            placeholder = "sk-..."
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_websocket_url)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_openai_websocket_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.websocketUrl,
-                onValueChange = { onValueChange(setting.copy(websocketUrl = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("wss://api.openai.com/v1/realtime?intent=transcription") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_websocket_url),
+            description = stringResource(R.string.setting_asr_configure_openai_websocket_desc),
+            value = setting.websocketUrl,
+            onValueChange = { onValueChange(setting.copy(websocketUrl = it)) },
+            placeholder = "wss://api.openai.com/v1/realtime?intent=transcription"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_model)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_model_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.model,
-                onValueChange = { onValueChange(setting.copy(model = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("gpt-4o-transcribe") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_model),
+            description = stringResource(R.string.setting_asr_configure_model_desc),
+            value = setting.model,
+            onValueChange = { onValueChange(setting.copy(model = it)) },
+            placeholder = "gpt-4o-transcribe"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_language_iso_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.language,
-                onValueChange = { onValueChange(setting.copy(language = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("auto") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_language),
+            description = stringResource(R.string.setting_asr_configure_language_iso_desc),
+            value = setting.language,
+            onValueChange = { onValueChange(setting.copy(language = it)) },
+            placeholder = "auto"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_prompt)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_prompt_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.prompt,
-                onValueChange = { onValueChange(setting.copy(prompt = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2,
-                placeholder = { Text("Optional") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_prompt),
+            description = stringResource(R.string.setting_asr_configure_prompt_desc),
+            value = setting.prompt,
+            onValueChange = { onValueChange(setting.copy(prompt = it)) },
+            placeholder = "Optional",
+            minLines = 2
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_vad_threshold)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_vad_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.vadThreshold,
-                onValueChange = { value ->
-                    if (value in 0.0f..1.0f) {
-                        onValueChange(setting.copy(vadThreshold = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "VAD Threshold"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_vad_threshold),
+            description = stringResource(R.string.setting_asr_configure_vad_desc),
+            value = setting.vadThreshold,
+            onValueChange = { onValueChange(setting.copy(vadThreshold = it)) },
+            range = 0.0f..1.0f,
+            numberLabel = "VAD Threshold"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_prefix_padding)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_prefix_padding_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.prefixPaddingMs,
-                onValueChange = { value ->
-                    if (value in 0..2000) {
-                        onValueChange(setting.copy(prefixPaddingMs = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Prefix Padding"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_prefix_padding),
+            description = stringResource(R.string.setting_asr_configure_prefix_padding_desc),
+            value = setting.prefixPaddingMs,
+            onValueChange = { onValueChange(setting.copy(prefixPaddingMs = it)) },
+            range = 0..2000,
+            numberLabel = "Prefix Padding"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_silence_duration)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_silence_duration_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.silenceDurationMs,
-                onValueChange = { value ->
-                    if (value in 100..5000) {
-                        onValueChange(setting.copy(silenceDurationMs = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Silence Duration"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_silence_duration),
+            description = stringResource(R.string.setting_asr_configure_silence_duration_desc),
+            value = setting.silenceDurationMs,
+            onValueChange = { onValueChange(setting.copy(silenceDurationMs = it)) },
+            range = 100..5000,
+            numberLabel = "Silence Duration"
+        )
     }
 }
 
@@ -191,85 +212,55 @@ private fun DashScopeASRConfiguration(
     onValueChange: (ASRProviderSetting) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_api_key)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_dashscope_api_key_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.apiKey,
-                onValueChange = { onValueChange(setting.copy(apiKey = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("sk-...") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_api_key),
+            description = stringResource(R.string.setting_asr_configure_dashscope_api_key_desc),
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
+            placeholder = "sk-..."
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_websocket_url)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_dashscope_websocket_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.websocketUrl,
-                onValueChange = { onValueChange(setting.copy(websocketUrl = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("wss://dashscope.aliyuncs.com/api-ws/v1/realtime") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_websocket_url),
+            description = stringResource(R.string.setting_asr_configure_dashscope_websocket_desc),
+            value = setting.websocketUrl,
+            onValueChange = { onValueChange(setting.copy(websocketUrl = it)) },
+            placeholder = "wss://dashscope.aliyuncs.com/api-ws/v1/realtime"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_model)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_model_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.model,
-                onValueChange = { onValueChange(setting.copy(model = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("qwen3-asr-flash-realtime-2026-02-10") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_model),
+            description = stringResource(R.string.setting_asr_configure_model_desc),
+            value = setting.model,
+            onValueChange = { onValueChange(setting.copy(model = it)) },
+            placeholder = "qwen3-asr-flash-realtime-2026-02-10"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_language_iso_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.language,
-                onValueChange = { onValueChange(setting.copy(language = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("zh") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_language),
+            description = stringResource(R.string.setting_asr_configure_language_iso_desc),
+            value = setting.language,
+            onValueChange = { onValueChange(setting.copy(language = it)) },
+            placeholder = "zh"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_vad_threshold)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_dashscope_vad_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.vadThreshold,
-                onValueChange = { value ->
-                    if (value in 0.0f..1.0f) {
-                        onValueChange(setting.copy(vadThreshold = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "VAD Threshold"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_vad_threshold),
+            description = stringResource(R.string.setting_asr_configure_dashscope_vad_desc),
+            value = setting.vadThreshold,
+            onValueChange = { onValueChange(setting.copy(vadThreshold = it)) },
+            range = 0.0f..1.0f,
+            numberLabel = "VAD Threshold"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_silence_duration)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_silence_duration_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.silenceDurationMs,
-                onValueChange = { value ->
-                    if (value in 100..5000) {
-                        onValueChange(setting.copy(silenceDurationMs = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Silence Duration"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_silence_duration),
+            description = stringResource(R.string.setting_asr_configure_silence_duration_desc),
+            value = setting.silenceDurationMs,
+            onValueChange = { onValueChange(setting.copy(silenceDurationMs = it)) },
+            range = 100..5000,
+            numberLabel = "Silence Duration"
+        )
     }
 }
 
@@ -279,53 +270,37 @@ private fun VolcengineASRConfiguration(
     onValueChange: (ASRProviderSetting) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_api_key)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_volcengine_api_key_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.apiKey,
-                onValueChange = { onValueChange(setting.copy(apiKey = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("your-api-key") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_api_key),
+            description = stringResource(R.string.setting_asr_configure_volcengine_api_key_desc),
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
+            placeholder = "your-api-key"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_websocket_url)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_volcengine_websocket_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.websocketUrl,
-                onValueChange = { onValueChange(setting.copy(websocketUrl = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("wss://openspeech.bytedance.com/api/v3/sauc/bigmodel") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_websocket_url),
+            description = stringResource(R.string.setting_asr_configure_volcengine_websocket_desc),
+            value = setting.websocketUrl,
+            onValueChange = { onValueChange(setting.copy(websocketUrl = it)) },
+            placeholder = "wss://openspeech.bytedance.com/api/v3/sauc/bigmodel"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_resource_id)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_resource_id_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.resourceId,
-                onValueChange = { onValueChange(setting.copy(resourceId = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("volc.bigasr.sauc.duration") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_resource_id),
+            description = stringResource(R.string.setting_asr_configure_resource_id_desc),
+            value = setting.resourceId,
+            onValueChange = { onValueChange(setting.copy(resourceId = it)) },
+            placeholder = "volc.bigasr.sauc.duration"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_language_code_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.language,
-                onValueChange = { onValueChange(setting.copy(language = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("auto") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_language),
+            description = stringResource(R.string.setting_asr_configure_language_code_desc),
+            value = setting.language,
+            onValueChange = { onValueChange(setting.copy(language = it)) },
+            placeholder = "auto"
+        )
     }
 }
 
@@ -335,180 +310,119 @@ private fun MiMoASRConfiguration(
     onValueChange: (ASRProviderSetting) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_api_key)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_mimo_api_key_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.apiKey,
-                onValueChange = { onValueChange(setting.copy(apiKey = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("sk-... or tp-...") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_api_key),
+            description = stringResource(R.string.setting_asr_configure_mimo_api_key_desc),
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
+            placeholder = "sk-... or tp-..."
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_base_url)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_mimo_base_url_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.baseUrl,
-                onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("https://api.xiaomimimo.com/v1") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_base_url),
+            description = stringResource(R.string.setting_asr_configure_mimo_base_url_desc),
+            value = setting.baseUrl,
+            onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
+            placeholder = "https://api.xiaomimimo.com/v1"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_model)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_mimo_model_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.model,
-                onValueChange = { onValueChange(setting.copy(model = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("mimo-v2.5-asr") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_model),
+            description = stringResource(R.string.setting_asr_configure_mimo_model_desc),
+            value = setting.model,
+            onValueChange = { onValueChange(setting.copy(model = it)) },
+            placeholder = "mimo-v2.5-asr"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_mimo_language_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.language,
-                onValueChange = { onValueChange(setting.copy(language = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("auto") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_language),
+            description = stringResource(R.string.setting_asr_configure_mimo_language_desc),
+            value = setting.language,
+            onValueChange = { onValueChange(setting.copy(language = it)) },
+            placeholder = "auto"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_sample_rate)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_mimo_sample_rate_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.sampleRate,
-                onValueChange = { value ->
-                    if (value in 8000..48000) {
-                        onValueChange(setting.copy(sampleRate = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Sample Rate"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_sample_rate),
+            description = stringResource(R.string.setting_asr_configure_mimo_sample_rate_desc),
+            value = setting.sampleRate,
+            onValueChange = { onValueChange(setting.copy(sampleRate = it)) },
+            range = 8000..48000,
+            numberLabel = "Sample Rate"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_segment_duration)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_mimo_segment_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.segmentDurationSec,
-                onValueChange = { value ->
-                    if (value in 0..300) {
-                        onValueChange(setting.copy(segmentDurationSec = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Segment Duration (s)"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_segment_duration),
+            description = stringResource(R.string.setting_asr_configure_mimo_segment_desc),
+            value = setting.segmentDurationSec,
+            onValueChange = { onValueChange(setting.copy(segmentDurationSec = it)) },
+            range = 0..300,
+            numberLabel = "Segment Duration (s)"
+        )
     }
 }
 
 @Composable
-
 private fun StepASRConfiguration(
     setting: ASRProviderSetting.Step,
     onValueChange: (ASRProviderSetting) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_api_key)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_api_key_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.apiKey,
-                onValueChange = { onValueChange(setting.copy(apiKey = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("your-stepfun-api-key") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_api_key),
+            description = stringResource(R.string.setting_asr_configure_step_api_key_desc),
+            value = setting.apiKey,
+            onValueChange = { onValueChange(setting.copy(apiKey = it)) },
+            placeholder = "your-stepfun-api-key"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_base_url)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_base_url_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.baseUrl,
-                onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("https://api.stepfun.com") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_base_url),
+            description = stringResource(R.string.setting_asr_configure_step_base_url_desc),
+            value = setting.baseUrl,
+            onValueChange = { onValueChange(setting.copy(baseUrl = it)) },
+            placeholder = "https://api.stepfun.com"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_model)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_model_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.model,
-                onValueChange = { onValueChange(setting.copy(model = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("stepaudio-2.5-asr") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_model),
+            description = stringResource(R.string.setting_asr_configure_step_model_desc),
+            value = setting.model,
+            onValueChange = { onValueChange(setting.copy(model = it)) },
+            placeholder = "stepaudio-2.5-asr"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_language)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_language_desc)) }
-        ) {
-            OutlinedTextField(
-                value = setting.language,
-                onValueChange = { onValueChange(setting.copy(language = it)) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("auto") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_language),
+            description = stringResource(R.string.setting_asr_configure_step_language_desc),
+            value = setting.language,
+            onValueChange = { onValueChange(setting.copy(language = it)) },
+            placeholder = "auto"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_sample_rate)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_sample_rate_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.sampleRate,
-                onValueChange = { value ->
-                    if (value in 8000..48000) {
-                        onValueChange(setting.copy(sampleRate = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Sample Rate"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_sample_rate),
+            description = stringResource(R.string.setting_asr_configure_step_sample_rate_desc),
+            value = setting.sampleRate,
+            onValueChange = { onValueChange(setting.copy(sampleRate = it)) },
+            range = 8000..48000,
+            numberLabel = "Sample Rate"
+        )
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_segment_duration)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_segment_desc)) }
-        ) {
-            OutlinedNumberInput(
-                value = setting.segmentDurationSec,
-                onValueChange = { value ->
-                    if (value in 0..300) {
-                        onValueChange(setting.copy(segmentDurationSec = value))
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                label = "Segment Duration (s)"
-            )
-        }
+        AsrNumberField(
+            label = stringResource(R.string.setting_asr_configure_segment_duration),
+            description = stringResource(R.string.setting_asr_configure_step_segment_desc),
+            value = setting.segmentDurationSec,
+            onValueChange = { onValueChange(setting.copy(segmentDurationSec = it)) },
+            range = 0..300,
+            numberLabel = "Segment Duration (s)"
+        )
 
         FormItem(
             label = { Text(stringResource(R.string.setting_asr_configure_step_itn)) },
             description = { Text(stringResource(R.string.setting_asr_configure_step_itn_desc)) }
         ) {
-            androidx.compose.material3.Switch(
+            Switch(
                 checked = setting.enableItn,
                 onCheckedChange = { onValueChange(setting.copy(enableItn = it)) }
             )
@@ -518,28 +432,23 @@ private fun StepASRConfiguration(
             label = { Text(stringResource(R.string.setting_asr_configure_step_timestamp)) },
             description = { Text(stringResource(R.string.setting_asr_configure_step_timestamp_desc)) }
         ) {
-            androidx.compose.material3.Switch(
+            Switch(
                 checked = setting.enableTimestamp,
                 onCheckedChange = { onValueChange(setting.copy(enableTimestamp = it)) }
             )
         }
 
-        FormItem(
-            label = { Text(stringResource(R.string.setting_asr_configure_step_hotwords)) },
-            description = { Text(stringResource(R.string.setting_asr_configure_step_hotwords_desc)) }
-        ) {
-            OutlinedTextField(
-                // 用逗号分隔展示, 输入时按逗号 split 回 List
-                value = setting.hotwords.joinToString(","),
-                onValueChange = { text ->
-                    val list = text.split(",")
-                        .map { it.trim() }
-                        .filter { it.isNotEmpty() }
-                    onValueChange(setting.copy(hotwords = list))
-                },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("热词1, 热词2, 热词3") }
-            )
-        }
+        AsrTextField(
+            label = stringResource(R.string.setting_asr_configure_step_hotwords),
+            description = stringResource(R.string.setting_asr_configure_step_hotwords_desc),
+            value = setting.hotwords.joinToString(","),
+            onValueChange = { text ->
+                val list = text.split(",")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() }
+                onValueChange(setting.copy(hotwords = list))
+            },
+            placeholder = "热词1, 热词2, 热词3"
+        )
     }
 }

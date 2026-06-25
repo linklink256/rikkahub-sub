@@ -1,8 +1,6 @@
 package me.rerere.rikkahub.ui.pages.backup.tabs
 
 import me.rerere.hugeicons.HugeIcons
-import me.rerere.hugeicons.stroke.View
-import me.rerere.hugeicons.stroke.ViewOff
 import me.rerere.hugeicons.stroke.Upload02
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,7 +24,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularWavyProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.MultiChoiceSegmentedButtonRow
@@ -49,8 +46,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dokar.sonner.ToastType
@@ -59,6 +54,7 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.sync.S3BackupItem
 import me.rerere.rikkahub.data.sync.s3.S3Config
 import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.PasswordTextField
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.pages.backup.BackupVM
 import me.rerere.rikkahub.utils.UiState
@@ -148,22 +144,10 @@ fun S3Tab(
                 item(
                     headlineContent = { Text(stringResource(R.string.backup_page_s3_secret_access_key)) },
                     supportingContent = {
-                        var passwordVisible by remember { mutableStateOf(false) }
-                        OutlinedTextField(
+                        PasswordTextField(
                             modifier = Modifier.fillMaxWidth(),
                             value = s3Config.secretAccessKey,
                             onValueChange = { updateS3Config(s3Config.copy(secretAccessKey = it.trim())) },
-                            visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                            trailingIcon = {
-                                val image = if (passwordVisible) {
-                                    HugeIcons.ViewOff
-                                } else {
-                                    HugeIcons.View
-                                }
-                                IconButton(onClick = { passwordVisible = !passwordVisible }) {
-                                    Icon(imageVector = image, contentDescription = null)
-                                }
-                            },
                             singleLine = true
                         )
                     },

@@ -2,150 +2,82 @@ package me.rerere.rikkahub.ui.pages.setting
 
 import me.rerere.hugeicons.HugeIcons
 import me.rerere.hugeicons.stroke.Add01
-import me.rerere.hugeicons.stroke.PencilEdit01
-import me.rerere.hugeicons.stroke.Delete01
-import me.rerere.hugeicons.stroke.MoreVertical
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import kotlinx.coroutines.launch
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
-import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
-import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
+import me.rerere.rikkahub.ui.components.ui.ReorderableListScaffold
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Tag
 import me.rerere.rikkahub.ui.components.ui.TagType
 import me.rerere.rikkahub.ui.context.LocalNavController
-import me.rerere.rikkahub.ui.theme.CustomColors
-import me.rerere.rikkahub.utils.plus
 import me.rerere.rikkahub.utils.move
 import me.rerere.search.SearchCommonOptions
 import me.rerere.search.SearchService
 import me.rerere.search.SearchServiceOptions
 import org.koin.androidx.compose.koinViewModel
-import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.reflect.full.primaryConstructor
 
 @Composable
 fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val lazyListState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
     val nav = LocalNavController.current
     var showAddDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {
-            LargeFlexibleTopAppBar(
-                title = {
-                    Text(stringResource(R.string.setting_page_search_title))
-                },
-                navigationIcon = { BackButton() },
-                actions = {
-                    IconButton(
-                        onClick = { showAddDialog = true }
-                    ) {
-                        Icon(
-                            imageVector = HugeIcons.Add01,
-                            contentDescription = stringResource(R.string.setting_page_search_add_provider)
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = CustomColors.topBarColors
-            )
+    ReorderableListScaffold(
+        title = stringResource(R.string.setting_page_search_title),
+        items = settings.searchServices,
+        itemKey = { it.id },
+        onReorder = { from, to ->
+            if (from >= 0 && to >= 0 && from < settings.searchServices.size && to < settings.searchServices.size) {
+                val newServices = settings.searchServices.move(from, to)
+                vm.updateSettings(settings.copy(searchServices = newServices))
+            }
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor
-    ) { innerPadding ->
-        val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-            val fromIndex = from.index
-            val toIndex = to.index
-
-            if (fromIndex >= 0 && toIndex >= 0 && fromIndex < settings.searchServices.size && toIndex < settings.searchServices.size) {
-                val newServices = settings.searchServices.move(fromIndex, toIndex)
-                vm.updateSettings(
-                    settings.copy(searchServices = newServices)
+        onDelete = { service ->
+            val index = settings.searchServices.indexOf(service)
+            val newServices = settings.searchServices.toMutableList()
+            newServices.removeAt(index)
+            vm.updateSettings(settings.copy(searchServices = newServices))
+        },
+        onBack = {},
+        actions = {
+            IconButton(onClick = { showAddDialog = true }) {
+                Icon(
+                    imageVector = HugeIcons.Add01,
+                    contentDescription = stringResource(R.string.setting_page_search_add_provider),
                 )
             }
-        }
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding(),
-            contentPadding = innerPadding + PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            state = lazyListState
-        ) {
-            items(settings.searchServices, key = { it.id }) { service ->
-                ReorderableSwipeableItem(
-                    onDelete = {
-                        val index = settings.searchServices.indexOf(service)
-                        val newServices = settings.searchServices.toMutableList()
-                        newServices.removeAt(index)
-                        vm.updateSettings(settings.copy(searchServices = newServices))
-                    },
-                    state = reorderableState,
-                    key = service.id,
-                    modifier = Modifier.animateItem(),
-                ) {
-                    ListCard(
-                        onClick = {
-                            nav.navigate(Screen.SettingSearchDetail(service.id.toString()))
-                        },
-                        leading = {
-                            AutoAIIcon(name = service.displayName)
-                        },
-                        title = service.displayName,
-                        tags = {
-                            SearchAbilityTagLine(options = service)
-                        },
-                    )
-                }
-            }
-
+        },
+        extraContent = {
             item("common_options") {
                 CommonOptions(
                     settings = settings,
@@ -156,8 +88,24 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                     }
                 )
             }
-        }
-    }
+        },
+        animateItem = true,
+        applyImePadding = true,
+        itemContent = { service ->
+            ListCard(
+                onClick = {
+                    nav.navigate(Screen.SettingSearchDetail(service.id.toString()))
+                },
+                leading = {
+                    AutoAIIcon(name = service.displayName)
+                },
+                title = service.displayName,
+                tags = {
+                    SearchAbilityTagLine(options = service)
+                },
+            )
+        },
+    )
 
     if (showAddDialog) {
         AddProviderDialog(
@@ -169,9 +117,6 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                         searchServices = listOf(options) + settings.searchServices
                     )
                 )
-                scope.launch {
-                    lazyListState.animateScrollToItem(0)
-                }
             }
         )
     }

@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -17,25 +15,17 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import com.dokar.sonner.ToastType
 import me.rerere.ai.provider.ClaudePromptCacheTtl
 import me.rerere.ai.provider.ProviderSetting
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.data.datastore.DEFAULT_PROVIDERS
-import me.rerere.hugeicons.HugeIcons
-import me.rerere.hugeicons.stroke.View
-import me.rerere.hugeicons.stroke.ViewOff
+import me.rerere.rikkahub.ui.components.ui.PasswordTextField
 import me.rerere.rikkahub.ui.context.LocalToaster
 import me.rerere.rikkahub.ui.theme.JetbrainsMono
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -199,6 +189,67 @@ private val OFFICIAL_PROVIDER_HOSTS = setOf(
 )
 
 @Composable
+fun ProviderCommonFields(
+    name: String, onNameChange: (String) -> Unit,
+    apiKey: String, onApiKeyChange: (String) -> Unit,
+    baseUrl: String, onBaseUrlChange: (String) -> Unit,
+    enabled: Boolean, onEnabledChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    showApiKey: Boolean = true,
+    showBaseUrl: Boolean = true,
+    nameMaxLines: Int = 1,
+    baseUrlIsError: Boolean = false,
+    baseUrlSupportingText: @Composable (() -> Unit)? = null,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = modifier
+    ) {
+        OutlinedTextField(
+            value = name,
+            onValueChange = onNameChange,
+            label = { Text(stringResource(R.string.setting_provider_page_name)) },
+            modifier = Modifier.fillMaxWidth(),
+            maxLines = nameMaxLines,
+        )
+
+        if (showApiKey) {
+            PasswordTextField(
+                value = apiKey,
+                onValueChange = onApiKeyChange,
+                label = stringResource(R.string.setting_provider_page_api_key),
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = false,
+                maxLines = 3,
+            )
+        }
+
+        if (showBaseUrl) {
+            OutlinedTextField(
+                value = baseUrl,
+                onValueChange = onBaseUrlChange,
+                label = { Text(stringResource(R.string.setting_provider_page_api_base_url)) },
+                modifier = Modifier.fillMaxWidth(),
+                isError = baseUrlIsError,
+                supportingText = baseUrlSupportingText,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(stringResource(R.string.setting_provider_page_enable))
+            Switch(
+                checked = enabled,
+                onCheckedChange = onEnabledChange
+            )
+        }
+    }
+}
+
+@Composable
 private fun ProviderConfigureOpenAI(
     provider: ProviderSetting.OpenAI,
     onEdit: (provider: ProviderSetting.OpenAI) -> Unit
@@ -207,34 +258,16 @@ private fun ProviderConfigureOpenAI(
 
     provider.description()
 
-    OutlinedTextField(
-        value = provider.name,
-        onValueChange = { onEdit(provider.copy(name = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_name)) },
-        modifier = Modifier.fillMaxWidth(),
-    )
-
-    var keyVisible by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = provider.apiKey,
-        onValueChange = { onEdit(provider.copy(apiKey = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_api_key)) },
-        modifier = Modifier.fillMaxWidth(),
-        maxLines = 3,
-        visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            IconButton(onClick = { keyVisible = !keyVisible }) {
-                Icon(if (keyVisible) HugeIcons.ViewOff else HugeIcons.View, contentDescription = null)
-            }
-        },
-    )
-
-    OutlinedTextField(
-        value = provider.baseUrl,
-        onValueChange = { onEdit(provider.copy(baseUrl = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_api_base_url)) },
-        modifier = Modifier.fillMaxWidth(),
-        isError = provider.baseUrl.isNotBlank() && !provider.baseUrl.isValidBaseUrl(),
+    ProviderCommonFields(
+        name = provider.name,
+        onNameChange = { onEdit(provider.copy(name = it.trim())) },
+        apiKey = provider.apiKey,
+        onApiKeyChange = { onEdit(provider.copy(apiKey = it.trim())) },
+        baseUrl = provider.baseUrl,
+        onBaseUrlChange = { onEdit(provider.copy(baseUrl = it.trim())) },
+        enabled = provider.enabled,
+        onEnabledChange = { onEdit(provider.copy(enabled = it)) },
+        baseUrlIsError = provider.baseUrl.isNotBlank() && !provider.baseUrl.isValidBaseUrl(),
     )
 
     if (!provider.useResponseApi) {
@@ -244,18 +277,6 @@ private fun ProviderConfigureOpenAI(
             label = { Text(stringResource(R.string.setting_provider_page_api_path)) },
             modifier = Modifier.fillMaxWidth(),
             enabled = !provider.builtIn,
-        )
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.setting_provider_page_enable))
-        Switch(
-            checked = provider.enabled,
-            onCheckedChange = { onEdit(provider.copy(enabled = it)) }
         )
     }
 
@@ -297,48 +318,18 @@ private fun ProviderConfigureClaude(
 ) {
     provider.description()
 
-    OutlinedTextField(
-        value = provider.name,
-        onValueChange = { onEdit(provider.copy(name = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_name)) },
-        modifier = Modifier.fillMaxWidth(),
-        maxLines = 3,
+    ProviderCommonFields(
+        name = provider.name,
+        onNameChange = { onEdit(provider.copy(name = it.trim())) },
+        apiKey = provider.apiKey,
+        onApiKeyChange = { onEdit(provider.copy(apiKey = it.trim())) },
+        baseUrl = provider.baseUrl,
+        onBaseUrlChange = { onEdit(provider.copy(baseUrl = it.trim())) },
+        enabled = provider.enabled,
+        onEnabledChange = { onEdit(provider.copy(enabled = it)) },
+        nameMaxLines = 3,
+        baseUrlIsError = provider.baseUrl.isNotBlank() && !provider.baseUrl.isValidBaseUrl(),
     )
-
-    var keyVisible by remember { mutableStateOf(false) }
-    OutlinedTextField(
-        value = provider.apiKey,
-        onValueChange = { onEdit(provider.copy(apiKey = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_api_key)) },
-        modifier = Modifier.fillMaxWidth(),
-        maxLines = 3,
-        visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-        trailingIcon = {
-            IconButton(onClick = { keyVisible = !keyVisible }) {
-                Icon(if (keyVisible) HugeIcons.ViewOff else HugeIcons.View, contentDescription = null)
-            }
-        },
-    )
-
-    OutlinedTextField(
-        value = provider.baseUrl,
-        onValueChange = { onEdit(provider.copy(baseUrl = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_api_base_url)) },
-        modifier = Modifier.fillMaxWidth(),
-        isError = provider.baseUrl.isNotBlank() && !provider.baseUrl.isValidBaseUrl(),
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.setting_provider_page_enable))
-        Switch(
-            checked = provider.enabled,
-            onCheckedChange = { onEdit(provider.copy(enabled = it)) }
-        )
-    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -409,56 +400,24 @@ private fun ProviderConfigureGoogle(
 
     provider.description()
 
-    OutlinedTextField(
-        value = provider.name,
-        onValueChange = { onEdit(provider.copy(name = it.trim())) },
-        label = { Text(stringResource(R.string.setting_provider_page_name)) },
-        modifier = Modifier.fillMaxWidth(),
+    ProviderCommonFields(
+        name = provider.name,
+        onNameChange = { onEdit(provider.copy(name = it.trim())) },
+        apiKey = provider.apiKey,
+        onApiKeyChange = { onEdit(provider.copy(apiKey = it.trim())) },
+        baseUrl = provider.baseUrl,
+        onBaseUrlChange = { onEdit(provider.copy(baseUrl = it.trim())) },
+        enabled = provider.enabled,
+        onEnabledChange = { onEdit(provider.copy(enabled = it)) },
+        showApiKey = !(provider.vertexAI && provider.useServiceAccount),
+        showBaseUrl = !provider.vertexAI,
+        baseUrlIsError = provider.baseUrl.isNotBlank() && (
+            !provider.baseUrl.isValidBaseUrl() || !provider.baseUrl.endsWith("/v1beta")
+            ),
+        baseUrlSupportingText = if (!provider.baseUrl.endsWith("/v1beta")) {
+            { Text("The base URL usually ends with `/v1beta`") }
+        } else null,
     )
-
-    if (!(provider.vertexAI && provider.useServiceAccount)) {
-        var keyVisible by remember { mutableStateOf(false) }
-        OutlinedTextField(
-            value = provider.apiKey,
-            onValueChange = { onEdit(provider.copy(apiKey = it.trim())) },
-            label = { Text(stringResource(R.string.setting_provider_page_api_key)) },
-            modifier = Modifier.fillMaxWidth(),
-            maxLines = 3,
-            visualTransformation = if (keyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { keyVisible = !keyVisible }) {
-                    Icon(if (keyVisible) HugeIcons.ViewOff else HugeIcons.View, contentDescription = null)
-                }
-            },
-        )
-    }
-
-    if (!provider.vertexAI) {
-        OutlinedTextField(
-            value = provider.baseUrl,
-            onValueChange = { onEdit(provider.copy(baseUrl = it.trim())) },
-            label = { Text(stringResource(R.string.setting_provider_page_api_base_url)) },
-            modifier = Modifier.fillMaxWidth(),
-            isError = provider.baseUrl.isNotBlank() && (
-                !provider.baseUrl.isValidBaseUrl() || !provider.baseUrl.endsWith("/v1beta")
-                ),
-            supportingText = if (!provider.baseUrl.endsWith("/v1beta")) {
-                { Text("The base URL usually ends with `/v1beta`") }
-            } else null,
-        )
-    }
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(stringResource(R.string.setting_provider_page_enable))
-        Switch(
-            checked = provider.enabled,
-            onCheckedChange = { onEdit(provider.copy(enabled = it)) }
-        )
-    }
 
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -501,21 +460,15 @@ private fun ProviderConfigureGoogle(
             modifier = Modifier.fillMaxWidth(),
         )
 
-        var privateKeyVisible by remember { mutableStateOf(false) }
-        OutlinedTextField(
+        PasswordTextField(
             value = provider.privateKey,
             onValueChange = { onEdit(provider.copy(privateKey = it.trim())) },
-            label = { Text(stringResource(R.string.setting_provider_page_private_key)) },
+            label = stringResource(R.string.setting_provider_page_private_key),
             modifier = Modifier.fillMaxWidth(),
+            singleLine = false,
             maxLines = 6,
             minLines = 3,
             textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = JetbrainsMono),
-            visualTransformation = if (privateKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { privateKeyVisible = !privateKeyVisible }) {
-                    Icon(if (privateKeyVisible) HugeIcons.ViewOff else HugeIcons.View, contentDescription = null)
-                }
-            },
         )
 
         OutlinedTextField(

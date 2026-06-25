@@ -101,7 +101,6 @@ import me.rerere.rikkahub.ui.theme.extendColors
 import org.koin.androidx.compose.koinViewModel
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import org.koin.compose.koinInject
-import me.rerere.rikkahub.utils.move
 
 @Composable
 fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
@@ -109,27 +108,13 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
     val mcpConfigs = settings.mcpServers
     val lazyListState = rememberLazyListState()
     val reorderableState = rememberReorderableLazyListState(lazyListState) { from, to ->
-        val newList = mcpConfigs.move(from.index, to.index)
-        vm.updateSettings(settings.copy(mcpServers = newList))
+        vm.reorderMcpServers(from.index, to.index)
     }
     val creationState = useEditState<McpServerConfig> {
-        vm.updateSettings(
-            settings.copy(
-                mcpServers = mcpConfigs + it
-            )
-        )
+        vm.addMcpServer(it)
     }
     val editState = useEditState<McpServerConfig> { newConfig ->
-        vm.updateSettings(
-            settings.copy(
-                mcpServers = mcpConfigs.map {
-                    if (it.id == newConfig.id) {
-                        newConfig
-                    } else {
-                        it
-                    }
-                }
-            ))
+        vm.updateMcpServer(newConfig)
     }
     var showImportDialog by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -188,9 +173,7 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
                 items(mcpConfigs, key = { it.id }) { mcpConfig ->
                     ReorderableSwipeableItem(
                         onDelete = {
-                            vm.updateSettings(
-                                settings.copy(mcpServers = mcpConfigs.filter { it.id != mcpConfig.id })
-                            )
+                            vm.deleteMcpServer(mcpConfig)
                         },
                         state = reorderableState,
                         key = mcpConfig.id,
@@ -225,9 +208,7 @@ fun SettingMcpPage(vm: SettingVM = koinViewModel()) {
         McpImportModal(
             onDismiss = { showImportDialog = false },
             onImport = { newConfigs ->
-                val existingIds = mcpConfigs.map { it.commonOptions.name }.toSet()
-                val toAdd = newConfigs.filter { it.commonOptions.name.isNotBlank() && it.commonOptions.name !in existingIds }
-                vm.updateSettings(settings.copy(mcpServers = mcpConfigs + toAdd))
+                vm.importMcpServers(newConfigs)
                 showImportDialog = false
             }
         )

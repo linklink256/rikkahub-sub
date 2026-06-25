@@ -81,6 +81,7 @@ import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.ExportDialog
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ReorderableListScaffold
 import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.Select
@@ -98,55 +99,76 @@ import sh.calvin.reorderable.rememberReorderableLazyListState
 @Composable
 fun ModeInjectionPage(vm: PromptVM = koinViewModel()) {
     val settings by vm.settings.collectAsStateWithLifecycle()
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-
     val modeInjections = settings.modeInjections
     val toaster = LocalToaster.current
     val importSuccessMsg = stringResource(R.string.export_import_success)
     val importFailedMsg = stringResource(R.string.export_import_failed)
     val importer = rememberImporter(ModeInjectionSerializer) { result ->
         result.onSuccess { imported ->
-            vm.updateSettings(settings.copy(modeInjections = modeInjections + imported))
+            vm.addOrUpdateModeInjection(imported)
             toaster.show(importSuccessMsg)
         }.onFailure { error ->
             toaster.show(importFailedMsg.format(error.message))
         }
     }
     val editState = useEditState<PromptInjection.ModeInjection> { edited ->
-        val index = modeInjections.indexOfFirst { it.id == edited.id }
-        if (index >= 0) {
-            vm.updateSettings(settings.copy(modeInjections = modeInjections.toMutableList().apply { set(index, edited) }))
-        } else {
-            vm.updateSettings(settings.copy(modeInjections = modeInjections + edited))
-        }
+        vm.addOrUpdateModeInjection(edited)
     }
 
-    Scaffold(
-        topBar = {
-            LargeFlexibleTopAppBar(
-                navigationIcon = { BackButton() },
-                title = { Text(stringResource(R.string.prompt_page_mode_injection_tab)) },
-                actions = {
-                    IconButton(onClick = { editState.open(PromptInjection.ModeInjection()) }) {
-                        Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.add))
-                    }
-                    IconButton(onClick = { importer.importFromFile() }) {
-                        Icon(HugeIcons.FileImport, contentDescription = null)
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = CustomColors.topBarColors,
+    ReorderableListScaffold(
+        title = stringResource(R.string.prompt_page_mode_injection_tab),
+        items = modeInjections,
+        itemKey = { it.id },
+        onReorder = { from, to ->
+            vm.reorderModeInjections(from, to)
+        },
+        onDelete = { vm.deleteModeInjection(it) },
+        onBack = {},
+        actions = {
+            IconButton(onClick = { editState.open(PromptInjection.ModeInjection()) }) {
+                Icon(HugeIcons.Add01, contentDescription = stringResource(R.string.add))
+            }
+            IconButton(onClick = { importer.importFromFile() }) {
+                Icon(HugeIcons.FileImport, contentDescription = null)
+            }
+        },
+        emptyContent = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 48.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.prompt_page_mode_injection_empty),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.prompt_page_empty_hint),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                )
+            }
+        },
+        itemContent = { injection ->
+            ModeInjectionCard(
+                injection = injection,
+                onEdit = { editState.open(injection) },
             )
         },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = CustomColors.topBarColors.containerColor,
-    ) { innerPadding ->
-        ModeInjectionTab(
-            modeInjections = modeInjections,
-            onUpdate = { vm.updateSettings(settings.copy(modeInjections = it)) },
-            editState = editState,
-            contentPadding = innerPadding,
-        )
+    )
+
+    if (editState.isEditing) {
+        editState.currentState?.let { state ->
+            ModeInjectionEditSheet(
+                injection = state,
+                onDismiss = { editState.dismiss() },
+                onConfirm = { editState.confirm() },
+                onEdit = { editState.currentState = it },
+            )
+        }
     }
 }
 

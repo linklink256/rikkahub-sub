@@ -1,31 +1,23 @@
 package me.rerere.rikkahub.ui.pages.assistant
 
 import androidx.core.net.toUri
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Assistant
 import me.rerere.rikkahub.data.model.Avatar
 import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.MemoryRepository
+import me.rerere.rikkahub.ui.base.BaseSettingsVM
+import me.rerere.rikkahub.utils.move
 
 class AssistantVM(
-    private val settingsStore: SettingsStore,
+    settingsStore: SettingsStore,
     private val memoryRepository: MemoryRepository,
     private val conversationRepo: ConversationRepository,
     private val filesManager: FilesManager,
-) : ViewModel() {
-    val settings: StateFlow<Settings> = settingsStore.settingsFlow
-
-    fun updateSettings(settings: Settings) {
-        viewModelScope.launch {
-            settingsStore.update(settings)
-        }
-    }
+) : BaseSettingsVM(settingsStore) {
 
     fun addAssistant(assistant: Assistant) {
         viewModelScope.launch {
@@ -77,6 +69,18 @@ class AssistantVM(
                     assistants = settings.assistants.plus(copiedAssistant)
                 )
             )
+        }
+    }
+
+    fun reorderAssistants(from: Int, to: Int) {
+        update { settings ->
+            settings.copy(assistants = settings.assistants.move(from, to))
+        }
+    }
+
+    fun reorderAssistantTags(from: Int, to: Int) {
+        update { settings ->
+            settings.copy(assistantTags = settings.assistantTags.move(from, to))
         }
     }
 

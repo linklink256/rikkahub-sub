@@ -1,23 +1,66 @@
 package me.rerere.rikkahub.ui.pages.extensions
 
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.data.datastore.SettingsStore
+import me.rerere.rikkahub.data.model.Lorebook
+import me.rerere.rikkahub.data.model.PromptInjection
+import me.rerere.rikkahub.ui.base.BaseSettingsVM
+import me.rerere.rikkahub.utils.move
 
 class PromptVM(
-    private val settingsStore: SettingsStore
-) : ViewModel() {
-    // settingsStore.settingsFlow is already a MutableStateFlow (hot) with the
-    // real current value. Expose it directly instead of wrapping with stateIn
-    // + Settings.dummy() to avoid a flash of dummy data on screen entry.
-    val settings: StateFlow<Settings> = settingsStore.settingsFlow
+    settingsStore: SettingsStore,
+) : BaseSettingsVM(settingsStore) {
 
-    fun updateSettings(settings: Settings) {
-        viewModelScope.launch {
-            settingsStore.update(settings)
+    // region Lorebooks
+    fun addOrUpdateLorebook(edited: Lorebook) {
+        update { settings ->
+            val lorebooks = settings.lorebooks
+            val index = lorebooks.indexOfFirst { it.id == edited.id }
+            val newLorebooks = if (index >= 0) {
+                lorebooks.toMutableList().apply { set(index, edited) }
+            } else {
+                lorebooks + edited
+            }
+            settings.copy(lorebooks = newLorebooks)
         }
     }
+
+    fun deleteLorebook(book: Lorebook) {
+        update { settings ->
+            settings.copy(lorebooks = settings.lorebooks - book)
+        }
+    }
+
+    fun reorderLorebooks(from: Int, to: Int) {
+        update { settings ->
+            settings.copy(lorebooks = settings.lorebooks.move(from, to))
+        }
+    }
+    // endregion
+
+    // region Mode injections
+    fun addOrUpdateModeInjection(edited: PromptInjection.ModeInjection) {
+        update { settings ->
+            val modeInjections = settings.modeInjections
+            val index = modeInjections.indexOfFirst { it.id == edited.id }
+            val newInjections = if (index >= 0) {
+                modeInjections.toMutableList().apply { set(index, edited) }
+            } else {
+                modeInjections + edited
+            }
+            settings.copy(modeInjections = newInjections)
+        }
+    }
+
+    fun deleteModeInjection(injection: PromptInjection.ModeInjection) {
+        update { settings ->
+            settings.copy(modeInjections = settings.modeInjections - injection)
+        }
+    }
+
+    fun reorderModeInjections(from: Int, to: Int) {
+        update { settings ->
+            settings.copy(modeInjections = settings.modeInjections.move(from, to))
+        }
+    }
+    // endregion
 }

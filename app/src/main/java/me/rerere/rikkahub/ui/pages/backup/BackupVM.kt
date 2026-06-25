@@ -1,7 +1,6 @@
 package me.rerere.rikkahub.ui.pages.backup
 
 import android.util.Log
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,18 +15,19 @@ import me.rerere.rikkahub.data.sync.webdav.WebDavBackupItem
 import me.rerere.rikkahub.data.sync.webdav.WebDavSync
 import me.rerere.rikkahub.data.sync.S3BackupItem
 import me.rerere.rikkahub.data.sync.S3Sync
+import me.rerere.rikkahub.ui.base.BaseSettingsVM
 import me.rerere.rikkahub.utils.UiState
 import java.io.File
 
 private const val TAG = "BackupVM"
 
 class BackupVM(
-    private val settingsStore: SettingsStore,
+    settingsStore: SettingsStore,
     private val webDavSync: WebDavSync,
     private val s3Sync: S3Sync,
     private val conversationRepository: ConversationRepository,
-) : ViewModel() {
-    val settings = settingsStore.settingsFlow.stateIn(
+) : BaseSettingsVM(settingsStore) {
+    override val settings = settingsStore.settingsFlow.stateIn(
         scope = viewModelScope,
         started = SharingStarted.Eagerly,
         initialValue = Settings.dummy()
@@ -39,12 +39,6 @@ class BackupVM(
     init {
         loadBackupFileItems()
         loadS3BackupFileItems()
-    }
-
-    fun updateSettings(settings: Settings) {
-        viewModelScope.launch {
-            settingsStore.update(settings)
-        }
     }
 
     fun loadBackupFileItems() {
