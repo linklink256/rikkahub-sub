@@ -274,9 +274,12 @@ class TtsController(
                     processedCount++
                 }
             } finally {
-                _isSpeaking.update { false }
-                if (queue.isEmpty()) {
-                    _playbackState.update { it.copy(status = PlaybackStatus.Ended) }
+                // 只在自然结束时更新状态，被取消的 worker 不覆盖 stop()/internalReset() 已设的状态
+                if (isActive) {
+                    _isSpeaking.update { false }
+                    if (queue.isEmpty()) {
+                        _playbackState.update { it.copy(status = PlaybackStatus.Ended) }
+                    }
                 }
             }
         }

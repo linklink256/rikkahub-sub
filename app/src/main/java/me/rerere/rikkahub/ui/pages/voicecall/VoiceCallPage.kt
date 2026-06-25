@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.dokar.sonner.ToastType
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.uuid.Uuid
 import me.rerere.asr.ASRProviderSetting
@@ -93,6 +94,7 @@ fun VoiceCallPage(conversationId: String) {
     val tts = LocalTTSState.current
     val asrState by asr.state.collectAsStateWithLifecycle()
     val ttsPlaybackState by tts.playbackState.collectAsStateWithLifecycle()
+    val ttsIsSpeaking by tts.isSpeaking.collectAsStateWithLifecycle()
 
     val navController = LocalNavController.current
     val toaster = LocalToaster.current
@@ -171,6 +173,27 @@ fun VoiceCallPage(conversationId: String) {
         val sentenceEndRegex = Regex("[。！？\\n，,;；:：]")
         val minChunkSize = 30  // 最少累积 30 字再发送, 避免断句
         Logging.log("VoiceCall", "Streaming TTS started, cycle=$thisCycle")
+
+        // 子协程: 监听 generationDone 信号, 强制 flush buffer 中残余内容
+        // (不依赖后续 conversation emission, 修复非标点结尾回复尾部漏读问题)
+        launch {
+            vm.generationDoneFlow.first { it == conversationUuid }
+            if (streamCycle != thisCycle) return@launch
+            generationDone.value = true
+            val s = vm.state.value.status
+            if (s != VoiceCallStatus.THINKING && s != VoiceCallStatus.SPEAKING) return@launch
+            if (pendingBuffer.isNotEmpty() && !finalFlushDone) {
+                finalFlushDone = true
+                val remaining = pendingBuffer.toString()
+                Logging.log("VoiceCall", "TTS final flush on generationDone (${remaining.length}c): ${remaining.take(50)}...")
+                val isFirstChunk = s == VoiceCallStatus.THINKING
+                tts.speak(remaining, flushCalled = isFirstChunk)
+                pendingBuffer.clear()
+                if (isFirstChunk) {
+                    vm.updateStatus(VoiceCallStatus.SPEAKING)
+                }
+            }
+        }
 
         vm.conversation.collect { conv ->
             if (streamCycle != thisCycle) return@collect
@@ -301,26 +324,26 @@ fun VoiceCallPage(conversationId: String) {
         }
     }
 
-    // SPEAKING: TTS 播放结束后自动回到 LISTENING, 出错时提示并回到监听
-    LaunchedEffect(ttsPlaybackState.status) {
+    // SPEAKING: TTS 全部播放结束后自动回到 LISTENING, 出错时提示并回到监听
+    // 注意: 用 tts.isSpeaking == false 判断"全部块播完"，而非 PlaybackStatus.Ended
+    // (Ended 是每块结束信号，块间 120ms gap 会误触发提前切回 LISTENING 导致截断+串话)
+    LaunchedEffect(ttsIsSpeaking, ttsPlaybackState.status) {
         if (state.status == VoiceCallStatus.SPEAKING) {
-            when (ttsPlaybackState.status) {
-                PlaybackStatus.Ended -> {
-                    Logging.log("VoiceCall", "TTS playback ended, generationDone=${generationDone.value}")
-                    // 只有生成完成才回到聆听, 否则继续等待流式 TTS 的新数据
-                    if (generationDone.value) {
-                        vm.updateStatus(VoiceCallStatus.LISTENING)
-                    }
-                }
-                PlaybackStatus.Error -> {
+            when {
+                ttsPlaybackState.status == PlaybackStatus.Error -> {
                     Logging.log("VoiceCall", "TTS error, back to LISTENING")
                     toaster.show(
                         message = "语音合成出错",
                         type = ToastType.Error,
                     )
+                    tts.stop()
                     vm.updateStatus(VoiceCallStatus.LISTENING)
                 }
-                else -> {}
+                !ttsIsSpeaking && generationDone.value -> {
+                    Logging.log("VoiceCall", "TTS all chunks done, generationDone=true, back to LISTENING")
+                    tts.stop()
+                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                }
             }
         }
     }
@@ -353,8 +376,11 @@ fun VoiceCallPage(conversationId: String) {
                     val errorMsg = myError.error.message ?: "未知错误"
                     Logging.log("VoiceCall", "LLM error: $errorMsg")
                     toaster.show(message = "AI 回复出错: $errorMsg", type = ToastType.Error)
+                    // 用 SPEAKING 播放道歉语音, 播完后通过正常 SPEAKING→LISTENING 流程回到监听
+                    // 避免道歉语音播放期间 ASR 已启动导致串录道歉语形成反馈环
+                    generationDone.value = true
                     tts.speak("抱歉，出了点问题，请再说一次", flushCalled = true)
-                    vm.updateStatus(VoiceCallStatus.LISTENING)
+                    vm.updateStatus(VoiceCallStatus.SPEAKING)
                 }
             }
         }
