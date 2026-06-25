@@ -2,6 +2,7 @@ package me.rerere.tts.controller
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.withContext
 import me.rerere.tts.model.AudioChunk
 import me.rerere.tts.model.AudioFormat
@@ -25,6 +26,18 @@ class TtsSynthesizer(
             ttsManager.generateSpeech(setting, TTSRequest(text = chunk.text))
         )
     }
+
+    /**
+     * 返回 provider 的原始音频流 (Flow<AudioChunk>)，供流式播放使用。
+     *
+     * 与 [synthesize] 不同，此方法不将流塌缩为单个 [TTSResponse]，
+     * 使下游 (AudioPlayer) 能边收边播 PCM，降低首音延迟。
+     */
+    fun synthesizeFlow(
+        setting: TTSProviderSetting,
+        chunk: TtsChunk
+    ): Flow<AudioChunk> = ttsManager.generateSpeech(setting, TTSRequest(text = chunk.text))
+        .flowOn(Dispatchers.IO)
 
     private suspend fun collectToResponse(flow: Flow<AudioChunk>): TTSResponse {
         var format: AudioFormat? = null

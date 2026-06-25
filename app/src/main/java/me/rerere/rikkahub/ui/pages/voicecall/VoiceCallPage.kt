@@ -111,8 +111,8 @@ fun VoiceCallPage(conversationId: String) {
     val energyVad = remember {
         EnergyVadDetector(
             context = context.applicationContext,
-            energyThreshold = 3000.0,
-            speechDurationMs = 480,
+            // 使用类默认阈值(6000)和检测时长(640ms)
+            // 类内部已有 AEC 检测 + 噪声校准 + 无AEC时阈值×3
             onSpeechDetected = {
                 Logging.log("VoiceCall", "VAD barge-in: user speech detected during AI response")
                 vm.stopGeneration()
