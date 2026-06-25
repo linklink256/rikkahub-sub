@@ -5,48 +5,33 @@ import me.rerere.hugeicons.stroke.Pin
 import me.rerere.hugeicons.stroke.PinOff
 import me.rerere.hugeicons.stroke.GlobalSearch
 import me.rerere.hugeicons.stroke.Delete01
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
-import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
-import androidx.compose.material3.SwipeToDismissBoxDefaults
-import androidx.compose.material3.SwipeToDismissBoxState
-import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
@@ -54,6 +39,8 @@ import me.rerere.rikkahub.R
 import me.rerere.rikkahub.Screen
 import me.rerere.rikkahub.data.model.Conversation
 import me.rerere.rikkahub.ui.components.nav.BackButton
+import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.SwipeToDeleteContainer
 import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.theme.CustomColors
 import me.rerere.rikkahub.utils.navigateToChatPage
@@ -177,51 +164,14 @@ private fun SwipeableConversationItem(
     onTogglePin: () -> Unit = {},
     onClick: () -> Unit = {},
 ) {
-    val positionThreshold = SwipeToDismissBoxDefaults.positionalThreshold
-    val dismissState = remember {
-        SwipeToDismissBoxState(
-            initialValue = SwipeToDismissBoxValue.Settled,
-            positionalThreshold = positionThreshold,
-        )
-    }
-
-    LaunchedEffect(dismissState.currentValue) {
-        when (dismissState.currentValue) {
-            SwipeToDismissBoxValue.EndToStart -> {
-                onDelete()
-            }
-
-            else -> {}
-        }
-    }
-
-    SwipeToDismissBox(
-        state = dismissState,
-        backgroundContent = {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(
-                        MaterialTheme.colorScheme.errorContainer,
-                        RoundedCornerShape(25)
-                    )
-                    .padding(horizontal = 20.dp),
-                contentAlignment = Alignment.CenterEnd
-            ) {
-                Icon(
-                    imageVector = HugeIcons.Delete01,
-                    contentDescription = stringResource(R.string.history_page_delete),
-                    tint = MaterialTheme.colorScheme.onErrorContainer
-                )
-            }
-        },
-        enableDismissFromStartToEnd = false,
-        modifier = modifier
+    SwipeToDeleteContainer(
+        onDelete = onDelete,
+        modifier = modifier,
     ) {
         ConversationItem(
             conversation = conversation,
             onTogglePin = onTogglePin,
-            onClick = onClick
+            onClick = onClick,
         )
     }
 }
@@ -233,50 +183,39 @@ private fun ConversationItem(
     onTogglePin: () -> Unit = {},
     onClick: () -> Unit = {},
 ) {
-    Surface(
+    ListCard(
         onClick = onClick,
-        tonalElevation = 2.dp,
-        shape = RoundedCornerShape(25),
-        modifier = modifier
-    ) {
-        ListItem(
-            headlineContent = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    if (conversation.isPinned) {
-                        Icon(
-                            imageVector = HugeIcons.Pin,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(16.dp),
-                        )
-                    }
-                    Text(
-                        text = conversation.title.ifBlank { stringResource(R.string.history_page_new_conversation) }
-                            .trim(),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleMedium,
-                    )
-                }
-            },
-            supportingContent = {
-                Text(conversation.createAt.toLocalDateTime())
-            },
-            trailingContent = {
-                IconButton(
-                    onClick = onTogglePin
-                ) {
-                    Icon(
-                        if (conversation.isPinned) HugeIcons.PinOff else HugeIcons.Pin,
-                        contentDescription = if (conversation.isPinned) stringResource(R.string.history_page_unpin) else stringResource(
-                            R.string.history_page_pin
-                        )
-                    )
-                }
+        modifier = modifier,
+        title = conversation.title.ifBlank { stringResource(R.string.history_page_new_conversation) }.trim(),
+        titleMaxLines = 2,
+        titleEnd = {
+            if (conversation.isPinned) {
+                Icon(
+                    imageVector = HugeIcons.Pin,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp),
+                )
             }
-        )
-    }
+        },
+        subtitle = {
+            Text(
+                text = conversation.createAt.toLocalDateTime(),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.outline,
+            )
+        },
+        trailing = {
+            IconButton(onClick = onTogglePin) {
+                Icon(
+                    if (conversation.isPinned) HugeIcons.PinOff else HugeIcons.Pin,
+                    contentDescription = if (conversation.isPinned) {
+                        stringResource(R.string.history_page_unpin)
+                    } else {
+                        stringResource(R.string.history_page_pin)
+                    },
+                )
+            }
+        },
+    )
 }

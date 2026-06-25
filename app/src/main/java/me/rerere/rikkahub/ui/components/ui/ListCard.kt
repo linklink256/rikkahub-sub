@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,7 +54,7 @@ import me.rerere.rikkahub.ui.theme.CustomColors
  *
  * 结构：Card > Row(leading 32dp + Column(title + tags) + trailing)
  */
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalFoundationApi::class)
 @Composable
 fun ListCard(
     onClick: () -> Unit,
@@ -63,10 +65,17 @@ fun ListCard(
     tags: @Composable RowScope.() -> Unit = {},
     trailing: @Composable () -> Unit = {},
     containerColor: Color = CustomColors.cardColorsOnSurfaceContainer.containerColor,
+    onLongClick: (() -> Unit)? = null,
+    titleMaxLines: Int = 1,
+    subtitle: (@Composable () -> Unit)? = null,
 ) {
     Card(
-        modifier = modifier.fillMaxWidth(),
-        onClick = onClick,
+        modifier = modifier
+            .fillMaxWidth()
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick,
+            ),
         colors = CardDefaults.cardColors(containerColor = containerColor),
     ) {
         Row(
@@ -96,11 +105,12 @@ fun ListCard(
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleMedium,
-                        maxLines = 1,
+                        maxLines = titleMaxLines,
                         overflow = TextOverflow.Ellipsis,
                     )
                     titleEnd?.invoke()
                 }
+                subtitle?.invoke()
                 FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp),

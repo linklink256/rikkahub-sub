@@ -14,7 +14,6 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -39,7 +38,6 @@ import androidx.compose.material3.Badge
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
-import androidx.compose.material3.FilledIconButton
 import androidx.compose.material3.FloatingToolbarDefaults.ScreenOffset
 import androidx.compose.material3.FloatingToolbarDefaults.floatingToolbarVerticalNestedScroll
 import androidx.compose.material3.HorizontalFloatingToolbar
@@ -59,7 +57,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
-import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
@@ -68,7 +65,6 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.rememberSwipeToDismissBoxState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -81,7 +77,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
@@ -113,6 +108,8 @@ import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.ui.RikkaConfirmDialog
 import me.rerere.rikkahub.ui.components.ui.AutoAIIcon
 import me.rerere.rikkahub.ui.components.ui.CardGroup
+import me.rerere.rikkahub.ui.components.ui.ListCard
+import me.rerere.rikkahub.ui.components.ui.ReorderableSwipeableItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.ShareSheet
 import me.rerere.rikkahub.ui.components.ui.SiliconFlowPowerByIcon
@@ -135,7 +132,6 @@ import me.rerere.rikkahub.utils.UiState
 import me.rerere.rikkahub.utils.plus
 import org.koin.androidx.compose.koinViewModel
 import org.koin.compose.koinInject
-import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 import kotlin.uuid.Uuid
 
@@ -433,30 +429,20 @@ private fun ModelList(
                 }
             } else {
                 items(providerSetting.models, key = { it.id }) { item ->
-                    ReorderableItem(
+                    ReorderableSwipeableItem(
+                        onDelete = {
+                            onUpdateProvider(providerSetting.delModel(item))
+                        },
                         state = reorderableLazyListState,
-                        key = item.id
-                    ) { isDragging ->
+                        key = item.id,
+                        dragScale = 1.05f,
+                    ) {
                         ModelCard(
                             model = item,
-                            onDelete = {
-                                onUpdateProvider(providerSetting.delModel(item))
-                            },
                             onEdit = { editedModel ->
                                 onUpdateProvider(providerSetting.editModel(editedModel))
                             },
                             parentProvider = providerSetting,
-                            modifier = Modifier
-                                .longPressDraggableHandle()
-                                .graphicsLayer {
-                                    if (isDragging) {
-                                        scaleX = 1.05f
-                                        scaleY = 1.05f
-                                    } else {
-                                        scaleX = 1f
-                                        scaleY = 1f
-                                    }
-                                },
                         )
                     }
                 }
@@ -1138,17 +1124,13 @@ fun ModalAbilitySelector(
 @Composable
 private fun ModelCard(
     model: Model,
-    modifier: Modifier = Modifier,
-    onDelete: () -> Unit,
     onEdit: (Model) -> Unit,
     parentProvider: ProviderSetting
 ) {
     val dialogState = useEditState<Model> {
         onEdit(it)
     }
-    val swipeToDismissBoxState = rememberSwipeToDismissBoxState()
     val scope = rememberCoroutineScope()
-
 
     if (dialogState.isEditing) {
         dialogState.currentState?.let { editingModel ->
@@ -1229,100 +1211,46 @@ private fun ModelCard(
         }
     }
 
-    SwipeToDismissBox(
-        state = swipeToDismissBoxState,
-        backgroundContent = {
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-                verticalAlignment = Alignment.CenterVertically
+    ListCard(
+        onClick = {
+            dialogState.open(model.copy())
+        },
+        leading = {
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = MaterialTheme.shapes.small,
             ) {
-                IconButton(
-                    onClick = {
-                        scope.launch {
-                            swipeToDismissBoxState.reset()
-                        }
-                    }
-                ) {
-                    Icon(HugeIcons.Cancel01, null)
-                }
-                FilledIconButton(
-                    onClick = {
-                        scope.launch {
-                            onDelete()
-                            swipeToDismissBoxState.reset()
-                        }
-                    }
-                ) {
-                    Icon(
-                        HugeIcons.Delete01,
-                        contentDescription = stringResource(R.string.chat_page_delete)
-                    )
-                }
+                AutoAIIcon(
+                    name = model.modelId,
+                    modifier = Modifier.size(32.dp),
+                )
             }
         },
-        enableDismissFromStartToEnd = false,
-        gesturesEnabled = true,
-        modifier = modifier
-    ) {
-        OutlinedCard {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Surface(
-                    color = MaterialTheme.colorScheme.secondaryContainer,
-                    shape = MaterialTheme.shapes.small,
-                ) {
-                    AutoAIIcon(
-                        name = model.modelId,
-                        modifier = Modifier.size(36.dp),
-                    )
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
+        title = model.displayName,
+        titleMaxLines = 2,
+        tags = {
+            if (model.providerOverwrite != null) {
+                Tag(type = TagType.INFO) {
                     Text(
-                        text = model.displayName,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        model.providerOverwrite?.javaClass?.simpleName ?: model.providerOverwrite?.name
+                        ?: "ProviderOverwrite"
                     )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        if (model.providerOverwrite != null) {
-                            Tag(type = TagType.INFO) {
-                                Text(
-                                    model.providerOverwrite?.javaClass?.simpleName ?: model.providerOverwrite?.name
-                                    ?: "ProviderOverwrite"
-                                )
-                            }
-                        }
-                        ModelTypeTag(model = model)
-                        ModelModalityTag(model = model)
-                        ModelAbilityTag(model = model)
-                    }
-                }
-
-                // Edit button
-                IconButton(
-                    onClick = {
-                        dialogState.open(model.copy())
-                    }
-                ) {
-                    Icon(HugeIcons.Tools, "Edit")
                 }
             }
-        }
-    }
+            ModelTypeTag(model = model)
+            ModelModalityTag(model = model)
+            ModelAbilityTag(model = model)
+        },
+        trailing = {
+            IconButton(
+                onClick = {
+                    dialogState.open(model.copy())
+                }
+            ) {
+                Icon(HugeIcons.Tools, "Edit")
+            }
+        },
+    )
 }
 
 @Composable
