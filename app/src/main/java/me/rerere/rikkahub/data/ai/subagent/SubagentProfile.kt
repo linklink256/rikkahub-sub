@@ -67,11 +67,11 @@ data class SubagentProfile(
     companion object {
         val IdentifierRegex = Regex("^[a-z][a-z0-9_]*$")
 
-        /** 摘要过短时触发扩写的最小长度（移植自 kimi-code SUMMARY_MIN_LENGTH = 200） */
-        const val DEFAULT_SUMMARY_MIN_LENGTH = 200
+        /** 摘要过短时触发扩写的最小长度。设为 0 = 永不追问（continuation 浪费一整轮 LLM 调用） */
+        const val DEFAULT_SUMMARY_MIN_LENGTH = 0
 
-        /** 扩写追问最大次数（移植自 kimi-code SUMMARY_CONTINUATION_ATTEMPTS = 1） */
-        const val DEFAULT_SUMMARY_CONTINUATION_ATTEMPTS = 1
+        /** 扩写追问最大次数。设为 0 = 不追问 */
+        const val DEFAULT_SUMMARY_CONTINUATION_ATTEMPTS = 0
 
         /**
          * 内置默认 subagent 配置档，移植自 kimi-code 的 DEFAULT_AGENT_PROFILES.agent.subagents。
@@ -90,7 +90,7 @@ data class SubagentProfile(
                     Do not ask the user questions — make reasonable assumptions and proceed.
                     Always end with a structured summary of your findings; do not leave the work unfinished.
                 """.trimIndent(),
-                maxSteps = 48,
+                maxSteps = 16,
             ),
             SubagentProfile(
                 name = "coder",
@@ -103,7 +103,7 @@ data class SubagentProfile(
                     whether it succeeded. Return a concise summary of changes and verification results.
                     Do not ask the user questions — proceed with reasonable defaults.
                 """.trimIndent(),
-                maxSteps = 64,
+                maxSteps = 20,
             ),
             SubagentProfile(
                 name = "reviewer",
@@ -119,7 +119,7 @@ data class SubagentProfile(
                 excludedTools = setOf(
                     "workspace_write_file", "workspace_edit_file", "workspace_shell",
                 ),
-                maxSteps = 24,
+                maxSteps = 12,
             ),
         )
     }

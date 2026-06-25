@@ -47,9 +47,9 @@ class SubagentHostContinuationTest {
     }
 
     @Test
-    fun `subagent profile continuation defaults are unchanged`() {
-        // 回归守卫：确保默认值未被意外修改，否则追问行为会变。
-        assertEquals(200, SubagentProfile.DEFAULT_SUMMARY_MIN_LENGTH)
-        assertEquals(1, SubagentProfile.DEFAULT_SUMMARY_CONTINUATION_ATTEMPTS)
+    fun `subagent profile continuation defaults are disabled`() {
+        // 回归守卫：continuation 默认关闭（0/0），避免简单任务多花一整轮 LLM 调用
+        assertEquals(0, SubagentProfile.DEFAULT_SUMMARY_MIN_LENGTH)
+        assertEquals(0, SubagentProfile.DEFAULT_SUMMARY_CONTINUATION_ATTEMPTS)
     }
 }
