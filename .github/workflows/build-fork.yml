@@ -5,16 +5,25 @@ on:
     branches: [master, main, fix/skills-use-skill-only, feat/system-asr, feat/voice-call]
   workflow_dispatch:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        variant: [Debug, Release]
 
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           submodules: recursive
 
       - name: Set up JDK 17
@@ -27,35 +36,17 @@ jobs:
         run: |
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses > /dev/null 2>&1 || true
 
-      - name: Gradle cache
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
-      - name: Build Debug APK
+      - name: Build APK
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon
+          ./gradlew assemble${{ matrix.variant }} --no-daemon
 
-      - name: Build Release APK
-        run: |
-          ./gradlew assembleRelease --no-daemon
-
-      - name: Upload Debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: rikkahub-sub-debug
-          path: app/build/outputs/apk/debug/*.apk
-
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: rikkahub-sub-release
-          path: app/build/outputs/apk/release/*.apk
+          name: rikkahub-sub-${{ matrix.variant == 'Debug' && 'debug' || 'release' }}
+          path: app/build/outputs/apk/${{ matrix.variant == 'Debug' && 'debug' || 'release' }}/*.apk
