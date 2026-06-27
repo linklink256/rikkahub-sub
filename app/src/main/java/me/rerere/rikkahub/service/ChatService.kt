@@ -1109,6 +1109,8 @@ class ChatService(
         is LocalToolOption.AskBtw -> "ask_btw"
         is LocalToolOption.Fetch -> "fetch"
         is LocalToolOption.Logs -> "logs"
+        is LocalToolOption.ScreenTime -> "screen_time"
+        is LocalToolOption.Calendar -> "calendar"
     }
 
     /**

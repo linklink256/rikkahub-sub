@@ -483,6 +483,7 @@ object ConversationSearchToolUI : ToolUIRenderer {
         )
     }
 
+    }
 /**
  * 屏幕使用时间: 摘要显示总时长与用时最多的应用, 详情为按时长排序的应用列表 (带占比条);
  * 无权限时回退到默认 JSON 详情

@@ -34,6 +34,7 @@ import me.rerere.rikkahub.data.event.AppEventBus
 import me.rerere.rikkahub.utils.JsonInstant
 import me.rerere.rikkahub.utils.readClipboardText
 import me.rerere.rikkahub.utils.writeClipboardText
+import me.rerere.rikkahub.utils.hasUsageStatsPermission
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
