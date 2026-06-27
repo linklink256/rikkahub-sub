@@ -305,7 +305,7 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                         if (isPending && onToolAnswer != null) {
                             when (q.selectionType) {
                                 "single" -> {
-                                    // Single select: chips only, no text input
+                                    // Single select: chips when options present, text input as fallback
                                     if (q.options.isNotEmpty()) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -324,10 +324,20 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                                                 )
                                             }
                                         }
+                                    } else {
+                                        OutlinedTextField(
+                                            value = answers[q.id] ?: "",
+                                            onValueChange = { answers[q.id] = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textStyle = MaterialTheme.typography.bodySmall,
+                                            singleLine = false,
+                                            minLines = 1,
+                                            maxLines = 3,
+                                        )
                                     }
                                 }
                                 "multi" -> {
-                                    // Multi select: chips only, multiple can be selected
+                                    // Multi select: chips when options present, text input as fallback
                                     if (q.options.isNotEmpty()) {
                                         FlowRow(
                                             horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -352,6 +362,16 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                                                 )
                                             }
                                         }
+                                    } else {
+                                        OutlinedTextField(
+                                            value = answers[q.id] ?: "",
+                                            onValueChange = { answers[q.id] = it },
+                                            modifier = Modifier.fillMaxWidth(),
+                                            textStyle = MaterialTheme.typography.bodySmall,
+                                            singleLine = false,
+                                            minLines = 1,
+                                            maxLines = 3,
+                                        )
                                     }
                                 }
                                 else -> {
@@ -414,7 +434,10 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                                 put("answers", buildJsonObject {
                                     questions.forEach { q ->
                                         when (q.selectionType) {
-                                            "multi" -> put(q.id, JsonPrimitive(multiAnswers[q.id]?.joinToString(", ") ?: ""))
+                                            "multi" -> {
+                                                val answer = if (q.options.isEmpty()) answers[q.id] else multiAnswers[q.id]?.joinToString(", ")
+                                                put(q.id, JsonPrimitive(answer ?: ""))
+                                            }
                                             else -> put(q.id, JsonPrimitive(answers[q.id] ?: ""))
                                         }
                                     }
@@ -424,7 +447,7 @@ private fun ChainOfThoughtScope.AskUserToolStep(
                         },
                         enabled = questions.all { q ->
                             when (q.selectionType) {
-                                "multi" -> !multiAnswers[q.id].isNullOrEmpty()
+                                "multi" -> if (q.options.isEmpty()) !answers[q.id].isNullOrBlank() else !multiAnswers[q.id].isNullOrEmpty()
                                 else -> !answers[q.id].isNullOrBlank()
                             }
                         },
