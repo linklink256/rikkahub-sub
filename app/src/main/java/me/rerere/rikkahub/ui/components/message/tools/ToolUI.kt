@@ -101,6 +101,7 @@ object ToolUIRegistry {
         FetchToolUI,
         RecentChatsToolUI,
         ConversationSearchToolUI,
+        GetScreenTimeToolUI,
         EditFileToolUI,
         ReadFileToolUI,
         WriteFileToolUI,
