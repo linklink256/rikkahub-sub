@@ -460,14 +460,14 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val logsTool by lazy {
         Tool(
             name = "get_logs",
-            description = ""\""
+            description = """
                 Retrieve the app's recent runtime logs, including AI HTTP request logs and text logs.
                 Use this to inspect the requests the app made to AI providers (URL, method, status code,
                 duration, errors) and general app log messages — helpful for debugging issues the user
                 is experiencing. Sensitive headers (Authorization / API keys / cookies) are redacted.
                 Optional 'type' filters logs: "all" (default), "request", or "text".
                 Optional 'limit' caps the number of returned entries (default 20, max 100).
-            ""\".trimIndent().replace("\\n", " "),
+            """.trimIndent().replace("\\n", " "),
             parameters = {
                 InputSchema.Obj(
                     properties = buildJsonObject {
@@ -517,7 +517,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val screenTimeTool by lazy {
         Tool(
             name = "get_screen_time",
-            description = ""\""
+            description = """
                 Get the user's app screen usage (screen time) over a time range.
                 Specify a custom interval with 'begin'/'end', or use the 'range' preset (today/week).
                 Returns the total foreground time and a per-app breakdown sorted by usage time (descending).
@@ -525,7 +525,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
                 times without an explicit offset are interpreted in this timezone.
                 Requires the 'Usage access' special permission; if it is not granted, the device's usage
                 access settings page is opened automatically and an error is returned.
-            ""\".trimIndent().replace("\\n", " "),
+            """.trimIndent().replace("\\n", " "),
             parameters = {
                 InputSchema.Obj(
                     properties = buildJsonObject {
@@ -655,7 +655,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val calendarQueryTool by lazy {
         Tool(
             name = "calendar_query",
-            description = ""\""
+            description = """
                 Query calendar events on the user's device within a time range.
                 Specify a custom interval with 'begin'/'end', or use the 'range' preset (today/week/month).
                 Returns a list of events with title, description, location, start/end times, and calendar info.
@@ -663,7 +663,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
                 times without an explicit offset are interpreted in this timezone.
                 Requires the 'Calendar' permission; if it is not granted, an error is returned and the
                 permission request is triggered automatically.
-            ""\".trimIndent().replace("\\n", " "),
+            """.trimIndent().replace("\\n", " "),
             parameters = {
                 InputSchema.Obj(
                     properties = buildJsonObject {
@@ -848,14 +848,14 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val calendarCreateTool by lazy {
         Tool(
             name = "calendar_create",
-            description = ""\""
+            description = """
                 Create a new calendar event on the user's device.
                 Requires title and start time at minimum. End time defaults to 1 hour after start.
                 The device timezone is '${ZoneId.systemDefault()}' (UTC offset ${OffsetDateTime.now().offset});
                 times without an explicit offset are interpreted in this timezone.
                 Requires the 'Calendar' permission; if it is not granted, an error is returned and the
                 permission request is triggered automatically.
-            ""\".trimIndent().replace("\\n", " "),
+            """.trimIndent().replace("\\n", " "),
             needsApproval = { true },
             parameters = {
                 InputSchema.Obj(
