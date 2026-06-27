@@ -1298,5 +1298,9 @@
   <string name="assistant_page_context_message_truncation_warning">限制上下文可能导致频繁的上下文截断，并阻止提示词缓存</string>
   <string name="chat_message_tool_recent_chats">查看最近的对话</string>
   <string name="chat_message_tool_conversation_search">搜索历史：%1$s</string>
+  <string name="chat_message_tool_calendar_query">查询日历事件</string>
+  <string name="chat_message_tool_calendar_create">创建事件: %1$s</string>
+  <string name="assistant_page_local_tools_calendar_title">日历</string>
+  <string name="assistant_page_local_tools_calendar_desc">让AI查询和创建日历事件</string>
 </resources>
 

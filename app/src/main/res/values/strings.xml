@@ -1301,6 +1301,10 @@
   <string name="assistant_page_local_tools_screen_time_title">Screen Time</string>
   <string name="assistant_page_local_tools_screen_time_desc">Let the AI read your app screen usage time</string>
   <string name="assistant_page_local_tools_screen_time_permission_required">Please grant the Usage access permission in settings to use screen time</string>
+  <string name="chat_message_tool_calendar_query">Query calendar events</string>
+  <string name="chat_message_tool_calendar_create">Create event: %1$s</string>
+  <string name="assistant_page_local_tools_calendar_title">Calendar</string>
+  <string name="assistant_page_local_tools_calendar_desc">Let the AI query and create calendar events</string>
   <string name="chat_message_tool_screen_time">Read screen time</string>
   <string name="tool_ui_screen_time_total">Total screen time</string>
 </resources>
