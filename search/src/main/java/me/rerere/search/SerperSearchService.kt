@@ -15,6 +15,7 @@ import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
+import me.rerere.common.http.await
 import me.rerere.search.SearchService.Companion.json
 import me.rerere.search.SearchService.Companion.keyRoulette
 import okhttp3.Request
