@@ -154,14 +154,39 @@ class SettingsStore(
     private val dataStore = context.settingsStore
 
     // 读辅助：从 Preferences 读取 JSON / Uuid 字段，消除重复的 ?.let { decode/parse } ?: default 样板
-    private inline fun <reified T> Preferences.readJson(key: Preferences.Key<String>, default: T): T =
-        this[key]?.let { JsonInstant.decodeFromString<T>(it) } ?: default
+    // 防御性：任一字段反序列化抛非 IOException 异常时 log + fallback 默认值，不崩整个 Flow
+    private inline fun <reified T> Preferences.readJson(key: Preferences.Key<String>, default: T): T {
+        val raw = this[key] ?: return default
+        return try {
+            JsonInstant.decodeFromString<T>(raw)
+        } catch (e: Exception) {
+            if (e is IOException) throw e
+            Log.e(TAG, "readJson: key=${key.name} deserialization failed, fallback to default", e)
+            default
+        }
+    }
 
-    private fun Preferences.readUuid(key: Preferences.Key<String>, default: Uuid): Uuid =
-        this[key]?.let { Uuid.parse(it) } ?: default
+    private fun Preferences.readUuid(key: Preferences.Key<String>, default: Uuid): Uuid {
+        val raw = this[key] ?: return default
+        return try {
+            Uuid.parse(raw)
+        } catch (e: Exception) {
+            if (e is IOException) throw e
+            Log.e(TAG, "readUuid: key=${key.name} parse failed, fallback to default", e)
+            default
+        }
+    }
 
-    private fun Preferences.readUuidOrNull(key: Preferences.Key<String>): Uuid? =
-        this[key]?.let { Uuid.parse(it) }
+    private fun Preferences.readUuidOrNull(key: Preferences.Key<String>): Uuid? {
+        val raw = this[key] ?: return null
+        return try {
+            Uuid.parse(raw)
+        } catch (e: Exception) {
+            if (e is IOException) throw e
+            Log.e(TAG, "readUuidOrNull: key=${key.name} parse failed, fallback to null", e)
+            null
+        }
+    }
 
     // 写辅助：向 MutablePreferences 写入 JSON / Uuid 字段，消除重复的 encode/toString 样板
     private inline fun <reified T> MutablePreferences.writeJson(key: Preferences.Key<String>, value: T) {
