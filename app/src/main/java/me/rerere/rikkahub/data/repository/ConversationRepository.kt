@@ -264,7 +264,9 @@ class ConversationRepository(
         favoriteMap: Map<String, Set<Uuid>>
     ): Conversation {
         val favoriteNodeIds = favoriteMap[relation.conversation.id] ?: emptySet()
-        val nodes = relation.nodes.map { entity ->
+        val nodes = relation.nodes
+            .sortedBy { it.nodeIndex }
+            .map { entity ->
             MessageNode(
                 id = Uuid.parse(entity.id),
                 messages = JsonInstant.decodeFromString<List<UIMessage>>(entity.messages),
