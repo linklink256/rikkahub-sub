@@ -170,26 +170,43 @@ sealed class SearchServiceOptions {
 
         val DEFAULT = BingLocalOptions()
 
-        val TYPES = mapOf(
-            BingLocalOptions::class to "Bing",
-            RikkaHubOptions::class to "RikkaHub",
-            ZhipuOptions::class to "智谱",
-            TavilyOptions::class to "Tavily",
-            ExaOptions::class to "Exa",
-            SearXNGOptions::class to "SearXNG",
-            LinkUpOptions::class to "LinkUp",
-            BraveOptions::class to "Brave",
-            MetasoOptions::class to "秘塔",
-            OllamaOptions::class to "Ollama",
-            PerplexityOptions::class to "Perplexity",
-            FirecrawlOptions::class to "Firecrawl",
-            JinaOptions::class to "Jina",
-            BochaOptions::class to "博查",
-            GrokOptions::class to "Grok",
-            TinyfishOptions::class to "Tinyfish",
-            SerperOptions::class to "Serper",
-            CustomJsOptions::class to "Custom JS",
+        // 单一数据源条目：集中每个子类的显示名与工厂，新增供应商只改 ENTRIES 一处，
+        // 杜绝"显示名(TYPES)/工厂(create)分两处维护、漏改一处导致运行期错误"。
+        private class ServiceEntry(val displayName: String, val factory: () -> SearchServiceOptions)
+
+        private val ENTRIES: Map<KClass<out SearchServiceOptions>, ServiceEntry> = linkedMapOf(
+            BingLocalOptions::class to ServiceEntry("Bing") { BingLocalOptions() },
+            RikkaHubOptions::class to ServiceEntry("RikkaHub") { RikkaHubOptions() },
+            ZhipuOptions::class to ServiceEntry("智谱") { ZhipuOptions() },
+            TavilyOptions::class to ServiceEntry("Tavily") { TavilyOptions() },
+            ExaOptions::class to ServiceEntry("Exa") { ExaOptions() },
+            SearXNGOptions::class to ServiceEntry("SearXNG") { SearXNGOptions() },
+            LinkUpOptions::class to ServiceEntry("LinkUp") { LinkUpOptions() },
+            BraveOptions::class to ServiceEntry("Brave") { BraveOptions() },
+            MetasoOptions::class to ServiceEntry("秘塔") { MetasoOptions() },
+            OllamaOptions::class to ServiceEntry("Ollama") { OllamaOptions() },
+            PerplexityOptions::class to ServiceEntry("Perplexity") { PerplexityOptions() },
+            FirecrawlOptions::class to ServiceEntry("Firecrawl") { FirecrawlOptions() },
+            JinaOptions::class to ServiceEntry("Jina") { JinaOptions() },
+            BochaOptions::class to ServiceEntry("博查") { BochaOptions() },
+            GrokOptions::class to ServiceEntry("Grok") { GrokOptions() },
+            TinyfishOptions::class to ServiceEntry("Tinyfish") { TinyfishOptions() },
+            SerperOptions::class to ServiceEntry("Serper") { SerperOptions() },
+            CustomJsOptions::class to ServiceEntry("Custom JS") { CustomJsOptions() },
         )
+
+        // UI / displayName 读取的只读视图，保持 keys 顺序与首项 = Bing 不变；
+        // 外部所有 TYPES 写法零改动，displayName 仍经 TYPES[this::class] 取值。
+        val TYPES: Map<KClass<out SearchServiceOptions>, String> =
+            ENTRIES.mapValuesTo(linkedMapOf()) { it.value.displayName }
+
+        // 按选中类型构造实例，替代反射 primaryConstructor!!.callBy()，
+        // 避免 release R8/minify 裁剪/失效反射。工厂来自单一数据源 ENTRIES。
+        fun create(type: KClass<out SearchServiceOptions>): SearchServiceOptions =
+            ENTRIES[type]?.factory()
+                ?: error("Unknown SearchServiceOptions type: $type")
+
+        private val decodeJson = Json { ignoreUnknownKeys = true }
 
         // 解码磁盘上的 search_services 原始字符串。
         // - null：全新用户（磁盘无该键）→ 保留产品默认，给一个 BingLocalOptions。
@@ -208,33 +225,6 @@ sealed class SearchServiceOptions {
                 Log.w(TAG, "decodeListSafely: search_services decode failed, clearing list (not faking Bing)", e)
                 emptyList()
             }
-
-        private val decodeJson = Json { ignoreUnknownKeys = true }
-
-        // 显式工厂：按选中类型直接构造对应实例，替代反射 primaryConstructor!!.callBy()。
-        // 反射在 release R8/minify 下易被裁剪/失效且无 keep 保护，显式 when 更稳、可读、不依赖反射。
-        // 新增供应商子类时须同步在此加分支（else 会运行时报错而非静默造错实例）。
-        fun create(type: KClass<out SearchServiceOptions>): SearchServiceOptions = when (type) {
-            BingLocalOptions::class -> BingLocalOptions()
-            RikkaHubOptions::class -> RikkaHubOptions()
-            ZhipuOptions::class -> ZhipuOptions()
-            TavilyOptions::class -> TavilyOptions()
-            ExaOptions::class -> ExaOptions()
-            SearXNGOptions::class -> SearXNGOptions()
-            LinkUpOptions::class -> LinkUpOptions()
-            BraveOptions::class -> BraveOptions()
-            MetasoOptions::class -> MetasoOptions()
-            OllamaOptions::class -> OllamaOptions()
-            PerplexityOptions::class -> PerplexityOptions()
-            FirecrawlOptions::class -> FirecrawlOptions()
-            JinaOptions::class -> JinaOptions()
-            BochaOptions::class -> BochaOptions()
-            GrokOptions::class -> GrokOptions()
-            TinyfishOptions::class -> TinyfishOptions()
-            SerperOptions::class -> SerperOptions()
-            CustomJsOptions::class -> CustomJsOptions()
-            else -> error("Unknown SearchServiceOptions type: $type")
-        }
     }
 
     @Serializable

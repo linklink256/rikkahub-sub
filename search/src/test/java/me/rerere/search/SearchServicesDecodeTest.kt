@@ -63,30 +63,19 @@ class SearchServicesDecodeTest {
     }
 
     @Test
-    fun missingDiscriminator_returnsEmpty_notFakedBing() {
-        val raw = """[{"id":"${uuid(1)}","apiKey":"k"}]"""
-        val out = SearchServiceOptions.decodeListSafely(raw)
-        assertTrue("缺判别符应清空，而非伪装成 Bing", out.isEmpty())
-    }
-
-    @Test
-    fun unknownVendorDiscriminator_returnsEmpty_notFakedBing() {
-        val raw = """[{"type":"totally_unknown_vendor","id":"${uuid(1)}"}]"""
-        val out = SearchServiceOptions.decodeListSafely(raw)
-        assertTrue("未知供应商判别符应清空", out.isEmpty())
-    }
-
-    @Test
-    fun fullyQualifiedClassNameDiscriminator_returnsEmpty_notFakedBing() {
-        val raw = """[{"type":"me.rerere.search.SearchServiceOptions.TavilyOptions","id":"${uuid(2)}","apiKey":"k"}]"""
-        val out = SearchServiceOptions.decodeListSafely(raw)
-        assertTrue("全限定类名老判别符应清空", out.isEmpty())
-    }
-
-    @Test
-    fun malformedJson_returnsEmpty_notFakedBing() {
-        val out = SearchServiceOptions.decodeListSafely("}{not json")
-        assertTrue("非法 JSON 应清空", out.isEmpty())
+    fun badData_scenarios_allReturnEmpty_notFakedBing() {
+        // 四种坏数据（历史不兼容 / 损坏）结构一致，收敛为带标签的断言，
+        // 任一场景未诚实清空都会在失败信息里指明是哪种坏数据。
+        val badData = listOf(
+            "缺判别符" to """[{"id":"${uuid(1)}","apiKey":"k"}]""",
+            "未知供应商判别符" to """[{"type":"totally_unknown_vendor","id":"${uuid(1)}"}]""",
+            "全限定类名老判别符" to """[{"type":"me.rerere.search.SearchServiceOptions.TavilyOptions","id":"${uuid(2)}","apiKey":"k"}]""",
+            "非法 JSON" to "}{not json",
+        )
+        badData.forEach { (label, raw) ->
+            val out = SearchServiceOptions.decodeListSafely(raw)
+            assertTrue("$label 应诚实清空，而非伪装成单个 Bing", out.isEmpty())
+        }
     }
 
     @Test
