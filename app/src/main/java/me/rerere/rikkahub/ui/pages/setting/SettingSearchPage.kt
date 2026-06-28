@@ -63,10 +63,12 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
             }
         },
         onDelete = { service ->
-            val index = settings.searchServices.indexOf(service)
-            val newServices = settings.searchServices.toMutableList()
-            newServices.removeAt(index)
-            vm.updateSettings(settings.copy(searchServices = newServices))
+            if (settings.searchServices.size > 1) {
+                val index = settings.searchServices.indexOf(service)
+                val newServices = settings.searchServices.toMutableList()
+                newServices.removeAt(index)
+                vm.updateSettings(settings.copy(searchServices = newServices))
+            }
         },
         onBack = {},
         actions = {

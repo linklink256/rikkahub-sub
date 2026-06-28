@@ -395,7 +395,8 @@ class SettingsStore(
 
             preferences.writeJson(SEARCH_SERVICES, settings.searchServices)
             preferences.writeJson(SEARCH_COMMON, settings.searchCommonOptions)
-            preferences[SEARCH_SELECTED] = settings.searchServiceSelected.coerceIn(0, settings.searchServices.size - 1)
+            preferences[SEARCH_SELECTED] = if (settings.searchServices.isEmpty()) 0
+            else settings.searchServiceSelected.coerceIn(0, settings.searchServices.size - 1)
 
             preferences.writeJson(MCP_SERVERS, settings.mcpServers)
             preferences.writeJson(WEBDAV_CONFIG, settings.webDavConfig)

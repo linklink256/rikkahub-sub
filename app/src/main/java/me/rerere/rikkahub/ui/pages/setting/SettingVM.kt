@@ -56,7 +56,11 @@ class SettingVM(
 
     fun deleteSearchService(service: SearchServiceOptions) {
         update { settings ->
-            settings.copy(searchServices = settings.searchServices.filter { it.id != service.id })
+            if (settings.searchServices.size > 1) {
+                settings.copy(searchServices = settings.searchServices.filter { it.id != service.id })
+            } else {
+                settings
+            }
         }
     }
 
