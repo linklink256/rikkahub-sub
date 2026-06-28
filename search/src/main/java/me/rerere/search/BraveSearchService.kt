@@ -57,6 +57,8 @@ object BraveSearchService : HttpSearchService<SearchServiceOptions.BraveOptions>
         )
     }
 
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.BraveOptions): String = serviceOptions.apiKey
+
     @Serializable
     data class BraveSearchResponse(
         val type: String? = null,

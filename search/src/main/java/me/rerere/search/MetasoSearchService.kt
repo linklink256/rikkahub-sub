@@ -68,6 +68,8 @@ object MetasoSearchService : HttpSearchService<SearchServiceOptions.MetasoOption
         )
     }
 
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.MetasoOptions): String = serviceOptions.apiKey
+
     @Serializable
     data class MetasoSearchResponse(
         @SerialName("credits")

@@ -52,6 +52,8 @@ object OllamaSearchService : HttpSearchService<SearchServiceOptions.OllamaOption
         )
     }
 
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.OllamaOptions): String = serviceOptions.apiKey
+
     @Serializable
     private data class OllamaSearchResponse(
         val results: List<OllamaSearchResult>

@@ -46,6 +46,8 @@ object ZhipuSearchService : HttpSearchService<SearchServiceOptions.ZhipuOptions>
         )
     }
 
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.ZhipuOptions): String = serviceOptions.apiKey
+
     @Serializable
     data class ZhipuDto(
         @SerialName("search_result")

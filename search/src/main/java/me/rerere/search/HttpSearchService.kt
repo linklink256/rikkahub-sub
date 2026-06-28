@@ -82,6 +82,12 @@ abstract class HttpSearchService<T : SearchServiceOptions> : SearchService<T> {
      */
     abstract fun parseSearchResponse(raw: String): SearchResult
 
+    /**
+     * Extract the API key from service options.
+     * Subclasses with an apiKey field override this.
+     */
+    protected abstract fun extractApiKey(serviceOptions: T): String
+
     // ── Template method ───────────────────────────────────────────
 
     final override suspend fun search(
@@ -94,9 +100,9 @@ abstract class HttpSearchService<T : SearchServiceOptions> : SearchService<T> {
 
             // Resolve API key (key roulette or plain)
             val apiKey = if (useKeyRoulette) {
-                keyRoulette.next(serviceOptions.apiKey, serviceOptions.id.toString())
+                keyRoulette.next(extractApiKey(serviceOptions), serviceOptions.id.toString())
             } else {
-                serviceOptions.apiKey
+                extractApiKey(serviceOptions)
             }
 
             // Build URL
