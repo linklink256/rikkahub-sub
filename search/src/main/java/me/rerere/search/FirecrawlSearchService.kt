@@ -103,7 +103,7 @@ object FirecrawlSearchService : HttpSearchService<SearchServiceOptions.Firecrawl
         }.toString()
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val payload = json.parseToJsonElement(raw).jsonObject
         val data = payload["data"]?.jsonObject ?: error("empty response data")
         val resultData = json.decodeFromJsonElement<FirecrawlSearchResultData>(data)

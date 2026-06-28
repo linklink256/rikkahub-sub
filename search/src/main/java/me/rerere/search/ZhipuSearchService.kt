@@ -33,7 +33,7 @@ object ZhipuSearchService : HttpSearchService<SearchServiceOptions.ZhipuOptions>
         put("count", JsonPrimitive(commonOptions.resultSize))
     })
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val zhipuResponse = json.decodeOrThrow<ZhipuDto>(raw)
         return SearchResult(
             items = zhipuResponse.searchResult.map {

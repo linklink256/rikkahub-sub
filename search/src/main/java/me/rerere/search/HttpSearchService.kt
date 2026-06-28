@@ -80,7 +80,7 @@ abstract class HttpSearchService<T : SearchServiceOptions> : SearchService<T> {
      * Parse the raw response body string into a [SearchResult].
      * Must be implemented by every concrete subclass.
      */
-    abstract fun parseSearchResponse(raw: String): SearchResult
+    abstract fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult
 
     /**
      * Extract the API key from service options.
@@ -138,7 +138,7 @@ abstract class HttpSearchService<T : SearchServiceOptions> : SearchService<T> {
 
             // Parse
             val bodyString = response.body?.string() ?: error("Empty response body")
-            parseSearchResponse(bodyString)
+            parseSearchResponse(bodyString, commonOptions)
         }
     }
 }

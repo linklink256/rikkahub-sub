@@ -78,7 +78,7 @@ object GrokSearchService : HttpSearchService<SearchServiceOptions.GrokOptions>()
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val responseBody = json.decodeFromString<GrokResponse>(raw)
 
         val messageOutput = responseBody.output.firstOrNull {
@@ -93,6 +93,7 @@ object GrokSearchService : HttpSearchService<SearchServiceOptions.GrokOptions>()
         val items = textContent?.annotations
             ?.filter { it.type == "url_citation" && !it.url.isNullOrBlank() }
             ?.distinctBy { it.url }
+            ?.take(commonOptions.resultSize)
             ?.map { annotation ->
                 SearchResultItem(
                     title = annotation.url!!,

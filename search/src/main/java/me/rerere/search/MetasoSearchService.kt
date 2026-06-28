@@ -55,7 +55,7 @@ object MetasoSearchService : HttpSearchService<SearchServiceOptions.MetasoOption
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val searchResponse = json.decodeOrThrow<MetasoSearchResponse>(raw)
         return SearchResult(
             items = searchResponse.webpages.map { webpage ->

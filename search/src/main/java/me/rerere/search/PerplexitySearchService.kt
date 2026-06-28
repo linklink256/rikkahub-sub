@@ -51,10 +51,11 @@ object PerplexitySearchService : HttpSearchService<SearchServiceOptions.Perplexi
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val responseBody = json.decodeFromString<PerplexityResponse>(raw)
         val items = responseBody.results
             .filter { !it.title.isNullOrBlank() && !it.url.isNullOrBlank() }
+            .take(commonOptions.resultSize)
             .map {
                 SearchResultItem(
                     title = it.title!!,

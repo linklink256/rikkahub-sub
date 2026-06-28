@@ -57,7 +57,7 @@ object TinyfishSearchService : HttpSearchService<SearchServiceOptions.TinyfishOp
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val searchResponse = json.decodeFromString<TinyfishSearchResponse>(raw)
         val items = searchResponse.results.map { result ->
             SearchResultItem(

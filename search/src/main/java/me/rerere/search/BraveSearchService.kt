@@ -41,7 +41,7 @@ object BraveSearchService : HttpSearchService<SearchServiceOptions.BraveOptions>
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val searchResponse = json.decodeFromString<BraveSearchResponse>(raw)
         val items = searchResponse.web?.results?.map { result ->
             SearchResultItem(

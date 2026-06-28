@@ -33,7 +33,7 @@ object BochaSearchService : HttpSearchService<SearchServiceOptions.BochaOptions>
         put("count", JsonPrimitive(commonOptions.resultSize))
     })
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val bochaResponse = json.decodeOrThrow<BochaResponse>(raw)
         if (bochaResponse.code != 200) {
             error("Bocha API error: ${bochaResponse.msg ?: "Unknown error"}")

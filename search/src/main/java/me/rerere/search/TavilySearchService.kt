@@ -90,7 +90,7 @@ object TavilySearchService : HttpSearchService<SearchServiceOptions.TavilyOption
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val response = json.decodeFromString<SearchResponse>(raw)
         return SearchResult(
             answer = response.answer,

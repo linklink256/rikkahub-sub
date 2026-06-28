@@ -59,10 +59,10 @@ object JinaSearchService : HttpSearchService<SearchServiceOptions.JinaOptions>()
     override fun extraHeaders(serviceOptions: SearchServiceOptions.JinaOptions): Map<String, String> =
         mapOf("Accept" to "application/json")
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val responseData = json.decodeFromString<JinaSearchResponse>(raw)
         return SearchResult(
-            items = responseData.data.map {
+            items = responseData.data.take(commonOptions.resultSize).map {
                 SearchResultItem(
                     title = it.title,
                     url = it.url,

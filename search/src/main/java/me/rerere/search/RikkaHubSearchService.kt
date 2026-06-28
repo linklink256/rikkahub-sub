@@ -38,11 +38,11 @@ object RikkaHubSearchService : HttpSearchService<SearchServiceOptions.RikkaHubOp
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val responseBody = json.decodeFromString<RikkaHubSearchResponse>(raw)
         return SearchResult(
             answer = responseBody.answer,
-            items = responseBody.sources.map {
+            items = responseBody.sources.take(commonOptions.resultSize).map {
                 SearchResultItem(
                     title = it.name,
                     url = it.url,

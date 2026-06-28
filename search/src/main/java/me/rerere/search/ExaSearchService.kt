@@ -58,7 +58,7 @@ object ExaSearchService : HttpSearchService<SearchServiceOptions.ExaOptions>() {
         })
     })
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val exaResponse = json.decodeOrThrow<ExaData>(raw)
         return SearchResult(
             answer = exaResponse.output?.content,

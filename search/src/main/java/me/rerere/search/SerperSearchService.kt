@@ -65,7 +65,7 @@ object SerperSearchService : HttpSearchService<SearchServiceOptions.SerperOption
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val searchResponse = json.decodeFromString<SerperSearchResponse>(raw)
         val answer = searchResponse.answerBox?.let { it.answer ?: it.snippet }
             ?: searchResponse.knowledgeGraph?.description

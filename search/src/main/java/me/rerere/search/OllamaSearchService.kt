@@ -39,7 +39,7 @@ object OllamaSearchService : HttpSearchService<SearchServiceOptions.OllamaOption
         }
     }
 
-    override fun parseSearchResponse(raw: String): SearchResult {
+    override fun parseSearchResponse(raw: String, commonOptions: SearchCommonOptions): SearchResult {
         val searchResponse = json.decodeFromString<OllamaSearchResponse>(raw)
         return SearchResult(
             items = searchResponse.results.map {
