@@ -120,7 +120,7 @@ class WorkspaceManager(
     ): List<WorkspaceSearchMatch> =
         fileSystem.grep(filesDir(root), query, path, regex, ignoreCase, includeGlob)
 
-    fun executeCommand(
+    suspend fun executeCommand(
         root: String,
         command: String,
         cwd: String = "",

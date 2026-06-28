@@ -128,34 +128,34 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                     .get()
                     .build()
             )
-            val response = client.newCall(request).await()
-            if (response.isSuccessful) {
-                val body = response.body?.string() ?: error("empty body")
-                Log.d(TAG, "listModels: $body")
-                val bodyObject = json.parseToJsonElement(body).jsonObject
-                val models = bodyObject["models"]?.jsonArray ?: return@withContext emptyList()
+            client.newCall(request).await().use { response ->
+                if (response.isSuccessful) {
+                    val body = response.body?.string() ?: error("empty body")
+                    Log.d(TAG, "listModels: $body")
+                    val bodyObject = json.parseToJsonElement(body).jsonObject
+                    val models = bodyObject["models"]?.jsonArray ?: return@withContext emptyList()
 
-                models.mapNotNull {
-                    val modelObject = it.jsonObject
+                    models.mapNotNull {
+                        val modelObject = it.jsonObject
 
-                    // 忽略非chat/embedding模型
-                    val supportedGenerationMethods =
-                        modelObject["supportedGenerationMethods"]!!.jsonArray
-                            .map { method -> method.jsonPrimitive.content }
-                    if ("generateContent" !in supportedGenerationMethods && "embedContent" !in supportedGenerationMethods) {
-                        return@mapNotNull null
+                        // 忽略非chat/embedding模型
+                        val supportedGenerationMethods =
+                            modelObject["supportedGenerationMethods"]!!.jsonArray
+                                .map { method -> method.jsonPrimitive.content }
+                        if ("generateContent" !in supportedGenerationMethods && "embedContent" !in supportedGenerationMethods) {
+                            return@mapNotNull null
+                        }
+
+                        Model(
+                            modelId = modelObject["name"]!!.jsonPrimitive.content.substringAfter("/"),
+                            displayName = modelObject["displayName"]!!.jsonPrimitive.content,
+                            type = if ("generateContent" in supportedGenerationMethods) ModelType.CHAT else ModelType.EMBEDDING,
+                        )
                     }
-
-                    Model(
-                        modelId = modelObject["name"]!!.jsonPrimitive.content.substringAfter("/"),
-                        displayName = modelObject["displayName"]!!.jsonPrimitive.content,
-                        type = if ("generateContent" in supportedGenerationMethods) ModelType.CHAT else ModelType.EMBEDDING,
-                    )
+                } else {
+                    emptyList()
                 }
-            } else {
-                emptyList()
             }
-        }
 
     override suspend fun generateText(
         providerSetting: ProviderSetting.Google,
@@ -185,13 +185,13 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                 .build()
         )
 
-        val response = client.newCall(request).await()
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: ""
-            throw parseErrorBody(errorBody, null)
+        val bodyStr = client.newCall(request).await().use { response ->
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: ""
+                throw parseErrorBody(errorBody, null)
+            }
+            response.body?.string() ?: ""
         }
-
-        val bodyStr = response.body?.string() ?: ""
         val bodyJson = try {
             json.parseToJsonElement(bodyStr).jsonObject
         } catch (e: Throwable) {
@@ -313,7 +313,7 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                 t?.printStackTrace()
                 Log.e(TAG, "onFailure: ${t?.javaClass?.name} ${t?.message} / $response")
 
-                val bodyRaw = response?.body?.stringSafe()
+                val bodyRaw = response?.use { it.body?.stringSafe() }
                 val exception = parseErrorBody(bodyRaw, t)
                 close(exception ?: HttpException("Stream failed"))
             }
@@ -783,12 +783,12 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                     .build()
             )
 
-            val response = client.newCall(request).await()
-            if (!response.isSuccessful) {
-                error("Failed to generate image: ${response.code} ${response.body.string()}")
+            val bodyStr = client.newCall(request).await().use { response ->
+                if (!response.isSuccessful) {
+                    error("Failed to generate image: ${response.code} ${response.body.string()}")
+                }
+                response.body.string()
             }
-
-            val bodyStr = response.body.string()
             val bodyJson = json.parseToJsonElement(bodyStr).jsonObject
 
             val predictions = bodyJson["predictions"]?.jsonArray ?: error("No predictions in response")

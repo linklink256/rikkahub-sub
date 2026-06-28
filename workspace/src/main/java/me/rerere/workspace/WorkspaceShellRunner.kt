@@ -1,12 +1,14 @@
 package me.rerere.workspace
 
+import java.io.Closeable
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
 import java.util.concurrent.TimeUnit
 
 interface WorkspaceShellRunner {
-    fun execute(context: WorkspaceShellContext): WorkspaceCommandResult
+    /** 在协程上下文中执行 shell 命令。实现必须确保所有阻塞 IO 不在主线程执行。 */
+    suspend fun execute(context: WorkspaceShellContext): WorkspaceCommandResult
 }
 
 data class WorkspaceShellContext(
@@ -22,7 +24,7 @@ data class WorkspaceShellContext(
 )
 
 class HostShellRunner : WorkspaceShellRunner {
-    override fun execute(context: WorkspaceShellContext): WorkspaceCommandResult {
+    override suspend fun execute(context: WorkspaceShellContext): WorkspaceCommandResult {
         val process = ProcessBuilder(defaultShell(), "-c", context.command)
             .directory(context.workingDir)
             .redirectErrorStream(false)
@@ -37,7 +39,16 @@ class HostShellRunner : WorkspaceShellRunner {
 // 单个流保留的最大字符数, 防止命令疯狂输出导致 OOM 或撑爆 LLM 上下文
 const val MAX_OUTPUT_CHARS = 128 * 1024
 
-fun Process.readResult(timeoutMillis: Long, stdin: ByteArray? = null): WorkspaceCommandResult {
+/**
+ * 等待进程结束并收集输出。
+ *
+ * 这是一个 suspend 但同步阻塞的函数（类似 runInterruptible 的行为模式）。
+ * waitFor(long, TimeUnit) 响应 InterruptedException，因此当调用方通过
+ * runInterruptible(Dispatchers.IO) 包裹时，协程取消能正确中断 waitFor 并触发进程销毁。
+ *
+ * 调用方（通常是 WorkspaceRepository）必须确保此函数运行在 IO 调度器上。
+ */
+suspend fun Process.readResult(timeoutMillis: Long, stdin: ByteArray? = null): WorkspaceCommandResult {
     val stdout = StreamCollector(inputStream)
     val stderr = StreamCollector(errorStream)
     val stdinWriter = stdin?.let { bytes -> StreamWriter(outputStream, bytes) }
@@ -45,6 +56,7 @@ fun Process.readResult(timeoutMillis: Long, stdin: ByteArray? = null): Workspace
         val finished = waitFor(timeoutMillis, TimeUnit.MILLISECONDS)
         if (!finished) {
             destroyForcibly()
+            closeStreamsQuietly(inputStream, errorStream, outputStream)
         }
         stdinWriter?.join(1_000)
         stdout.join(1_000)
@@ -59,11 +71,32 @@ fun Process.readResult(timeoutMillis: Long, stdin: ByteArray? = null): Workspace
     } catch (e: InterruptedException) {
         // 调用方线程被中断（如协程取消时的 runInterruptible），杀掉进程避免命令继续执行
         destroyForcibly()
-        // 进程被杀后 stdout/stderr 会关闭, 这里 join 回收两个采集线程, 避免每次取消泄漏一对线程
+        closeStreamsQuietly(inputStream, errorStream, outputStream)
+        // 进程被杀且流关闭后，阻塞在读/写中的采集线程会因 IOException 退出，
+        // 这里 join 回收两个采集线程，避免每次取消泄漏一对线程
         stdinWriter?.join(1_000)
         stdout.join(1_000)
         stderr.join(1_000)
         throw e
+    } catch (e: Throwable) {
+        // 兜底：任何未预期的异常都确保进程被销毁、流被关闭、采集线程被回收
+        destroyForcibly()
+        closeStreamsQuietly(inputStream, errorStream, outputStream)
+        stdinWriter?.join(1_000)
+        stdout.join(1_000)
+        stderr.join(1_000)
+        throw e
+    }
+}
+
+/** 静默关闭一批 Closeable，忽略关闭时的异常 */
+private fun closeStreamsQuietly(vararg streams: Closeable?) {
+    for (stream in streams) {
+        try {
+            stream?.close()
+        } catch (_: IOException) {
+            // 忽略关闭时的异常
+        }
     }
 }
 

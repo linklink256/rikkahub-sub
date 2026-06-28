@@ -50,6 +50,7 @@ import me.rerere.highlight.LocalHighlighter
 import me.rerere.rikkahub.R
 import me.rerere.rikkahub.ui.components.nav.BackButton
 import me.rerere.rikkahub.ui.components.richtext.HighlightCodeVisualTransformation
+import me.rerere.rikkahub.ui.components.richtext.rememberHighlightCodeVisualTransformation
 import me.rerere.rikkahub.ui.components.ui.FormItem
 import me.rerere.rikkahub.ui.components.ui.SectionHeader
 import me.rerere.rikkahub.ui.components.ui.OutlinedNumberInput
@@ -705,10 +706,11 @@ internal fun CustomJsOptions(
             modifier = Modifier.fillMaxWidth(),
             minLines = 8,
             maxLines = 20,
-            visualTransformation = HighlightCodeVisualTransformation(
+            visualTransformation = rememberHighlightCodeVisualTransformation(
                 language = "javascript",
                 highlighter = highlighter,
-                darkMode = darkMode
+                darkMode = darkMode,
+                text = options.searchScript,
             ),
             textStyle = MaterialTheme.typography.bodySmall.merge(fontFamily = JetbrainsMono),
         )
@@ -739,10 +741,11 @@ internal fun CustomJsOptions(
                     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
                 )
             },
-            visualTransformation = HighlightCodeVisualTransformation(
+            visualTransformation = rememberHighlightCodeVisualTransformation(
                 language = "javascript",
                 highlighter = highlighter,
-                darkMode = darkMode
+                darkMode = darkMode,
+                text = options.scrapeScript,
             ),
             textStyle = MaterialTheme.typography.bodySmall.merge(fontFamily = JetbrainsMono),
         )

@@ -2,7 +2,6 @@ package me.rerere.rikkahub.ui.hooks
 
 import android.content.Context
 import android.util.Log
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -11,9 +10,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 import me.rerere.tts.model.PlaybackState
 import me.rerere.rikkahub.data.datastore.SettingsStore
 import me.rerere.rikkahub.data.datastore.getSelectedTTSProvider
@@ -123,8 +121,7 @@ private class CustomTtsStateImpl(
     private val ttsManager by inject<TTSManager>()
     private val controller by lazy { me.rerere.tts.controller.TtsController(context, ttsManager) }
 
-    private val scope = CoroutineScope(Dispatchers.Main)
-    private var currentJob: Job? = null
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override val isAvailable: StateFlow<Boolean> get() = controller.isAvailable
     override val isSpeaking: StateFlow<Boolean> get() = controller.isSpeaking
@@ -170,6 +167,6 @@ private class CustomTtsStateImpl(
 
     override fun cleanup() {
         controller.dispose()
-        currentJob = null
+        scope.cancel()
     }
 }

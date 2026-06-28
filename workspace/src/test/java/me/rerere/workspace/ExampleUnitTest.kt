@@ -1,13 +1,33 @@
 package me.rerere.workspace
 
 import com.sun.net.httpserver.HttpServer
+import kotlin.coroutines.Continuation
+import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.EmptyCoroutineContext
+import kotlin.coroutines.startCoroutine
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.net.InetSocketAddress
 import java.nio.file.Files
+import java.util.concurrent.CompletableFuture
 import java.util.zip.GZIPOutputStream
+
+/**
+ * 在测试中桥接 suspend → blocking，仅依赖 kotlin-stdlib 的 startCoroutine + CompletableFuture，
+ * 不需要 kotlinx-coroutines。
+ */
+private fun <T> runSuspend(block: suspend () -> T, context: CoroutineContext = EmptyCoroutineContext): T {
+    val future = CompletableFuture<T>()
+    block.startCoroutine(Continuation(context) { result ->
+        result.fold(
+            onSuccess = { future.complete(it) },
+            onFailure = { future.completeExceptionally(it) },
+        )
+    })
+    return future.get()
+}
 
 class ExampleUnitTest {
     @Test
@@ -93,7 +113,7 @@ class ExampleUnitTest {
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
-        val result = manager.executeCommand(root, "printf hello > command.txt && cat command.txt")
+        val result = runSuspend { manager.executeCommand(root, "printf hello > command.txt && cat command.txt") }
 
         assertEquals(0, result.exitCode)
         assertEquals("hello", result.stdout)
@@ -107,11 +127,13 @@ class ExampleUnitTest {
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
-        val result = manager.executeCommand(
-            root = root,
-            command = "cat > stdin.txt",
-            stdin = "hello\nstdin".toByteArray(),
-        )
+        val result = runSuspend {
+            manager.executeCommand(
+                root = root,
+                command = "cat > stdin.txt",
+                stdin = "hello\nstdin".toByteArray(),
+            )
+        }
 
         assertEquals(0, result.exitCode)
         assertEquals("hello\nstdin", File(manager.filesDir(root), "stdin.txt").readText())
@@ -127,7 +149,7 @@ class ExampleUnitTest {
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
-        val result = manager.executeCommand(root, "cat /etc/os-release")
+        val result = runSuspend { manager.executeCommand(root, "cat /etc/os-release") }
 
         assertEquals(127, result.exitCode)
         assertEquals("Rootfs is not installed", result.stderr)
@@ -140,10 +162,12 @@ class ExampleUnitTest {
         val root = "test-workspace"
         manager.ensureWorkspace(root)
 
-        val result = manager.executeCommand(
-            root,
-            "awk 'BEGIN { for (i = 0; i < 300000; i++) printf \"a\" }'",
-        )
+        val result = runSuspend {
+            manager.executeCommand(
+                root,
+                "awk 'BEGIN { for (i = 0; i < 300000; i++) printf \"a\" }'",
+            )
+        }
 
         assertEquals(0, result.exitCode)
         assertTrue(result.truncated)

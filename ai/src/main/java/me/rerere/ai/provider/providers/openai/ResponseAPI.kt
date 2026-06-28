@@ -92,13 +92,13 @@ class ResponseAPI(
 
         Log.i(TAG, "generateText: ${json.encodeToString(requestBody)}")
 
-        val response = client.newCall(request).await()
-        if (!response.isSuccessful) {
-            val errorBody = response.body?.string() ?: ""
-            throw parseErrorBody(errorBody, null)
+        val bodyStr = client.newCall(request).await().use { response ->
+            if (!response.isSuccessful) {
+                val errorBody = response.body?.string() ?: ""
+                throw parseErrorBody(errorBody, null)
+            }
+            response.body?.string() ?: ""
         }
-
-        val bodyStr = response.body?.string() ?: ""
         Log.i(TAG, "generateText: $bodyStr")
         val bodyJson = try {
             json.parseToJsonElement(bodyStr).jsonObject
@@ -166,7 +166,7 @@ class ResponseAPI(
                 t?.printStackTrace()
                 Log.e(TAG, "onFailure: ${t?.javaClass?.name} ${t?.message} / $response")
 
-                val bodyRaw = response?.body?.stringSafe()
+                val bodyRaw = response?.use { it.body?.stringSafe() }
                 val exception = parseErrorBody(bodyRaw, t)
                 close(exception)
             }

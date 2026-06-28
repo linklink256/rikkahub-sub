@@ -28,6 +28,7 @@ import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,9 +51,11 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withContext
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.toLocalDateTime
 import me.rerere.highlight.HighlightText
@@ -86,6 +89,11 @@ import kotlin.time.Clock
 
 private const val COLLAPSE_LINES = 10
 private val PREVIEWABLE_LANGUAGES = setOf("html", "svg")
+
+// Maximum length for synchronous (runBlocking) highlighting — short enough to stay <16ms.
+private const val MAX_SYNC_HIGHLIGHT_LENGTH = 200
+// Maximum length for highlighting at all; beyond this we show plain text.
+private const val MAX_CODE_LENGTH = 4096
 
 @Composable
 fun HighlightCodeBlock(
@@ -503,34 +511,71 @@ private fun buildCodePreviewHtml(code: String, language: String): String {
     }
 }
 
+/**
+ * A [VisualTransformation] that applies syntax highlighting to code text.
+ *
+ * The highlighting result is obtained from [highlightedResult] (a composable-level
+ * [MutableState] populated by a background coroutine), falling back to:
+ * 1. Synchronous (runBlocking) highlighting for very short snippets (≤ 200 chars),
+ * 2. Plain text (identity transformation) for longer text when no precomputed
+ *    result is available yet.
+ *
+ * This avoids main-thread blocking on the Prism.js syntax analysis for long code
+ * blocks, which previously caused ANRs.
+ */
 class HighlightCodeVisualTransformation(
     val language: String,
     val highlighter: Highlighter,
-    val darkMode: Boolean
+    val darkMode: Boolean,
+    /**
+     * Composable-level state holding the latest precomputed highlight result.
+     * When present and matching the current text, [filter] returns it
+     * immediately without any blocking.
+     */
+    private val highlightedResult: MutableState<AnnotatedString?>? = null,
 ) : VisualTransformation {
     override fun filter(text: AnnotatedString): TransformedText {
-        val annotatedString = try {
-            val colorPalette = if (darkMode) AtomOneDarkPalette else AtomOneLightPalette
+        return try {
             if (text.text.isEmpty()) {
-                AnnotatedString("")
-            } else {
-                runBlocking {
-                    val tokens = highlighter.highlight(text.text, language)
-                    buildAnnotatedString {
-                        tokens.forEach { token ->
-                            buildHighlightText(token, colorPalette)
-                        }
+                return TransformedText(AnnotatedString(""), OffsetMapping.Identity)
+            }
+
+            // 1. Use precomputed result from background computation
+            highlightedResult?.let { state ->
+                state.value?.let { annotated ->
+                    if (annotated.text == text.text) {
+                        return TransformedText(annotated, OffsetMapping.Identity)
                     }
                 }
             }
-        } catch (e: Exception) {
-            AnnotatedString(text.text)
-        }
 
-        return TransformedText(
-            text = annotatedString,
-            offsetMapping = OffsetMapping.Identity
-        )
+            // 2. Short text: synchronous highlight is fast enough (<16ms for <200 chars)
+            //    — prevents a brief "plain text flash" on short snippets.
+            if (text.text.length <= MAX_SYNC_HIGHLIGHT_LENGTH) {
+                return highlightSynchronously(text)
+            }
+
+            // 3. Long text: non-blocking, return plain text for now.
+            //    A background coroutine (see rememberHighlightCodeVisualTransformation)
+            //    will compute the highlight result and update highlightedResult,
+            //    triggering recomposition.
+            TransformedText(text, OffsetMapping.Identity)
+        } catch (e: Exception) {
+            TransformedText(text, OffsetMapping.Identity)
+        }
+    }
+
+    private fun highlightSynchronously(text: AnnotatedString): TransformedText {
+        val colorPalette = if (darkMode) AtomOneDarkPalette else AtomOneLightPalette
+        val tokens = runBlocking {
+            highlighter.highlight(text.text, language)
+        }
+        val annotated = buildAnnotatedString {
+            tokens.forEach { token -> buildHighlightText(token, colorPalette) }
+        }
+        // Also cache the result so the next call skips synchronous work
+        highlightedResult?.value = annotated
+        return TransformedText(annotated, OffsetMapping.Identity)
     }
 
     companion object {
@@ -541,4 +586,65 @@ class HighlightCodeVisualTransformation(
             darkMode = LocalDarkMode.current,
         )
     }
+}
+
+/**
+ * Creates a [HighlightCodeVisualTransformation] that computes syntax highlighting
+ * in a background coroutine, avoiding main-thread blocking.
+ *
+ * When [text] changes, the highlighting is computed via [Highlighter.highlight] on
+ * [Dispatchers.Default]. The result is stored in a [MutableState] that the
+ * transformation's [VisualTransformation.filter] consults — if the precomputed
+ * result matches the current text, it's returned immediately without any blocking.
+ *
+ * For very short texts (≤ 200 chars) a synchronous fallback ensures there's no
+ * visible "plain text flash". For texts exceeding [MAX_CODE_LENGTH] (4096 chars),
+ * no highlighting is performed.
+ *
+ * @param language The programming language for syntax highlighting.
+ * @param highlighter The [Highlighter] instance (typically from [LocalHighlighter]).
+ * @param darkMode Whether to use the dark color palette.
+ * @param text The current text value to highlight. When this changes, a new
+ *             background computation is launched; the previous one is cancelled.
+ */
+@Composable
+fun rememberHighlightCodeVisualTransformation(
+    language: String,
+    highlighter: Highlighter,
+    darkMode: Boolean,
+    text: String = "",
+): HighlightCodeVisualTransformation {
+    val highlightedResult = remember { mutableStateOf<AnnotatedString?>(null) }
+    val colorPalette = remember(darkMode) {
+        if (darkMode) AtomOneDarkPalette else AtomOneLightPalette
+    }
+    val transformation = remember(highlighter, language, darkMode) {
+        HighlightCodeVisualTransformation(
+            language = language,
+            highlighter = highlighter,
+            darkMode = darkMode,
+            highlightedResult = highlightedResult,
+        )
+    }
+
+    // Compute highlighting in background when text/language/darkMode changes.
+    // LaunchedEffect cancels the previous coroutine automatically.
+    if (text.isNotEmpty()) {
+        LaunchedEffect(text, language, colorPalette) {
+            if (text.length <= MAX_CODE_LENGTH) {
+                val tokens = withContext(Dispatchers.Default) {
+                    highlighter.highlight(text, language)
+                }
+                val annotated = buildAnnotatedString {
+                    tokens.forEach { token -> buildHighlightText(token, colorPalette) }
+                }
+                highlightedResult.value = annotated
+            } else {
+                // Extremely long text: skip highlighting, show plain text
+                highlightedResult.value = AnnotatedString(text)
+            }
+        }
+    }
+
+    return transformation
 }

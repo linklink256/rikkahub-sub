@@ -24,6 +24,14 @@ interface FavoriteDAO {
     @Query("SELECT substr(ref_key, length('node:' || :conversationId || ':') + 1) FROM favorites WHERE ref_key LIKE 'node:' || :conversationId || ':%'")
     suspend fun getFavoriteNodeIdsOfConversation(conversationId: String): List<String>
 
+    /**
+     * 批量查询所有消息节点的收藏 ref_key（利用 type 列索引）。
+     * ref_key 格式为 "node:{conversationId}:{nodeId}"，
+     * 上层按 conversationId 分组后，用于 @Relation 批量加载后的 favorites 判定。
+     */
+    @Query("SELECT ref_key FROM favorites WHERE type = 'node'")
+    suspend fun getAllNodeFavoriteRefs(): List<String>
+
     @Query("SELECT * FROM favorites WHERE ref_key = :refKey LIMIT 1")
     suspend fun getByRefKey(refKey: String): FavoriteEntity?
 

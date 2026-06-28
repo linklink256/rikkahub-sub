@@ -16,7 +16,7 @@ class ProotShellRunner(
     private val extraBindMounts: List<WorkspaceBindMount> = emptyList(),
     private val patcher: RootfsPatcher = RootfsPatcher(),
 ) : WorkspaceShellRunner {
-    override fun execute(context: WorkspaceShellContext): WorkspaceCommandResult {
+    override suspend fun execute(context: WorkspaceShellContext): WorkspaceCommandResult {
         if (!context.linuxDir.hasUsableRootfs()) {
             return WorkspaceCommandResult(
                 exitCode = 127,

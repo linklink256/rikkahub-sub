@@ -18,6 +18,7 @@ import me.rerere.rikkahub.data.db.dao.ConversationDAO
 import me.rerere.rikkahub.data.db.dao.FavoriteDAO
 import me.rerere.rikkahub.data.db.dao.MessageNodeDAO
 import me.rerere.rikkahub.data.db.entity.ConversationEntity
+import me.rerere.rikkahub.data.db.entity.ConversationWithNodes
 import me.rerere.rikkahub.data.db.entity.MessageNodeEntity
 import me.rerere.rikkahub.data.files.FilesManager
 import me.rerere.rikkahub.data.model.Conversation
@@ -39,13 +40,25 @@ class ConversationRepository(
         private const val INITIAL_LOAD_SIZE = 40
     }
 
+    /**
+     * 加载最近 N 条会话（含完整消息节点）。
+     *
+     * 使用 @Relation + @Transaction 在单次事务内批量加载所有消息节点，
+     * 消除了原先 foreach 逐条查 [loadMessageNodes] 的 N+1 问题。
+     * 同时批量加载所有 relevant 收藏状态。
+     */
     suspend fun getRecentConversations(assistantId: Uuid, limit: Int = 10): List<Conversation> {
-        return conversationDAO.getRecentConversationsOfAssistant(
+        val relations = conversationDAO.getRecentConversationsWithNodes(
             assistantId = assistantId.toString(),
             limit = limit
-        ).map { entity ->
-            val nodes = loadMessageNodes(entity.id)
-            conversationEntityToConversation(entity, nodes)
+        )
+        if (relations.isEmpty()) return emptyList()
+
+        // 批量加载这些 conversation 的收藏状态（一次查询，消除 favorite N+1）
+        val favoriteMap = loadFavoriteMapForConversations(relations.map { it.conversation.id })
+
+        return relations.map { relation ->
+            conversationWithNodesToConversation(relation, favoriteMap)
         }
     }
 
@@ -120,11 +133,15 @@ class ConversationRepository(
             )
         }
 
+    /**
+     * 加载完整会话（含消息节点）。
+     * 使用 @Relation + @Transaction 一次联表查询，消除独立的 message_node 查询。
+     */
     suspend fun getConversationById(uuid: Uuid): Conversation? {
-        val entity = conversationDAO.getConversationById(uuid.toString())
-        return if (entity != null) {
-            val nodes = loadMessageNodes(entity.id)
-            conversationEntityToConversation(entity, nodes)
+        val relation = conversationDAO.getConversationWithNodesById(uuid.toString())
+        return if (relation != null) {
+            val favoriteMap = loadFavoriteMapForConversations(listOf(relation.conversation.id))
+            conversationWithNodesToConversation(relation, favoriteMap)
         } else null
     }
 
@@ -235,6 +252,57 @@ class ConversationRepository(
             lorebookIds = JsonInstant.decodeFromString(conversationEntity.lorebookIds),
             workspaceCwd = conversationEntity.workspaceCwd.ifEmpty { null },
         )
+    }
+
+    /**
+     * 将 @Relation 批量查询结果 [ConversationWithNodes] 转换为领域模型 [Conversation]。
+     *
+     * @param favoriteMap  conversationId → 该会话下被收藏的 nodeId 集合（由 [loadFavoriteMapForConversations] 预加载）
+     */
+    private fun conversationWithNodesToConversation(
+        relation: ConversationWithNodes,
+        favoriteMap: Map<String, Set<Uuid>>
+    ): Conversation {
+        val favoriteNodeIds = favoriteMap[relation.conversation.id] ?: emptySet()
+        val nodes = relation.nodes.map { entity ->
+            MessageNode(
+                id = Uuid.parse(entity.id),
+                messages = JsonInstant.decodeFromString<List<UIMessage>>(entity.messages),
+                selectIndex = entity.selectIndex,
+                isFavorite = favoriteNodeIds.contains(Uuid.parse(entity.id))
+            )
+        }.filter { it.messages.isNotEmpty() }
+
+        return conversationEntityToConversation(relation.conversation, nodes)
+    }
+
+    /**
+     * 批量加载多个 conversation 下所有消息节点的收藏状态。
+     * 使用 [FavoriteDAO.getAllNodeFavoriteRefs] 一次查询全部 node 收藏，
+     * 按 conversationId 分组返回，避免对每个 conversation 单独查询 favorites 表（消除 N+1）。
+     *
+     * ref_key 格式: "node:{conversationId}:{nodeId}"
+     */
+    private suspend fun loadFavoriteMapForConversations(
+        conversationIds: List<String>
+    ): Map<String, Set<Uuid>> {
+        val allRefs = favoriteDAO.getAllNodeFavoriteRefs()
+        val result = mutableMapOf<String, MutableSet<Uuid>>()
+        for (ref in allRefs) {
+            // ref = "node:{conversationId}:{nodeId}"
+            val parts = ref.removePrefix("node:").split(":", limit = 2)
+            if (parts.size == 2) {
+                val convId = parts[0]
+                // 只关心传入的 conversationIds，过滤掉不相干的
+                if (convId in conversationIds) {
+                    val nodeId = runCatching { Uuid.parse(parts[1]) }.getOrNull()
+                    if (nodeId != null) {
+                        result.getOrPut(convId) { mutableSetOf() }.add(nodeId)
+                    }
+                }
+            }
+        }
+        return result
     }
 
     fun getPinnedConversations(): Flow<List<Conversation>> {
