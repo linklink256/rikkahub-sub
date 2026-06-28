@@ -1,14 +1,10 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
-import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -16,85 +12,68 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.rerere.search.SearchResult.SearchResultItem
-import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 
 private const val PERPLEXITY_ENDPOINT = "https://api.perplexity.ai/search"
-private const val TAG = "PerplexitySearchService"
 
-object PerplexitySearchService : SearchService<SearchServiceOptions.PerplexityOptions> {
+object PerplexitySearchService : HttpSearchService<SearchServiceOptions.PerplexityOptions>() {
     override val name: String = "Perplexity"
+
+    override val baseUrl: String = PERPLEXITY_ENDPOINT
 
     @Composable
     override fun Description() = ApiKeyButton("https://www.perplexity.ai/settings/api")
 
-    override suspend fun search(
+    override fun buildRequestBody(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.PerplexityOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            if (serviceOptions.apiKey.isBlank()) {
-                error("Perplexity API key is required")
+    ): String? = buildJsonObject {
+        put("query", JsonPrimitive(query))
+        put("max_results", JsonPrimitive(commonOptions.resultSize))
+        serviceOptions.maxTokens?.let {
+            if (it > 0) {
+                put("max_tokens", JsonPrimitive(it))
             }
-
-            val query = params.requireQuery()
-
-            val body = buildJsonObject {
-                put("query", JsonPrimitive(query))
-                put("max_results", JsonPrimitive(commonOptions.resultSize))
-                serviceOptions.maxTokens?.let {
-                    if (it > 0) {
-                        put("max_tokens", JsonPrimitive(it))
-                    }
-                }
-                serviceOptions.maxTokensPerPage?.let {
-                    if (it > 0) {
-                        put("max_tokens_per_page", JsonPrimitive(it))
-                    }
-                }
+        }
+        serviceOptions.maxTokensPerPage?.let {
+            if (it > 0) {
+                put("max_tokens_per_page", JsonPrimitive(it))
             }
+        }
+    }.toString()
 
-            Log.i(TAG, "search: $body")
-
-            val request = Request.Builder()
-                .url(PERPLEXITY_ENDPOINT)
-                .post(body.toString().toRequestBody())
-                .addHeader("Authorization", "Bearer ${serviceOptions.apiKey}")
-                .addHeader("Content-Type", "application/json")
-                .build()
-
-            val response = httpClient.newCall(request).await()
-            if (response.isSuccessful) {
-                val responseBody = response.body.string().let {
-                    json.decodeFromString<PerplexityResponse>(it)
-                }
-
-                val items = responseBody.results
-                    .filter { !it.title.isNullOrBlank() && !it.url.isNullOrBlank() }
-                    .take(commonOptions.resultSize)
-                    .map {
-                        SearchResultItem(
-                            title = it.title!!,
-                            url = it.url!!,
-                            text = it.snippet ?: it.text ?: ""
-                        )
-                    }
-
-                return@withContext Result.success(
-                    SearchResult(
-                        answer = responseBody.answer,
-                        items = items
-                    )
-                )
-            } else {
-                error("response failed #${response.code}: ${response.body?.string()}")
-            }
+    override fun validateResponse(response: Response) {
+        if (!response.isSuccessful) {
+            error("response failed #${response.code}: ${response.body?.string()}")
         }
     }
 
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val responseBody = json.decodeFromString<PerplexityResponse>(raw)
+        val items = responseBody.results
+            .filter { !it.title.isNullOrBlank() && !it.url.isNullOrBlank() }
+            .map {
+                SearchResultItem(
+                    title = it.title!!,
+                    url = it.url!!,
+                    text = it.snippet ?: it.text ?: ""
+                )
+            }
+        return SearchResult(
+            answer = responseBody.answer,
+            items = items
+        )
+    }
+
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.PerplexityOptions): String {
+        if (serviceOptions.apiKey.isBlank()) {
+            error("Perplexity API key is required")
+        }
+        return serviceOptions.apiKey
+    }
 
     @Serializable
     private data class PerplexityResponse(

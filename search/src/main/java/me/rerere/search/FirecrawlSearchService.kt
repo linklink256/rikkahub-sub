@@ -1,5 +1,4 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,14 +21,17 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.common.http.await
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOptions> {
+object FirecrawlSearchService : HttpSearchService<SearchServiceOptions.FirecrawlOptions>() {
     override val name: String = "Firecrawl"
+
+    override val baseUrl: String = "https://api.firecrawl.dev/v2/search"
 
     @Composable
     override fun Description() = ApiKeyButton("https://docs.firecrawl.dev/features/search")
@@ -77,74 +79,59 @@ object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOpti
             required = listOf("url")
         )
 
-    override suspend fun search(
+    override fun buildRequestBody(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.FirecrawlOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            val query = params.requireQuery()
-
-            val sources = params["sources"].asStringList()
-            val categories = params["categories"].asStringList()
-
-            val body = buildJsonObject {
-                put("query", query)
-                put("limit", commonOptions.resultSize)
-                sources?.takeIf { it.isNotEmpty() }?.let { list ->
-                    put("sources", buildJsonArray {
-                        list.forEach { add(it) }
-                    })
-                }
-                categories?.takeIf { it.isNotEmpty() }?.let { list ->
-                    put("categories", buildJsonArray {
-                        list.forEach { add(it) }
-                    })
-                }
+    ): String? {
+        val sources = params["sources"].asStringList()
+        val categories = params["categories"].asStringList()
+        return buildJsonObject {
+            put("query", query)
+            put("limit", commonOptions.resultSize)
+            sources?.takeIf { it.isNotEmpty() }?.let { list ->
+                put("sources", buildJsonArray {
+                    list.forEach { add(it) }
+                })
             }
-
-            val request = Request.Builder()
-                .url("https://api.firecrawl.dev/v2/search")
-                .post(body.toString().toRequestBody())
-                .addHeader("Content-Type", "application/json")
-                .apply {
-                    if (serviceOptions.apiKey.isNotBlank()) {
-                        addHeader("Authorization", "Bearer ${serviceOptions.apiKey}")
-                    }
-                }
-                .build()
-
-            val response = httpClient.newCall(request).await()
-            response.requireSuccess()
-
-            val bodyString = response.body.string()
-            val payload = json.parseToJsonElement(bodyString).jsonObject
-            val data = payload["data"]?.jsonObject ?: error("empty response data")
-            val resultData = json.decodeFromJsonElement<FirecrawlSearchResultData>(data)
-            val result = buildList {
-                resultData.web?.forEach { item ->
-                    add(SearchResultItem(title = item.title, url = item.url, text = item.description))
-                }
-
-                resultData.news?.forEach { item ->
-                    add(
-                        SearchResultItem(
-                            title = item.title,
-                            url = item.url,
-                            text = """
-                                ${item.snippet}
-                                ${item.date}
-                            """.trimIndent()
-                        )
-                    )
-                }
+            categories?.takeIf { it.isNotEmpty() }?.let { list ->
+                put("categories", buildJsonArray {
+                    list.forEach { add(it) }
+                })
             }
-            SearchResult(
-                items = result
-            )
-        }
+        }.toString()
     }
 
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val payload = json.parseToJsonElement(raw).jsonObject
+        val data = payload["data"]?.jsonObject ?: error("empty response data")
+        val resultData = json.decodeFromJsonElement<FirecrawlSearchResultData>(data)
+        val result = buildList {
+            resultData.web?.forEach { item ->
+                add(SearchResultItem(title = item.title, url = item.url, text = item.description))
+            }
+            resultData.news?.forEach { item ->
+                add(
+                    SearchResultItem(
+                        title = item.title,
+                        url = item.url,
+                        text = """
+                            ${item.snippet}
+                            ${item.date}
+                        """.trimIndent()
+                    )
+                )
+            }
+        }
+        return SearchResult(
+            items = result
+        )
+    }
+
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.FirecrawlOptions): String = serviceOptions.apiKey
+
+    // ---- Preserve scrape (unchanged) ----
     override suspend fun scrape(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
@@ -205,10 +192,8 @@ object FirecrawlSearchService : SearchService<SearchServiceOptions.FirecrawlOpti
             is JsonArray -> this.mapNotNull { element ->
                 element.jsonPrimitive.contentOrNull?.takeIf { it.isNotBlank() }
             }
-
             is JsonPrimitive -> this.contentOrNull?.split(',')
                 ?.mapNotNull { it.trim().takeIf(String::isNotEmpty) }
-
             else -> null
         }
     }
@@ -234,6 +219,3 @@ data class FirecrawlSearchResultData(
     val web: List<FirecrawlSearchResultWebItem>? = emptyList(),
     val news: List<FirecrawlSearchResultNewsItem>? = emptyList(),
 )
-
-
-

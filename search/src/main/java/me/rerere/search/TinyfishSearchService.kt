@@ -1,5 +1,4 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -15,6 +14,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.common.http.await
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -22,8 +22,12 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-object TinyfishSearchService : SearchService<SearchServiceOptions.TinyfishOptions> {
+object TinyfishSearchService : HttpSearchService<SearchServiceOptions.TinyfishOptions>() {
     override val name: String = "Tinyfish"
+
+    override val httpMethod: String = "GET"
+    override val authHeaderName: String = "X-API-Key"
+    override val authHeaderPrefix: String = ""
 
     @Composable
     override fun Description() = ApiKeyButton("https://agent.tinyfish.ai/api-keys")
@@ -39,46 +43,38 @@ object TinyfishSearchService : SearchService<SearchServiceOptions.TinyfishOption
             required = listOf("url")
         )
 
-    override suspend fun search(
+    override fun buildUrl(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.TinyfishOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            val query = params.requireQuery()
-            val url = "https://api.search.tinyfish.ai" +
-                    "?query=${java.net.URLEncoder.encode(query, "UTF-8")}"
+    ): String = "https://api.search.tinyfish.ai" +
+            "?query=${java.net.URLEncoder.encode(query, "UTF-8")}"
 
-            val request = Request.Builder()
-                .url(url)
-                .addHeader("X-API-Key", serviceOptions.apiKey)
-                .build()
-
-            val response = httpClient.newCall(request).await()
-            if (response.isSuccessful) {
-                val responseBody = response.body.string()
-                val searchResponse = json.decodeFromString<TinyfishSearchResponse>(responseBody)
-
-                val items = searchResponse.results.map { result ->
-                    SearchResultItem(
-                        title = result.title,
-                        url = result.url,
-                        text = result.snippet
-                    )
-                }
-
-                return@withContext Result.success(
-                    SearchResult(
-                        answer = null,
-                        items = items
-                    )
-                )
-            } else {
-                error("Tinyfish search failed with code ${response.code}: ${response.message}")
-            }
+    override fun validateResponse(response: okhttp3.Response) {
+        if (!response.isSuccessful) {
+            error("Tinyfish search failed with code ${response.code}: ${response.message}")
         }
     }
 
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val searchResponse = json.decodeFromString<TinyfishSearchResponse>(raw)
+        val items = searchResponse.results.map { result ->
+            SearchResultItem(
+                title = result.title,
+                url = result.url,
+                text = result.snippet
+            )
+        }
+        return SearchResult(
+            answer = null,
+            items = items
+        )
+    }
+
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.TinyfishOptions): String = serviceOptions.apiKey
+
+    // ---- Preserve scrape (unchanged) ----
     override suspend fun scrape(
         params: JsonObject,
         commonOptions: SearchCommonOptions,

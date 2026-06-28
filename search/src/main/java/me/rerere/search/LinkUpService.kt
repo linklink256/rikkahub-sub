@@ -1,7 +1,5 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
-import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -16,6 +14,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.common.http.await
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -25,8 +24,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 private const val TAG = "LinkUpService"
 
-object LinkUpService : SearchService<SearchServiceOptions.LinkUpOptions> {
+object LinkUpService : HttpSearchService<SearchServiceOptions.LinkUpOptions>() {
     override val name: String = "LinkUp"
+
+    override val baseUrl: String = "https://api.linkup.so/v1/search"
+    override val useKeyRoulette: Boolean = true
 
     @Composable
     override fun Description() = ApiKeyButton("https://www.linkup.so/")
@@ -42,54 +44,41 @@ object LinkUpService : SearchService<SearchServiceOptions.LinkUpOptions> {
             required = listOf("url")
         )
 
-    override suspend fun search(
+    override fun buildRequestBody(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.LinkUpOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            val query = params.requireQuery()
-            val body = buildJsonObject {
-                put("q", JsonPrimitive(query))
-                put("depth", JsonPrimitive(serviceOptions.depth))
-                put("outputType", JsonPrimitive("sourcedAnswer"))
-                put("includeImages", JsonPrimitive("false"))
-            }
-            val apiKey = keyRoulette.next(serviceOptions.apiKey, serviceOptions.id.toString())
+    ): String? = buildJsonObject {
+        put("q", JsonPrimitive(query))
+        put("depth", JsonPrimitive(serviceOptions.depth))
+        put("outputType", JsonPrimitive("sourcedAnswer"))
+        put("includeImages", JsonPrimitive("false"))
+    }.toString()
 
-            val request = Request.Builder()
-                .url("https://api.linkup.so/v1/search")
-                .post(body.toString().toRequestBody())
-                .addHeader("Authorization", "Bearer $apiKey")
-                .addHeader("Content-Type", "application/json")
-                .build()
-
-            Log.i(TAG, "search: $query")
-
-            val response = httpClient.newCall(request).await()
-            if (response.isSuccessful) {
-                val responseBody = response.body.string().let {
-                    json.decodeFromString<LinkUpSearchResponse>(it)
-                }
-
-                return@withContext Result.success(
-                    SearchResult(
-                        answer = responseBody.answer,
-                        items = responseBody.sources.take(commonOptions.resultSize).map {
-                            SearchResultItem(
-                                title = it.name,
-                                url = it.url,
-                                text = it.snippet
-                            )
-                        }
-                    )
-                )
-            } else {
-                error("response failed #${response.code}: ${response.body?.string()}")
-            }
+    override fun validateResponse(response: okhttp3.Response) {
+        if (!response.isSuccessful) {
+            error("response failed #${response.code}: ${response.body?.string()}")
         }
     }
 
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val responseBody = json.decodeFromString<LinkUpSearchResponse>(raw)
+        return SearchResult(
+            answer = responseBody.answer,
+            items = responseBody.sources.map {
+                SearchResultItem(
+                    title = it.name,
+                    url = it.url,
+                    text = it.snippet
+                )
+            }
+        )
+    }
+
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.LinkUpOptions): String = serviceOptions.apiKey
+
+    // ---- Preserve scrape (unchanged) ----
     override suspend fun scrape(
         params: JsonObject,
         commonOptions: SearchCommonOptions,

@@ -1,5 +1,4 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -15,10 +14,10 @@ import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.common.http.await
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
@@ -28,8 +27,11 @@ import okhttp3.RequestBody.Companion.toRequestBody
 
 private const val TAG = "TavilySearchService"
 
-object TavilySearchService : SearchService<SearchServiceOptions.TavilyOptions> {
+object TavilySearchService : HttpSearchService<SearchServiceOptions.TavilyOptions>() {
     override val name: String = "Tavily"
+
+    override val baseUrl: String = "https://api.tavily.com/search"
+    override val useKeyRoulette: Boolean = true
 
     @Composable
     override fun Description() = ApiKeyButton("https://app.tavily.com/home")
@@ -62,59 +64,50 @@ object TavilySearchService : SearchService<SearchServiceOptions.TavilyOptions> {
             required = listOf("url")
         )
 
-    override suspend fun search(
+    override fun buildRequestBody(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.TavilyOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            val query = params.requireQuery()
-            val topic = params["topic"]?.jsonPrimitive?.contentOrNull ?: "general"
+    ): String? {
+        val topic = params["topic"]?.jsonPrimitive?.contentOrNull ?: "general"
+        if (topic !in listOf("general", "news", "finance")) {
+            error("topic must be one of `general`, `news`, `finance`")
+        }
+        return buildJsonObject {
+            put("query", query)
+            put("max_results", commonOptions.resultSize)
+            put("search_depth", serviceOptions.depth.ifEmpty { "advanced" })
+            put("topic", topic)
+            put("include_answer", "advanced")
+            put("include_images", true)
+        }.toString()
+    }
 
-            // Validate topic
-            if (topic !in listOf("general", "news", "finance")) {
-                error("topic must be one of `general`, `news`, `finance`")
-            }
-
-            val body = buildJsonObject {
-                put("query", query)
-                put("max_results", commonOptions.resultSize)
-                put("search_depth", serviceOptions.depth.ifEmpty { "advanced" })
-                put("topic", topic)
-                put("include_answer", "advanced")
-                put("include_images", true)
-            }
-            val apiKey = keyRoulette.next(serviceOptions.apiKey, serviceOptions.id.toString())
-
-            val request = Request.Builder()
-                .url("https://api.tavily.com/search")
-                .post(body.toString().toRequestBody())
-                .addHeader("Authorization", "Bearer $apiKey")
-                .build()
-            val response = httpClient.newCall(request).await()
-            if (response.isSuccessful) {
-                val response = response.body.string().let {
-                    json.decodeFromString<SearchResponse>(it)
-                }
-
-                return@withContext Result.success(
-                    SearchResult(
-                        answer = response.answer,
-                        items = response.results.map {
-                            SearchResultItem(
-                                title = it.title,
-                                url = it.url,
-                                text = it.content
-                            )
-                        },
-                        images = response.images,
-                    ))
-            } else {
-                error("response failed #${response.code}")
-            }
+    override fun validateResponse(response: okhttp3.Response) {
+        if (!response.isSuccessful) {
+            error("response failed #${response.code}")
         }
     }
 
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val response = json.decodeFromString<SearchResponse>(raw)
+        return SearchResult(
+            answer = response.answer,
+            items = response.results.map {
+                SearchResultItem(
+                    title = it.title,
+                    url = it.url,
+                    text = it.content
+                )
+            },
+            images = response.images,
+        )
+    }
+
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.TavilyOptions): String = serviceOptions.apiKey
+
+    // ---- Preserve scrape (unchanged) ----
     override suspend fun scrape(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
@@ -160,7 +153,7 @@ object TavilySearchService : SearchService<SearchServiceOptions.TavilyOptions> {
         val followUpQuestions: String? = null,
         val answer: String? = null,
         val images: List<String> = emptyList(),
-        val results: List<TavilySearchService.SearchResultItem>,
+        val results: List<SearchResultItem>,
     )
 
     @Serializable

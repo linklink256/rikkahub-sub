@@ -1,14 +1,10 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
-import android.util.Log
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -19,14 +15,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.search.SearchResult.SearchResultItem
-import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
 
 private const val TAG = "GrokSearchService"
 
-object GrokSearchService : SearchService<SearchServiceOptions.GrokOptions> {
+object GrokSearchService : HttpSearchService<SearchServiceOptions.GrokOptions>() {
     override val name: String = "Grok"
 
     @Composable
@@ -43,89 +37,82 @@ object GrokSearchService : SearchService<SearchServiceOptions.GrokOptions> {
             required = listOf("query")
         )
 
-    override suspend fun search(
+    override fun buildUrl(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.GrokOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            if (serviceOptions.apiKey.isBlank()) {
-                error("Grok API key is required")
-            }
+    ): String = serviceOptions.customUrl
 
-            val query = params.requireQuery()
+    override fun buildRequestBody(
+        query: String,
+        params: JsonObject,
+        commonOptions: SearchCommonOptions,
+        serviceOptions: SearchServiceOptions.GrokOptions
+    ): String? = buildJsonObject {
+        put("model", JsonPrimitive(serviceOptions.model))
+        put("input", buildJsonArray {
+            add(buildJsonObject {
+                put("role", JsonPrimitive("system"))
+                put("content", JsonPrimitive(serviceOptions.systemPrompt))
+            })
+            add(buildJsonObject {
+                put("role", JsonPrimitive("user"))
+                put("content", JsonPrimitive(query))
+            })
+        })
+        put("tools", buildJsonArray {
+            add(buildJsonObject {
+                put("type", JsonPrimitive("web_search"))
+            })
+            add(buildJsonObject {
+                put("type", JsonPrimitive("x_search"))
+            })
+        })
+        put("store", JsonPrimitive(false))
+    }.toString()
 
-            val body = buildJsonObject {
-                put("model", JsonPrimitive(serviceOptions.model))
-                put("input", buildJsonArray {
-                    add(buildJsonObject {
-                        put("role", JsonPrimitive("system"))
-                        put("content", JsonPrimitive(serviceOptions.systemPrompt))
-                    })
-                    add(buildJsonObject {
-                        put("role", JsonPrimitive("user"))
-                        put("content", JsonPrimitive(query))
-                    })
-                })
-                put("tools", buildJsonArray {
-                    add(buildJsonObject {
-                        put("type", JsonPrimitive("web_search"))
-                    })
-                    add(buildJsonObject {
-                        put("type", JsonPrimitive("x_search"))
-                    })
-                })
-                put("store", JsonPrimitive(false))
-            }
-
-            Log.i(TAG, "search: $query")
-
-            val request = Request.Builder()
-                .url(serviceOptions.customUrl)
-                .post(body.toString().toRequestBody())
-                .addHeader("Authorization", "Bearer ${serviceOptions.apiKey}")
-                .addHeader("Content-Type", "application/json")
-                .build()
-
-            val response = httpClient.newCall(request).await()
-            if (response.isSuccessful) {
-                val responseBody = response.body.string().let {
-                    json.decodeFromString<GrokResponse>(it)
-                }
-
-                val messageOutput = responseBody.output.firstOrNull {
-                    it.type == "message" && it.role == "assistant"
-                }
-                val textContent = messageOutput?.content?.firstOrNull {
-                    it.type == "output_text"
-                }
-
-                val answer = textContent?.text
-
-                val items = textContent?.annotations
-                    ?.filter { it.type == "url_citation" && !it.url.isNullOrBlank() }
-                    ?.distinctBy { it.url }
-                    ?.take(commonOptions.resultSize)
-                    ?.map { annotation ->
-                        SearchResultItem(
-                            title = annotation.url!!,
-                            url = annotation.url,
-                            text = ""
-                        )
-                    } ?: emptyList()
-
-                return@withContext Result.success(
-                    SearchResult(
-                        answer = answer,
-                        items = items
-                    )
-                )
-            } else {
-                error("response failed #${response.code}: ${response.body?.string()}")
-            }
+    override fun validateResponse(response: Response) {
+        if (!response.isSuccessful) {
+            error("response failed #${response.code}: ${response.body?.string()}")
         }
     }
 
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val responseBody = json.decodeFromString<GrokResponse>(raw)
+
+        val messageOutput = responseBody.output.firstOrNull {
+            it.type == "message" && it.role == "assistant"
+        }
+        val textContent = messageOutput?.content?.firstOrNull {
+            it.type == "output_text"
+        }
+
+        val answer = textContent?.text
+
+        val items = textContent?.annotations
+            ?.filter { it.type == "url_citation" && !it.url.isNullOrBlank() }
+            ?.distinctBy { it.url }
+            ?.map { annotation ->
+                SearchResultItem(
+                    title = annotation.url!!,
+                    url = annotation.url,
+                    text = ""
+                )
+            } ?: emptyList()
+
+        return SearchResult(
+            answer = answer,
+            items = items
+        )
+    }
+
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.GrokOptions): String {
+        if (serviceOptions.apiKey.isBlank()) {
+            error("Grok API key is required")
+        }
+        return serviceOptions.apiKey
+    }
 
     @Serializable
     private data class GrokResponse(

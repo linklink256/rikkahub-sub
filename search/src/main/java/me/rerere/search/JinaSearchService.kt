@@ -1,5 +1,4 @@
 package me.rerere.search
-import me.rerere.common.http.await
 
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -14,13 +13,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.common.http.await
 import me.rerere.search.SearchResult.SearchResultItem
 import me.rerere.search.SearchService.Companion.httpClient
 import me.rerere.search.SearchService.Companion.json
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 
-object JinaSearchService : SearchService<SearchServiceOptions.JinaOptions> {
+object JinaSearchService : HttpSearchService<SearchServiceOptions.JinaOptions>() {
     private const val DEFAULT_SEARCH_URL = "https://s.jina.ai/"
     private const val DEFAULT_SCRAPE_URL = "https://r.jina.ai/"
 
@@ -40,48 +40,41 @@ object JinaSearchService : SearchService<SearchServiceOptions.JinaOptions> {
             required = listOf("url")
         )
 
-    override suspend fun search(
+    override fun buildUrl(
+        query: String,
         params: JsonObject,
         commonOptions: SearchCommonOptions,
         serviceOptions: SearchServiceOptions.JinaOptions
-    ): Result<SearchResult> = withContext(Dispatchers.IO) {
-        runCatching {
-            val query = params.requireQuery()
+    ): String = serviceOptions.searchUrl.ifBlank { DEFAULT_SEARCH_URL }
 
-            val body = buildJsonObject {
-                put("q", query)
-            }
+    override fun buildRequestBody(
+        query: String,
+        params: JsonObject,
+        commonOptions: SearchCommonOptions,
+        serviceOptions: SearchServiceOptions.JinaOptions
+    ): String? = buildJsonObject {
+        put("q", query)
+    }.toString()
 
-            val searchUrl = serviceOptions.searchUrl.ifBlank { DEFAULT_SEARCH_URL }
+    override fun extraHeaders(serviceOptions: SearchServiceOptions.JinaOptions): Map<String, String> =
+        mapOf("Accept" to "application/json")
 
-            val request = Request.Builder()
-                .url(searchUrl)
-                .post(body.toString().toRequestBody())
-                .addHeader("Authorization", "Bearer ${serviceOptions.apiKey}")
-                .addHeader("Accept", "application/json")
-                .addHeader("Content-Type", "application/json")
-                .build()
-
-            val response = httpClient.newCall(request).await()
-            response.requireSuccess()
-            val responseData = response.body.string().let {
-                json.decodeFromString<JinaSearchResponse>(it)
-            }
-
-            return@withContext Result.success(
-                SearchResult(
-                    items = responseData.data.take(commonOptions.resultSize).map {
-                        SearchResultItem(
-                            title = it.title,
-                            url = it.url,
-                            text = it.description
-                        )
-                    }
+    override fun parseSearchResponse(raw: String): SearchResult {
+        val responseData = json.decodeFromString<JinaSearchResponse>(raw)
+        return SearchResult(
+            items = responseData.data.map {
+                SearchResultItem(
+                    title = it.title,
+                    url = it.url,
+                    text = it.description
                 )
-            )
-        }
+            }
+        )
     }
 
+    override fun extractApiKey(serviceOptions: SearchServiceOptions.JinaOptions): String = serviceOptions.apiKey
+
+    // ---- Preserve scrape (unchanged) ----
     override suspend fun scrape(
         params: JsonObject,
         commonOptions: SearchCommonOptions,
