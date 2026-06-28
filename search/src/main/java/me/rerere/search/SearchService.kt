@@ -15,6 +15,8 @@ import me.rerere.ai.util.KeyRoulette
 import me.rerere.common.http.await
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
+import android.util.Log
+import kotlin.reflect.KClass
 import kotlin.uuid.Uuid
 
 // ponytail: shared query-property builder — dedup'd from 15+ identical blocks
@@ -164,6 +166,8 @@ sealed class SearchServiceOptions {
         get() = TYPES[this::class] ?: "Unknown"
 
     companion object {
+        private const val TAG = "SearchServiceOptions"
+
         val DEFAULT = BingLocalOptions()
 
         val TYPES = mapOf(
@@ -186,6 +190,51 @@ sealed class SearchServiceOptions {
             SerperOptions::class to "Serper",
             CustomJsOptions::class to "Custom JS",
         )
+
+        // 解码磁盘上的 search_services 原始字符串。
+        // - null：全新用户（磁盘无该键）→ 保留产品默认，给一个 BingLocalOptions。
+        // - 解码失败（数据损坏 / 历史不兼容，如缺 type 判别符、未知供应商、非法 JSON）
+        //   → 诚实清空为空列表，而非伪装成单个 Bing，避免误导用户以为自己选的就是 Bing。
+        //   历史不兼容数据一旦被用户重配并保存，即以当前格式写回，自愈。
+        // - 正常成功 → 保留各子类运行时类型与顺序。
+        fun decodeListSafely(raw: String?): List<SearchServiceOptions> =
+            if (raw == null) listOf(DEFAULT)
+            else try {
+                decodeJson.decodeFromString<List<SearchServiceOptions>>(raw)
+            } catch (e: Exception) {
+                // Json.decodeFromString 只处理内存字符串，不会抛 IOException；
+                // 若将来在此混入 I/O，须重抛 IOException 以交由上层 DataStore 处理。
+                if (e is java.io.IOException) throw e
+                Log.w(TAG, "decodeListSafely: search_services decode failed, clearing list (not faking Bing)", e)
+                emptyList()
+            }
+
+        private val decodeJson = Json { ignoreUnknownKeys = true }
+
+        // 显式工厂：按选中类型直接构造对应实例，替代反射 primaryConstructor!!.callBy()。
+        // 反射在 release R8/minify 下易被裁剪/失效且无 keep 保护，显式 when 更稳、可读、不依赖反射。
+        // 新增供应商子类时须同步在此加分支（else 会运行时报错而非静默造错实例）。
+        fun create(type: KClass<out SearchServiceOptions>): SearchServiceOptions = when (type) {
+            BingLocalOptions::class -> BingLocalOptions()
+            RikkaHubOptions::class -> RikkaHubOptions()
+            ZhipuOptions::class -> ZhipuOptions()
+            TavilyOptions::class -> TavilyOptions()
+            ExaOptions::class -> ExaOptions()
+            SearXNGOptions::class -> SearXNGOptions()
+            LinkUpOptions::class -> LinkUpOptions()
+            BraveOptions::class -> BraveOptions()
+            MetasoOptions::class -> MetasoOptions()
+            OllamaOptions::class -> OllamaOptions()
+            PerplexityOptions::class -> PerplexityOptions()
+            FirecrawlOptions::class -> FirecrawlOptions()
+            JinaOptions::class -> JinaOptions()
+            BochaOptions::class -> BochaOptions()
+            GrokOptions::class -> GrokOptions()
+            TinyfishOptions::class -> TinyfishOptions()
+            SerperOptions::class -> SerperOptions()
+            CustomJsOptions::class -> CustomJsOptions()
+            else -> error("Unknown SearchServiceOptions type: $type")
+        }
     }
 
     @Serializable

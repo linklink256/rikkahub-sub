@@ -236,7 +236,7 @@ class SettingsStore(
                 customThemes = preferences.readJson(CUSTOM_THEMES, emptyList()),
                 developerMode = preferences[DEVELOPER_MODE] == true,
                 displaySetting = preferences.readJson(DISPLAY_SETTING, DisplaySetting()),
-                searchServices = preferences.readJson(SEARCH_SERVICES, listOf(SearchServiceOptions.DEFAULT)),
+                searchServices = SearchServiceOptions.decodeListSafely(preferences[SEARCH_SERVICES]),
                 searchCommonOptions = preferences.readJson(SEARCH_COMMON, SearchCommonOptions()),
                 searchServiceSelected = preferences[SEARCH_SELECTED] ?: 0,
                 mcpServers = preferences.readJson(MCP_SERVERS, emptyList()),

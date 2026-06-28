@@ -26,6 +26,11 @@ android {
             )
         }
     }
+    testOptions {
+        // Android 库做 JVM 单测时，android framework 方法（如 android.util.Log）默认会抛
+        // "not mocked"。此处让其返回默认值，便于 decodeListSafely 等调用 Log 的逻辑可被单测覆盖。
+        unitTests.isReturnDefaultValues = true
+    }
     buildFeatures {
         compose = true
     }
@@ -56,4 +61,6 @@ dependencies {
     implementation(libs.androidx.material3)
     api(libs.jsoup)
     implementation(libs.quickjs)
+
+    testImplementation(libs.junit)
 }
