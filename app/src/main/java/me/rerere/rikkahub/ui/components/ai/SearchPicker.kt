@@ -55,6 +55,7 @@ import me.rerere.rikkahub.ui.context.LocalNavController
 import me.rerere.rikkahub.ui.context.Navigator
 import me.rerere.rikkahub.ui.pages.setting.SearchAbilityTagLine
 import me.rerere.search.SearchServiceOptions
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import org.koin.compose.koinInject
 
 @Composable
@@ -67,7 +68,8 @@ fun SearchPickerButton(
     model: Model?,
 ) {
     var showSearchPicker by remember { mutableStateOf(false) }
-    val currentService = settings.searchServices.getOrNull(settings.searchServiceSelected)
+    val liveSettings by koinInject<SettingsStore>().settingsFlow.collectAsStateWithLifecycle()
+    val currentService = liveSettings.searchServices.getOrNull(liveSettings.searchServiceSelected)
 
     ToggleSurface(
         modifier = modifier,
@@ -128,7 +130,7 @@ fun SearchPickerButton(
 
                 SearchPicker(
                     enableSearch = enableSearch,
-                    settings = settings,
+                    settings = liveSettings,
                     onToggleSearch = onToggleSearch,
                     onUpdateSearchService = { index ->
                         onUpdateSearchService(index)
@@ -157,6 +159,7 @@ private fun SearchPicker(
     onDismiss: () -> Unit
 ) {
     val navBackStack = LocalNavController.current
+    val liveSettings by koinInject<SettingsStore>().settingsFlow.collectAsStateWithLifecycle()
 
     // 模型内置搜索
     if (model != null && (ModelRegistry.GEMINI_SERIES.match(model.modelId) || model.modelId.contains("gpt-"))) {
@@ -171,7 +174,7 @@ private fun SearchPicker(
             navBackStack = navBackStack,
             onToggleSearch = onToggleSearch,
             modifier = modifier,
-            settings = settings,
+            settings = liveSettings,
             onUpdateSearchService = onUpdateSearchService
         )
     }
@@ -187,6 +190,7 @@ private fun AppSearchSettings(
     settings: Settings,
     onUpdateSearchService: (Int) -> Unit
 ) {
+    val liveSettings by koinInject<SettingsStore>().settingsFlow.collectAsStateWithLifecycle()
     Card {
         Row(
             modifier = Modifier
@@ -235,16 +239,16 @@ private fun AppSearchSettings(
         verticalArrangement = Arrangement.spacedBy(16.dp),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        itemsIndexed(settings.searchServices) { index, service ->
+        itemsIndexed(liveSettings.searchServices) { index, service ->
             val containerColor = animateColorAsState(
-                if (settings.searchServiceSelected == index) {
+                if (liveSettings.searchServiceSelected == index) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
                     MaterialTheme.colorScheme.surface
                 }
             )
             val textColor = animateColorAsState(
-                if (settings.searchServiceSelected == index) {
+                if (liveSettings.searchServiceSelected == index) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurface
