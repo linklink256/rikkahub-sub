@@ -156,7 +156,8 @@ class GoogleProvider(private val client: OkHttpClient, context: Context? = null)
                     emptyList()
                 }
             }
-
+        }
+    
     override suspend fun generateText(
         providerSetting: ProviderSetting.Google,
         messages: List<UIMessage>,
