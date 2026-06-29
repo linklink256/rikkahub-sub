@@ -12,10 +12,13 @@ import me.rerere.ai.core.TokenUsage
 import me.rerere.ai.provider.Model
 import me.rerere.ai.util.json
 import kotlin.time.Clock
+import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.Stable
 import kotlin.time.Instant
 import kotlin.uuid.Uuid
 
 // 公共消息抽象, 具体的Provider实现会转换为API接口需要的DTO
+@Immutable
 @Serializable
 data class UIMessage(
     val id: Uuid = Uuid.random(),
@@ -314,24 +317,30 @@ fun List<UIMessage>.limitContext(size: Int): List<UIMessage> {
     return this.subList(adjustedStartIndex, this.size)
 }
 
+@Immutable
 @Serializable
 sealed class ToolApprovalState {
+    @Immutable
     @Serializable
     @SerialName("auto")
     data object Auto : ToolApprovalState()
 
+    @Immutable
     @Serializable
     @SerialName("pending")
     data object Pending : ToolApprovalState()
 
+    @Immutable
     @Serializable
     @SerialName("approved")
     data object Approved : ToolApprovalState()
 
+    @Immutable
     @Serializable
     @SerialName("denied")
     data class Denied(val reason: String = "") : ToolApprovalState()
 
+    @Immutable
     @Serializable
     @SerialName("answered")
     data class Answered(val answer: String) : ToolApprovalState()
@@ -348,10 +357,12 @@ fun ToolApprovalState.canResumeToolExecution(): Boolean {
     }
 }
 
+@Stable
 @Serializable
 sealed class UIMessagePart {
     abstract val metadata: JsonObject?
 
+    @Stable
     @Serializable
     @SerialName("text")
     data class Text(
@@ -359,6 +370,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Serializable
     @SerialName("image")
     data class Image(
@@ -366,6 +378,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Serializable
     @SerialName("video")
     data class Video(
@@ -373,6 +386,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Serializable
     @SerialName("audio")
     data class Audio(
@@ -380,6 +394,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Serializable
     @SerialName("document")
     data class Document(
@@ -389,6 +404,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Serializable
     @SerialName("reasoning")
     data class Reasoning(
@@ -398,6 +414,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Deprecated("Deprecated")
     @Serializable
     @SerialName("search")
@@ -405,6 +422,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     }
 
+    @Stable
     @Deprecated("Use UIMessagePart.Tool instead")
     @Serializable
     @SerialName("tool_call")
@@ -426,6 +444,7 @@ sealed class UIMessagePart {
         }
     }
 
+    @Stable
     @Deprecated("Use UIMessagePart.Tool instead")
     @Serializable
     @SerialName("tool_result")
@@ -437,6 +456,7 @@ sealed class UIMessagePart {
         override var metadata: JsonObject? = null
     ) : UIMessagePart()
 
+    @Stable
     @Serializable
     @SerialName("tool")
     data class Tool(
@@ -766,8 +786,10 @@ fun <T> List<T>.migrateToolNodes(
     return result
 }
 
+@Immutable
 @Serializable
 sealed class UIMessageAnnotation {
+    @Immutable
     @Serializable
     @SerialName("url_citation")
     data class UrlCitation(
@@ -776,6 +798,7 @@ sealed class UIMessageAnnotation {
     ) : UIMessageAnnotation()
 }
 
+@Immutable
 @Serializable
 data class MessageChunk(
     val id: String,
@@ -784,6 +807,7 @@ data class MessageChunk(
     val usage: TokenUsage? = null,
 )
 
+@Immutable
 @Serializable
 data class UIMessageChoice(
     val index: Int,

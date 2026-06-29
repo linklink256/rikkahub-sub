@@ -64,6 +64,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -268,22 +269,21 @@ private fun ChatListNormal(
             .flatMap { it.models }
             .associateBy { it.id }
     }
-    val lastMessageIndex = conversation.messageNodes.lastIndex
-
     Box(
         modifier = Modifier
             .fillMaxSize(),
     ) {
         // 自动滚动到底部
         if (settings.displaySetting.enableAutoScroll) {
+            val isAtBottom by remember {
+                derivedStateOf {
+                    state.layoutInfo.visibleItemsInfo.isAtBottom()
+                }
+            }
             LaunchedEffect(state) {
-                snapshotFlow { state.layoutInfo.visibleItemsInfo }.collect { visibleItemsInfo ->
-                    // println("is bottom = ${visibleItemsInfo.isAtBottom()}, scroll = ${state.isScrollInProgress}, can_scroll = ${state.canScrollForward}, loading = $loading")
-                    if (!state.isScrollInProgress && loadingState) {
-                        if (visibleItemsInfo.isAtBottom()) {
-                            state.requestScrollToItem(conversationUpdated.messageNodes.lastIndex + 10)
-                            // Log.i(TAG, "ChatList: scroll to ${conversationUpdated.messageNodes.lastIndex}")
-                        }
+                snapshotFlow { isAtBottom }.collect { atBottom ->
+                    if (!state.isScrollInProgress && loadingState && atBottom) {
+                        state.requestScrollToItem(conversationUpdated.messageNodes.lastIndex + 10)
                     }
                 }
             }
@@ -312,12 +312,14 @@ private fun ChatListNormal(
                     .hazeSource(state = hazeState)
                     .padding(top = innerPadding.calculateTopPadding()),
             ) {
-            itemsIndexed(
+            items(
                 items = conversation.messageNodes,
-                key = { index, item -> item.id },
-            ) { index, node ->
+                key = { it.id },
+                contentType = { node -> node.role.name },
+            ) { node ->
                 // ponytail: per-item 回调 remember 化，key 用上层稳定回调 + 稳定 msg；上层(ChatPage)已 remember
                 // 否则 ChatMessage 因 11 个不稳定 lambda 永远无法 skip，流式时所有可见消息每 token 全量重组
+                val isLast = node.id == conversation.messageNodes.lastOrNull()?.id
                 val msg = remember(node) { node.currentMessage }
                 val currentConv = rememberUpdatedState(conversation)
                 Column {
@@ -337,7 +339,7 @@ private fun ChatListNormal(
                             node = node,
                             model = node.currentMessage.modelId?.let(modelById::get),
                             assistant = assistant,
-                            loading = loading && index == lastMessageIndex,
+                            loading = loading && isLast,
                             onRegenerate = remember(onRegenerate, msg) { { onRegenerate(msg) } },
                             onEdit = remember(onEdit, msg) { { onEdit(msg) } },
                             onFork = remember(onForkMessage, msg) { { onForkMessage(msg) } },
@@ -358,7 +360,7 @@ private fun ChatListNormal(
                             onClearTranslation = onClearTranslation,
                             onToolApproval = onToolApproval,
                             onToolAnswer = onToolAnswer,
-                            lastMessage = index == lastMessageIndex,
+                            lastMessage = isLast,
                         )
                     }
                 }

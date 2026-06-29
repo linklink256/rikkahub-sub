@@ -1,6 +1,7 @@
 package me.rerere.rikkahub.data.model
 
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 import androidx.core.net.toUri
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -12,6 +13,7 @@ import me.rerere.rikkahub.data.datastore.DEFAULT_ASSISTANT_ID
 import java.time.Instant
 import kotlin.uuid.Uuid
 
+@Immutable
 @Serializable
 data class Conversation(
     val id: Uuid = Uuid.random(),
@@ -103,6 +105,7 @@ data class Conversation(
     }
 }
 
+@Immutable
 @Serializable
 data class MessageNode(
     val id: Uuid = Uuid.random(),
