@@ -371,7 +371,7 @@ class GenerationHandler(
                 }
                 Log.i(TAG, "generateText: executing tool ${toolDef.name} with args: $args")
                 val result = withToolCallId(tool.toolCallId) { toolDef.execute(args) }
-                val hasShellAccess = toolsInternal.any { it.name == "workspace_shell" }
+                val hasShellAccess = toolsInternal.any { it.name == "workspace_shell" || it.name == "workspace_read_shell" }
                 tool.copy(output = maybeTruncateToolOutput(tool.toolCallId, result, hasShellAccess))
             }.onFailure {
                 // 取消必须向上传播，否则停止生成会被误报为工具执行错误

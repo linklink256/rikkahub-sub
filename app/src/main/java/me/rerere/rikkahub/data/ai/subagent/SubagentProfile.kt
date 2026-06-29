@@ -68,10 +68,11 @@ data class SubagentProfile(
         val IdentifierRegex = Regex("^[a-z][a-z0-9_]*$")
 
         /// 会改文件的工具名集合（工具级权限隔离用）。explore 排除这些 → 结构性"文件只读"。
-        /// 注意 workspace_shell 粒度粗（read+write 混合），不在此列；其只读由 systemPrompt 约束补强。
         val FILE_MUTATING_TOOLS: Set<String> = setOf("workspace_write_file", "workspace_edit_file")
 
-        /// 完全只读：在文件只读基础上再排除 shell（reviewer 等纯评审代理用）。
+        /// 完全只读：排除文件写工具 + 全功能 workspace_shell，只保留受限的 workspace_read_shell。
+        /// 注意是排除**全功能** shell，而非 read_shell —— read_shell 是白名单只读 shell，
+        /// explore/reviewer 靠它做 grep/cat/git log 等调研，且结构性无法写文件（命令级白名单）。
         val FULLY_READONLY_EXCLUDED_TOOLS: Set<String> = FILE_MUTATING_TOOLS + "workspace_shell"
 
 
@@ -92,18 +93,19 @@ data class SubagentProfile(
                 description = "Explore and gather information autonomously. " +
                     "Use for research, reading files, searching, and producing a factual summary. " +
                     "Best when the parent needs to collect context before deciding.",
-                // 结构性只读：堵掉直接写工具。注意 workspace_shell 粒度粗（read+write 混合），
-                // 调研强依赖 shell 的 grep/cat/ls 故不在此排除；写路径由 systemPrompt 约束补强。
-                // 真正"完全结构性只读"需把 shell 拆成 read/write 两个工具，属后续工具层重构。
-                excludedTools = FILE_MUTATING_TOOLS,
+                // 结构性只读：排除文件写工具 + 全功能 workspace_shell，只留 workspace_read_shell
+                // （白名单只读 shell）。explore 调研所需的 grep/cat/ls/git log 等经 read_shell 可用，
+                // 且白名单从结构上杜绝写文件（非提示词约束）。
+                excludedTools = FULLY_READONLY_EXCLUDED_TOOLS,
                 systemPrompt = """
                     You are an exploration subagent. Your job is to autonomously investigate the task
                     using the tools available to you, then return a concise but complete factual summary.
                     Do not ask the user questions — make reasonable assumptions and proceed.
 
-                    Read-only discipline: use shell only for read commands (grep, sed -n, cat, ls, find,
-                    ~). NEVER run write/exec commands (echo >, sed -i, rm, mv, mkfs, …) — you must not
-                    modify the workspace. You investigate, you do not change.
+                    Read-only discipline: your shell access (workspace_read_shell) is a read-only
+                    sandbox — write/exec commands are blocked by the allowlist. You investigate; you
+                    do not modify the workspace. If a read needs a tool the allowlist rejects, fall
+                    back to workspace_read_file.
 
                     Verify, don't assert: before reporting a root cause or conclusion, state the concrete
                     verification you ran (the command/test you executed and its output). A hypothesis

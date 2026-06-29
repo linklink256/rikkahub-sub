@@ -18,11 +18,12 @@ class SubagentProfileBuiltinTest {
         SubagentProfile.BUILTIN.first { it.name == name }
 
     @Test
-    fun explore_is_file_readonly_by_excluding_write_tools() {
+    fun explore_is_readonly_excluding_write_tools_and_full_shell() {
         val explore = profile("explore")
-        assertTrue(
-            "explore 应排除文件写工具 ${SubagentProfile.FILE_MUTATING_TOOLS}，实际=${explore.excludedTools}",
-            SubagentProfile.FILE_MUTATING_TOOLS.all { it in explore.excludedTools }
+        assertEquals(
+            "explore 应是完全只读（排除文件写工具 + 全功能 shell，仅保留受限 read_shell）",
+            SubagentProfile.FULLY_READONLY_EXCLUDED_TOOLS,
+            explore.excludedTools,
         )
     }
 

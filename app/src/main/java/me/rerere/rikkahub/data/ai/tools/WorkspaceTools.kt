@@ -30,6 +30,7 @@ val WorkspaceToolDefaultApprovals: Map<String, Boolean> = mapOf(
     "workspace_write_file" to false,
     "workspace_edit_file" to false,
     "workspace_shell" to false,
+    "workspace_read_shell" to false,
 )
 
 fun resolveWorkspaceToolApproval(name: String, overrides: Map<String, Boolean>): Boolean =
@@ -52,6 +53,7 @@ suspend fun createWorkspaceTools(
         createWriteFileTool(workspaceId, ::needsApproval, ::isApprovalExplicitlyDisabled, workspaceRepository),
         createEditFileTool(workspaceId, ::needsApproval, ::isApprovalExplicitlyDisabled, workspaceRepository),
         createShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
+        createReadShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
     )
 }
 
@@ -69,8 +71,8 @@ suspend fun createWorkspaceReadOnlyTools(
 
     return listOf(
         createReadFileTool(workspaceId, ::needsApproval, workspaceRepository),
-        // shell 也保留（只读导向：模型可以用 cat/ls/grep 等），但纯决策模式提示词会引导只读使用
-        createShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
+        // 只读模式只给受限读 shell（白名单只读命令），不再给全功能 workspace_shell
+        createReadShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
     )
 }
 
@@ -217,6 +219,189 @@ private fun createEditFileTool(
                 }.toString(),
                 // diff 存入 metadata 供 UI 渲染 diff view, 不会随工具结果发送给 API
                 metadata = diff?.let { d -> DiffMetadata(diff = d).toMetadata() },
+            )
+        )
+    },
+)
+
+/**
+ * 结构性只读 shell 工具：复用 [createShellTool] 的执行内核，但以**白名单**拦截命令——
+ * 只放行公认只读的命令，默认拒绝其它。
+ *
+ * 与黑名单的区别：黑名单（禁 rm/sed -i/echo > 等）会被 `python -c "open(...,'w')..."`、
+ * `node -e "fs.writeFileSync(...)"` 等执行代码的命令绕过；白名单默认拒绝一切不在列表的
+ * 命令，因此 `python/node/perl/ruby/awk …` 被默认拒，是真正的结构性只读边界（非威慑）。
+ *
+ * 借鉴 Roo-Code mode `groups` / Claude Code explore 的工具集裁剪思路：权限靠工具可用性
+ * 而非提示词散文约束。只读子代理（explore/reviewer）经 excludedTools 排除全功能
+ * `workspace_shell`、只留 `workspace_read_shell`，从而**不可能**越权改码。
+ */
+private val READONLY_SHELL_ALLOWED_BASE_COMMANDS: Set<String> = setOf(
+    // 查看与检索
+    "cat", "head", "tail", "less", "more", "wc", "nl", "cut", "paste", "column",
+    "grep", "egrep", "fgrep", "rg", "ack", "ag",
+    "find", "locate", "which", "whereis", "file", "stat", "realpath", "readlink",
+    "ls", "dir", "tree", "exa",
+    // 排序/去重/转换（纯文本，无副作用）
+    "sort", "uniq", "tr", "fold", "fmt", "expand", "unexpand", "rev",
+    "awk", "sed",  // 受限：见下方 checkReadonlyCommand 进一步拒绝 sed -i / sed 写文件
+    // 编码/哈希（只读运算）
+    "md5sum", "sha1sum", "sha256sum", "sum", "cksum", "xxd", "od", "hexdump",
+    "base32", "base64", "basename", "dirname",
+    // 系统只读探查
+    "echo",        // 受限：见 checkReadonlyCommand 拒 echo 重定向写
+    "printf",      // 受限：同上
+    "env", "printenv", "uname", "hostname", "id", "whoami", "date", "cal", "uptime",
+    "pwd", "true", "false", "test", "[", "command", "type", "help",
+    "man", "info",
+    // git 只读子命令
+    "git",
+    // diff / cmp
+    "diff", "cmp", "comm",
+    // jq / yq / xsltproc 等只读解析
+    "jq", "yq", "xsltproc", "xmllint",
+    // 字数/统计
+    "du", "df",
+)
+
+/// `echo` / `printf` 携带输出重定向（> >> >|）即写文件 → 拒绝。
+/// `sed` 带 -i/-i '' / --in-place → 拒绝。`awk` 带 -i inplace → 拒绝。
+/// `tee` 默认拒（写文件）；`cp`/`mv`/`rm`/`mkdir`/`rmdir`/`touch`/`chmod`/`chown` 等本身不在白名单。
+internal fun checkReadonlyCommand(command: String): String? {
+    if (command.isBlank()) return "read-only shell: empty command"
+
+    // 拒绝任何重定向写（> >> >|）——这覆盖 echo > file / printf >> file / cat > file 等
+    // 注意管道 | 读端合法、tee 写端由 tee 不在白名单拦截
+    // 命令替换 $(...) 和反引号 `...` 可在"只读首命令"内部藏写命令（echo $(rm x)）→ 一律拒
+    if (command.contains("\$(") || command.contains("`")) {
+        return "read-only shell: command substitution ($()/backticks) is not allowed"
+    }
+    if (Regex("""[^|]>\s*[^|&]""").containsMatchIn(command) ||
+        command.contains(">>") ||
+        command.contains(">|")
+    ) {
+        return "read-only shell: output redirection (>/>>) is not allowed"
+    }
+
+    val subCommands = command.split(Regex("&&|\|\||;|\|"))
+    for (sub in subCommands) {
+        val tokens = sub.trim().split(Regex("\s+")).filter { it.isNotBlank() }
+        if (tokens.isEmpty()) continue
+        val base = tokens.first().substringAfterLast('/')
+
+        // 整命令白名单校验
+        if (base !in READONLY_SHELL_ALLOWED_BASE_COMMANDS) {
+            return "read-only shell: command not in read-only allowlist: $base"
+        }
+        // sed 写文件
+        if (base == "sed" && tokens.any { it == "-i" || it == "--in-place" || it.startsWith("-i") }) {
+            return "read-only shell: sed in-place editing is not allowed"
+        }
+        // awk 写文件
+        if (base == "awk" && tokens.any { it == "-i" || it == "--include" } &&
+            tokens.any { it == "inplace" || it.contains("inplace") }) {
+            return "read-only shell: awk in-place editing is not allowed"
+        }
+        // awk 的 print/printf 重定向到文件（awk '{... > "file"}'）属 awk 语法非 shell 重定向，
+        // 上面 shell 重定向正则拦不到；对 awk 命令文本额外检 > 即拒（宁可误伤少数高级用法）。
+        if (base == "awk" && sub.contains('>')) {
+            return "read-only shell: awk output redirection is not allowed"
+        }
+        // git 子命令限定为只读集合
+        // find 的 -exec/-execdir/-ok/-delete 会写/删文件 → 拒（find 本身只读，但这些动作破坏）
+        if (base == "find" && tokens.any { it == "-delete" || it == "-exec" || it == "-execdir" || it == "-ok" || it == "-okdir" }) {
+            return "read-only shell: find -exec/-delete is not allowed"
+        }
+        if (base == "git") {
+            val sub = tokens.drop(1).firstOrNull { !it.startsWith("-") }
+            // 仅保留公认只读子命令；branch/tag/stash/config/remote 均可写故排除
+            val readOnlyGitSub = setOf(
+                "status", "log", "show", "diff", "blame", "ls-files",
+                "ls-tree", "ls-remote", "rev-parse", "rev-list", "describe",
+                "shortlog", "name-rev", "for-each-ref", "grep",
+            )
+            if (sub != null && sub !in readOnlyGitSub) {
+                return "read-only shell: git subcommand not in read-only allowlist: git $sub"
+            }
+        }
+    }
+    return null
+}
+
+private fun createReadShellTool(
+    workspaceId: String,
+    needsApproval: (String) -> Boolean,
+    workspaceRepository: WorkspaceRepository,
+    defaultCwd: String? = null,
+) = Tool(
+    name = "workspace_read_shell",
+    description = buildString {
+        append("Run a READ-ONLY shell command in the assistant's bound workspace Rootfs. ")
+        append("Only read-only commands are allowed (cat, ls, grep, find, head, tail, wc, git status/log/diff, etc.); ")
+        append("writing (rm, sed -i, echo >, cp, mv, mkdir, tee, python -c, node -e, ...) is blocked. ")
+        append("The workspace files area is mounted at /workspace. Use cwd for a path relative to it. ")
+        append("Use this for investigation without the risk of modifying the workspace. ")
+        if (!defaultCwd.isNullOrBlank()) append("Defaults to '$defaultCwd'. ")
+        append("Requires Rootfs to be installed and ready.")
+    },
+    parameters = {
+        InputSchema.Obj(
+            properties = buildJsonObject {
+                put("command", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Read-only shell command to run (writes are blocked)")
+                })
+                put("cwd", buildJsonObject {
+                    put("type", "string")
+                    put(
+                        "description",
+                        if (!defaultCwd.isNullOrBlank()) {
+                            "Working directory relative to the workspace files root. Defaults to '$defaultCwd'."
+                        } else {
+                            "Working directory relative to the workspace files root. Defaults to root."
+                        }
+                    )
+                })
+                put("timeout", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Command timeout in seconds. Defaults to 30, max $SHELL_TIMEOUT_MAX_SECONDS.")
+                })
+            },
+            required = listOf("command"),
+        )
+    },
+    needsApproval = { needsApproval("workspace_read_shell") },
+    execute = {
+        val params = it.jsonObject
+        val command = params.string("command") ?: error("command is required")
+        val reject = checkReadonlyCommand(command)
+        if (reject != null) {
+            return@Tool listOf(
+                UIMessagePart.Text(
+                    buildJsonObject {
+                        put("exitCode", -1)
+                        put("stdout", "")
+                        put("stderr", reject)
+                        put("timedOut", false)
+                    }.toString()
+                )
+            )
+        }
+        val cwd = (params.string("cwd") ?: defaultCwd.orEmpty())
+            .removePrefix("/workspace/").removePrefix("/workspace")
+        val timeoutMillis = params.string("timeout")?.toLongOrNull()
+            ?.coerceIn(1L, SHELL_TIMEOUT_MAX_SECONDS)?.times(1_000L)
+            ?: WorkspaceManager.DEFAULT_COMMAND_TIMEOUT_MS
+        val result = workspaceRepository.executeCommand(workspaceId, command, cwd, timeoutMillis)
+        listOf(
+            UIMessagePart.Text(
+                buildJsonObject {
+                    put("exitCode", result.exitCode)
+                    put("stdout", result.stdout)
+                    put("stderr", result.stderr)
+                    put("timedOut", result.timedOut)
+                    if (result.truncated) put("truncated", true)
+                }.toString()
             )
         )
     },
