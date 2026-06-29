@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -659,7 +660,8 @@ class ChatService(
                 if (!isForeground.value && settings.displaySetting.enableNotificationOnMessageGeneration) {
                     sendGenerationDoneNotification(conversationId, senderName)
                 }
-            }.collect { chunk ->
+            }.conflate()
+            .collect { chunk ->
                 when (chunk) {
                     is GenerationChunk.Messages -> {
                         val updatedConversation = getConversationFlow(conversationId).value

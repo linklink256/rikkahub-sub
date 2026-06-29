@@ -98,6 +98,13 @@ import me.rerere.rikkahub.utils.urlDecode
 import java.util.Locale
 import kotlin.time.Duration.Companion.milliseconds
 
+/**
+ * Apply animateContentSize only when not loading (streaming).
+ * During streaming, the content changes continuously and animating it causes jank.
+ */
+private fun Modifier.animateContentSizeUnlessLoading(loading: Boolean): Modifier =
+    if (loading) this else this.animateContentSize()
+
 @Composable
 fun ChatMessage(
     node: MessageNode,
@@ -192,7 +199,7 @@ fun ChatMessage(
             exit = slideOutVertically { it / 2 } + fadeOut()
         ) {
             Column(
-                modifier = Modifier.animateContentSize()
+                modifier = Modifier.animateContentSizeUnlessLoading(loading)
             ) {
                 ChatMessageActionButtons(
                     message = message,
@@ -320,7 +327,7 @@ private fun MessagePartsBlock(
                 if (block.steps.isNotEmpty()) {
                     val isReasoningOnlyBlock = block.steps.fastAll { it is ThinkingStep.ReasoningStep }
                     ChainOfThought(
-                        modifier = Modifier.animateContentSize(),
+                        modifier = Modifier.animateContentSizeUnlessLoading(loading),
                         steps = block.steps,
                         collapsedAdaptiveWidth = isReasoningOnlyBlock,
                         cardColors = CardDefaults.cardColors(
@@ -360,7 +367,7 @@ private fun MessagePartsBlock(
                         val textContent = @Composable {
                             if (role == MessageRole.USER) {
                                 Surface(
-                                    modifier = Modifier.animateContentSize(),
+                                    modifier = Modifier.animateContentSizeUnlessLoading(loading),
                                     shape = RoundedCornerShape(16.dp),
                                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = settings.displaySetting.bubbleOpacity),
                                     onClick = { onUserMessageClick?.invoke() },
@@ -379,7 +386,7 @@ private fun MessagePartsBlock(
                             } else {
                                 if (settings.displaySetting.showAssistantBubble) {
                                     Surface(
-                                        modifier = Modifier.animateContentSize(),
+                                        modifier = Modifier.animateContentSizeUnlessLoading(loading),
                                         shape = RoundedCornerShape(16.dp),
                                         color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = settings.displaySetting.bubbleOpacity),
                                     ) {
@@ -403,7 +410,7 @@ private fun MessagePartsBlock(
                                         ),
                                         onClickCitation = handleClickCitation,
                                         modifier = Modifier
-                                            .animateContentSize()
+                                            .animateContentSizeUnlessLoading(loading)
                                     )
                                 }
                             }
@@ -573,7 +580,7 @@ private fun MessagePartsBlock(
     // Annotations (always rendered at the end)
     if (annotations.isNotEmpty()) {
         Column(
-            modifier = Modifier.animateContentSize(),
+            modifier = Modifier.animateContentSizeUnlessLoading(loading),
         ) {
             var expand by remember { mutableStateOf(false) }
             if (expand) {
