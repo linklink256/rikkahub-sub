@@ -326,7 +326,13 @@ class ChatService(
     // ---- 初始化对话 ----
 
     suspend fun initializeConversation(conversationId: Uuid) {
-        getOrCreateSession(conversationId) // 确保 session 存在
+        val session = getOrCreateSession(conversationId) // 确保 session 存在
+        // 如果 session 正在生成中，内存数据比 DB 新，不应从 DB 覆盖
+        //（DB 只在生成完成时保存，流式过程中的最新数据仅在内存中）
+        if (session.isGenerating) {
+            Log.d(TAG, "initializeConversation: session $conversationId is generating, skip DB load")
+            return
+        }
         val conversation = conversationRepo.getConversationById(conversationId)
         if (conversation != null) {
             updateConversation(conversationId, conversation)
