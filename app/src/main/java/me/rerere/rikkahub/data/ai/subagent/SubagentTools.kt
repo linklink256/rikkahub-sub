@@ -423,6 +423,8 @@ private fun String.toLocalToolOption(): LocalToolOption? = when (this) {
     "ask_btw" -> LocalToolOption.AskBtw
     "fetch" -> LocalToolOption.Fetch
     "logs" -> LocalToolOption.Logs
+    "yolo_mode" -> LocalToolOption.YoloMode
+    "network_proxy" -> LocalToolOption.NetworkProxy
     else -> null
 }
 

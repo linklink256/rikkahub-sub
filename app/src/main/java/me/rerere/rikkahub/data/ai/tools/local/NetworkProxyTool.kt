@@ -121,8 +121,8 @@ fun applyGlobalProxy(config: ProxyConfig) {
         })
         if (config.username.isNotBlank()) {
             java.net.Authenticator.setDefault(object : java.net.Authenticator() {
-                override fun getPasswordAuthentication(): java.net.Authenticator.PasswordAuthentication {
-                    return java.net.Authenticator.PasswordAuthentication(config.username, config.password.toCharArray())
+                override fun getPasswordAuthentication(): java.net.PasswordAuthentication {
+                    return java.net.PasswordAuthentication(config.username, config.password.toCharArray())
                 }
             })
         }

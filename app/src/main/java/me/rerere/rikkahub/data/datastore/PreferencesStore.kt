@@ -632,7 +632,6 @@ data class BackupReminderConfig(
 )
 
 @Serializable
-@Serializable
 data class ProxyConfig(
     val enabled: Boolean = false,
     val host: String = "",
