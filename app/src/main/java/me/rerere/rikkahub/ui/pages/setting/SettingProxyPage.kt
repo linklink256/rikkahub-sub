@@ -50,6 +50,7 @@ fun SettingProxyPage(vm: SettingVM = koinViewModel()) {
     var username by remember(settings) { mutableStateOf(settings.proxyConfig.username) }
     var password by remember(settings) { mutableStateOf(settings.proxyConfig.password) }
 
+    val savedMessage = stringResource(R.string.setting_proxy_saved)
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -143,7 +144,7 @@ fun SettingProxyPage(vm: SettingVM = koinViewModel()) {
                     vm.updateSettings(settings.copy(proxyConfig = proxyConfig))
                     applyGlobalProxy(proxyConfig)
                     toaster.show(
-                        message = stringResource(R.string.setting_proxy_saved),
+                        message = savedMessage,
                         type = ToastType.Success
                     )
                 },
