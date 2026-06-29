@@ -827,6 +827,8 @@
   <string name="setting_page_request_logs">請求記錄</string>
   <string name="setting_page_request_logs_desc">檢視 HTTP 要求記錄</string>
   <string name="setting_page_search_add_provider">新增提供商</string>
+  <string name="setting_page_search_empty">尚無搜尋供應商</string>
+  <string name="setting_page_search_empty_hint">點擊右上角的 + 新增一個</string>
   <string name="setting_page_search_common_options">通用選項</string>
   <string name="setting_page_search_config">設定</string>
   <string name="setting_page_search_delete_provider">刪除提供商</string>

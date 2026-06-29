@@ -827,6 +827,8 @@
   <string name="setting_page_request_logs">요청 로그</string>
   <string name="setting_page_request_logs_desc">HTTP 요청 로그 보기</string>
   <string name="setting_page_search_add_provider">제공업체 추가</string>
+  <string name="setting_page_search_empty">검색 제공자가 없습니다</string>
+  <string name="setting_page_search_empty_hint">우측 상단의 + 를 눌러 추가하세요</string>
   <string name="setting_page_search_common_options">일반 옵션</string>
   <string name="setting_page_search_config">설정</string>
   <string name="setting_page_search_delete_provider">제공업체 삭제</string>

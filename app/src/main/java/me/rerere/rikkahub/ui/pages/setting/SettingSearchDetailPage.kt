@@ -94,20 +94,17 @@ fun SettingSearchDetailPage(
                 },
                 navigationIcon = { BackButton() },
                 actions = {
-                    if (settings.searchServices.size > 1) {
-                        IconButton(
-                            onClick = {
-                                val newServices = settings.searchServices.toMutableList()
-                                newServices.removeAt(serviceIndex)
-                                vm.updateSettings(settings.copy(searchServices = newServices))
-                                nav.popBackStack()
-                            }
-                        ) {
-                            Icon(
-                                imageVector = HugeIcons.Delete01,
-                                contentDescription = stringResource(R.string.delete)
-                            )
+                    IconButton(
+                        onClick = {
+                            val newServices = settings.searchServices.filter { it.id != service.id }
+                            vm.updateSettings(settings.copy(searchServices = newServices))
+                            nav.popBackStack()
                         }
+                    ) {
+                        Icon(
+                            imageVector = HugeIcons.Delete01,
+                            contentDescription = stringResource(R.string.delete)
+                        )
                     }
                 },
                 scrollBehavior = scrollBehavior,

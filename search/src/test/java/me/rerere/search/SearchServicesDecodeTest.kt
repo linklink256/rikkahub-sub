@@ -103,6 +103,16 @@ class SearchServicesDecodeTest {
         out.forEach { assertNotEquals("Bing", it.displayName) }
     }
 
+    @Test
+    fun emptyList_isAllowed_andRoundTrips_asEmpty() {
+        // B 方向的不变量：searchServices 允许为空列表（用户可删到最后一个、删空）。
+        // 空列表必须能正常编码→解码往返、保持为空，绝不能被自动塞回一个假 Bing，
+        // 否则"删到空"会被静默撤销，与"允许删到空"的产品语义冲突。
+        val encoded = json.encodeToString(emptyList<SearchServiceOptions>())
+        val out = SearchServiceOptions.decodeListSafely(encoded)
+        assertTrue("空列表应可往返保持为空，而非被回填 Bing", out.isEmpty())
+    }
+
     // endregion
 
     // region create 工厂

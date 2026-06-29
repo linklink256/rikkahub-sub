@@ -62,12 +62,8 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
             }
         },
         onDelete = { service ->
-            if (settings.searchServices.size > 1) {
-                val index = settings.searchServices.indexOf(service)
-                val newServices = settings.searchServices.toMutableList()
-                newServices.removeAt(index)
-                vm.updateSettings(settings.copy(searchServices = newServices))
-            }
+            val newServices = settings.searchServices.filter { it.id != service.id }
+            vm.updateSettings(settings.copy(searchServices = newServices))
         },
         onBack = {},
         actions = {
@@ -87,6 +83,24 @@ fun SettingSearchPage(vm: SettingVM = koinViewModel()) {
                             settings.copy(searchCommonOptions = options)
                         )
                     }
+                )
+            }
+        },
+        emptyContent = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = stringResource(R.string.setting_page_search_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                Text(
+                    text = stringResource(R.string.setting_page_search_empty_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
         },

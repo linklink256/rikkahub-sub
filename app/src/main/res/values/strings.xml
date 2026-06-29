@@ -873,6 +873,8 @@
   <string name="setting_page_request_logs">Request Logs</string>
   <string name="setting_page_request_logs_desc">View HTTP request logs</string>
   <string name="setting_page_search_add_provider">Add Provider</string>
+  <string name="setting_page_search_empty">No search provider</string>
+  <string name="setting_page_search_empty_hint">Tap the + on top-right to add one</string>
   <string name="setting_page_search_common_options">Common Options</string>
   <string name="setting_page_search_config">Configuration</string>
   <string name="setting_page_search_delete_provider">Delete Provider</string>
