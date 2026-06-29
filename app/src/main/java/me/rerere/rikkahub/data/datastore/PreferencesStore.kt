@@ -639,8 +639,8 @@ data class ProxyConfig(
     val username: String = "",
     val password: String = "",
 ) {
-    /** Whether this config represents an actual usable proxy. */
-    val isConfigured: Boolean get() = enabled && host.isNotBlank() && port in 1..65535
+    val isConfigured: Boolean
+        get() = enabled && host.isNotBlank() && port > 0
 }
 
 fun Settings.isNotConfigured() = providers.all { it.models.isEmpty() }

@@ -118,6 +118,7 @@ import me.rerere.rikkahub.ui.pages.setting.SettingThemePage
 import me.rerere.rikkahub.ui.pages.setting.SettingDonatePage
 import me.rerere.rikkahub.ui.pages.extensions.UploadFilesPage
 import me.rerere.rikkahub.ui.pages.setting.SettingMcpPage
+import me.rerere.rikkahub.ui.pages.setting.SettingProxyPage
 import me.rerere.rikkahub.ui.pages.setting.SettingModelPage
 import me.rerere.rikkahub.ui.pages.setting.SettingPage
 import me.rerere.rikkahub.ui.pages.setting.SettingProviderDetailPage
