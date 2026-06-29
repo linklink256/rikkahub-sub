@@ -149,6 +149,12 @@ class SettingsStore(
 
         // 赞助提醒
         val SPONSOR_ALERT_DISMISSED_AT = intPreferencesKey("sponsor_alert_dismissed_at")
+
+        // YOLO mode
+        val YOLO_MODE = booleanPreferencesKey("yolo_mode")
+
+        // 网络代理
+        val PROXY_CONFIG = stringPreferencesKey("proxy_config")
     }
 
     private val dataStore = context.settingsStore
@@ -253,6 +259,8 @@ class SettingsStore(
                 backupReminderConfig = preferences.readJson(BACKUP_REMINDER_CONFIG, BackupReminderConfig()),
                 launchCount = preferences[LAUNCH_COUNT] ?: 0,
                 sponsorAlertDismissedAt = preferences[SPONSOR_ALERT_DISMISSED_AT] ?: 0,
+                yoloMode = preferences[YOLO_MODE] == true,
+                proxyConfig = preferences.readJson(PROXY_CONFIG, ProxyConfig()),
             )
         }
         .map {
@@ -412,6 +420,8 @@ class SettingsStore(
             preferences.writeJson(BACKUP_REMINDER_CONFIG, settings.backupReminderConfig)
             preferences[LAUNCH_COUNT] = settings.launchCount
             preferences[SPONSOR_ALERT_DISMISSED_AT] = settings.sponsorAlertDismissedAt
+            preferences[YOLO_MODE] = settings.yoloMode
+            preferences.writeJson(PROXY_CONFIG, settings.proxyConfig)
         }
     }
 
@@ -534,6 +544,8 @@ data class Settings(
     val backupReminderConfig: BackupReminderConfig = BackupReminderConfig(),
     val launchCount: Int = 0,
     val sponsorAlertDismissedAt: Int = 0,
+    val yoloMode: Boolean = false,
+    val proxyConfig: ProxyConfig = ProxyConfig(),
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储
@@ -618,6 +630,19 @@ data class BackupReminderConfig(
     val intervalDays: Int = 7,
     val lastBackupTime: Long = 0L,
 )
+
+@Serializable
+@Serializable
+data class ProxyConfig(
+    val enabled: Boolean = false,
+    val host: String = "",
+    val port: Int = 0,
+    val username: String = "",
+    val password: String = "",
+) {
+    /** Whether this config represents an actual usable proxy. */
+    val isConfigured: Boolean get() = enabled && host.isNotBlank() && port in 1..65535
+}
 
 fun Settings.isNotConfigured() = providers.all { it.models.isEmpty() }
 

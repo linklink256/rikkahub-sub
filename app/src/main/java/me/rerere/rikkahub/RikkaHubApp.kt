@@ -15,6 +15,7 @@ import kotlinx.coroutines.CoroutineName
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import me.rerere.rikkahub.data.files.FileFolders
+import me.rerere.rikkahub.data.ai.tools.local.applyGlobalProxy
 import java.io.File
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
@@ -90,7 +91,26 @@ class RikkaHubApp : Application() {
         // Increment launch count
         incrementLaunchCount()
 
+        // Restore proxy config from settings (if configured)
+        restoreProxyConfig()
+
         // Composer.setDiagnosticStackTraceMode(ComposeStackTraceMode.Auto)
+    }
+
+    private fun restoreProxyConfig() {
+        get<AppScope>().launch {
+            runCatching {
+                val store = get<SettingsStore>()
+                // Use settingsFlowRaw to properly await DataStore loading (like incrementLaunchCount)
+                val config = store.settingsFlowRaw.first().proxyConfig
+                if (config.isConfigured) {
+                    applyGlobalProxy(config)
+                    Log.i(TAG, "restoreProxyConfig: applied ${config.host}:${config.port}")
+                }
+            }.onFailure {
+                Log.e(TAG, "restoreProxyConfig failed", it)
+            }
+        }
     }
 
     private fun incrementLaunchCount() {

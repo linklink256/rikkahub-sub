@@ -222,9 +222,10 @@ class GenerationHandler(
                 val updatedTools = tools.map { tool ->
                     val toolDef = toolsInternal.find { it.name == tool.toolName }
                     when {
-                        // Tool needs approval and state is Auto -> set to Pending
+                        // Tool needs approval, state is Auto, and YOLO mode is OFF -> set to Pending
                         toolDef?.needsApproval(tool.inputAsJson()) == true &&
-                            tool.approvalState is ToolApprovalState.Auto -> {
+                            tool.approvalState is ToolApprovalState.Auto &&
+                            !settings.yoloMode -> {
                             hasPendingApproval = true
                             tool.copy(approvalState = ToolApprovalState.Pending)
                         }
