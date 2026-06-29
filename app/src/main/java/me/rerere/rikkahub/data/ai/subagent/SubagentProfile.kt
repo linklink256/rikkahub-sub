@@ -67,6 +67,14 @@ data class SubagentProfile(
     companion object {
         val IdentifierRegex = Regex("^[a-z][a-z0-9_]*$")
 
+        /// 会改文件的工具名集合（工具级权限隔离用）。explore 排除这些 → 结构性"文件只读"。
+        /// 注意 workspace_shell 粒度粗（read+write 混合），不在此列；其只读由 systemPrompt 约束补强。
+        val FILE_MUTATING_TOOLS: Set<String> = setOf("workspace_write_file", "workspace_edit_file")
+
+        /// 完全只读：在文件只读基础上再排除 shell（reviewer 等纯评审代理用）。
+        val FULLY_READONLY_EXCLUDED_TOOLS: Set<String> = FILE_MUTATING_TOOLS + "workspace_shell"
+
+
         /** 摘要过短时触发扩写的最小长度。设为 0 = 永不追问（continuation 浪费一整轮 LLM 调用） */
         const val DEFAULT_SUMMARY_MIN_LENGTH = 0
 
@@ -84,10 +92,22 @@ data class SubagentProfile(
                 description = "Explore and gather information autonomously. " +
                     "Use for research, reading files, searching, and producing a factual summary. " +
                     "Best when the parent needs to collect context before deciding.",
+                // 结构性只读：堵掉直接写工具。注意 workspace_shell 粒度粗（read+write 混合），
+                // 调研强依赖 shell 的 grep/cat/ls 故不在此排除；写路径由 systemPrompt 约束补强。
+                // 真正"完全结构性只读"需把 shell 拆成 read/write 两个工具，属后续工具层重构。
+                excludedTools = FILE_MUTATING_TOOLS,
                 systemPrompt = """
                     You are an exploration subagent. Your job is to autonomously investigate the task
                     using the tools available to you, then return a concise but complete factual summary.
                     Do not ask the user questions — make reasonable assumptions and proceed.
+
+                    Read-only discipline: use shell only for read commands (grep, sed -n, cat, ls, find,
+                    ~). NEVER run write/exec commands (echo >, sed -i, rm, mv, mkfs, …) — you must not
+                    modify the workspace. You investigate, you do not change.
+
+                    Verify, don't assert: before reporting a root cause or conclusion, state the concrete
+                    verification you ran (the command/test you executed and its output). A hypothesis
+                    dressed as a root cause is not a result.
                     Always end with a structured summary of your findings; do not leave the work unfinished.
                 """.trimIndent(),
                 maxSteps = 16,
@@ -116,9 +136,7 @@ data class SubagentProfile(
                     and concrete suggestions. Do not modify anything unless explicitly asked.
                 """.trimIndent(),
                 inheritTools = true,
-                excludedTools = setOf(
-                    "workspace_write_file", "workspace_edit_file", "workspace_shell",
-                ),
+                excludedTools = FULLY_READONLY_EXCLUDED_TOOLS,
                 maxSteps = 12,
             ),
         )
@@ -201,6 +219,8 @@ data class SubagentResult(
     @SerialName("depth") val depth: Int = 0,
     @SerialName("usage") val usage: TokenUsage? = null,
     @SerialName("steps") val steps: Int = 0,
+    /// 子代理本轮调用的工具总数（便于父代理审计"它是否真干了活"，区别于 generation 轮次 steps）。
+    @SerialName("tool_call_count") val toolCallCount: Int = 0,
     @SerialName("transcript") val transcript: List<SubagentTranscriptStep> = emptyList(),
 )
 

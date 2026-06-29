@@ -173,6 +173,8 @@ $profileListText
                 put("summary", JsonPrimitive(result.summary))
                 put("depth", JsonPrimitive(result.depth))
                 put("steps", JsonPrimitive(result.steps))
+                // 让父代理审计"子代理是否真干了活"：工具调用次数（区别于 generation 轮次 steps）。
+                put("tool_calls", JsonPrimitive(result.toolCallCount))
             }
             // transcript 完整存入 metadata（不发给模型，仅 UI 渲染用）。
             // provider 序列化时只取 Text.text，metadata 持久化到对话但不出现在 API 请求中。

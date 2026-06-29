@@ -49,7 +49,7 @@ private val NO_APPROVAL: (JsonElement) -> Boolean = { false }
  *
  * 根因：此前传入了完整 [childTools]，导致 GenerationHandler.generateText 的 step 循环
  * 不提前终止（模型可继续调工具），相当于又跑了一整轮最多 maxSteps 步的 agent 循环
- * （内置 profile maxSteps 高达 48/64），近倍增加墙钟时间。传入空列表后，模型无法
+ * （内置 profile maxSteps 为 16/20/12），近倍增加墙钟时间。传入空列表后，模型无法
  * 产出工具调用，循环在 1 步内终止，把近倍惩罚降为单次文本生成。
  *
  * @param childTools 子代理首轮使用的完整工具集（保留参数以与首轮对照，明确"刻意不用"）
@@ -181,6 +181,7 @@ class SubagentHost(
                 depth = depth,
                 usage = totalUsage,
                 steps = steps,
+                toolCallCount = countToolCalls(messages),
                 transcript = transcript,
             )
             logResult(result)
@@ -326,6 +327,19 @@ class SubagentHost(
             customHeaders = parent.customHeaders,
             customBodies = parent.customBodies,
         )
+    }
+
+    /**
+     * 统计子代理本次运行累计调用的工具次数（供父代理审计"是否真干了活"）。
+     * 计所有 assistant 消息中是 [UIMessagePart.Tool] 的 part 数；区别于 generation 轮次 [steps]。
+     */
+    private fun countToolCalls(messages: List<UIMessage>): Int {
+        var n = 0
+        for (message in messages) {
+            if (message.role != MessageRole.ASSISTANT) continue
+            n += message.parts.count { it is UIMessagePart.Tool }
+        }
+        return n
     }
 
     private fun lastAssistantText(messages: List<UIMessage>): String {
