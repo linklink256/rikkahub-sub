@@ -246,7 +246,7 @@ fun MarkdownBlock(
     LaunchedEffect(Unit) {
         snapshotFlow { updatedContent }
             .distinctUntilChanged()
-            .debounce(100)
+            .debounce(16)
             .mapLatest { parseMarkdown(it) }
             .catch { exception -> exception.printStackTrace() }
             .flowOn(Dispatchers.Default)
