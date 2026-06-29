@@ -19,11 +19,18 @@ import me.rerere.workspace.WorkspaceCommandResult
 import me.rerere.workspace.WorkspaceFileEntry
 import me.rerere.workspace.WorkspaceManager
 import me.rerere.workspace.WorkspaceStorageArea
+import android.content.Context
 import org.koin.java.KoinJavaComponent.getKoin
 import java.io.ByteArrayOutputStream
 
 private const val SHELL_TIMEOUT_MAX_SECONDS = 600L
 private const val MAX_READ_FILE_BYTES = 8L * 1024 * 1024
+
+/// 只读 shell 规则集缓存：assets/shell/readonly_rules.json 在构建后不变、Context 在进程内不变，
+/// 用 lazy 一次性加载，避免每次 read_shell 调用都读 assets + 解析 JSON。
+private val cachedReadonlyRules: ReadonlyShellRules by lazy {
+    loadReadonlyShellRules(getKoin().get<Context>())
+}
 
 val WorkspaceToolDefaultApprovals: Map<String, Boolean> = mapOf(
     "workspace_read_file" to false,
@@ -226,7 +233,8 @@ private fun createEditFileTool(
 
 /**
  * 结构性只读 shell 工具：复用 [createShellTool] 的执行内核，但以**白名单**拦截命令——
- * 只放行公认只读的命令，默认拒绝其它。
+ * 只放行公认只读的命令，默认拒绝其它。判定规则数据驱动，来自 [ReadonlyShellRules]
+ * （assets/shell/readonly_rules.json），调整只读边界只改该 JSON、不动代码。
  *
  * 与黑名单的区别：黑名单（禁 rm/sed -i/echo > 等）会被 `python -c "open(...,'w')..."`、
  * `node -e "fs.writeFileSync(...)"` 等执行代码的命令绕过；白名单默认拒绝一切不在列表的
@@ -235,93 +243,60 @@ private fun createEditFileTool(
  * 借鉴 Roo-Code mode `groups` / Claude Code explore 的工具集裁剪思路：权限靠工具可用性
  * 而非提示词散文约束。只读子代理（explore/reviewer）经 excludedTools 排除全功能
  * `workspace_shell`、只留 `workspace_read_shell`，从而**不可能**越权改码。
+ *
+ * 判定顺序（与 [ReadonlyShellRules] 文档一致）：
+ * 1. 空 → 拒。2. 含禁字面量 → 拒。3. 命中禁正则 → 拒。
+ * 4. 分割子命令，每段 base 不在白名单 → 拒；再查 [PerCommandRule] 专属规则。
+ *
+ * @param rules  只读规则集（由调用方经 [loadReadonlyShellRules] 从 assets 加载）
+ * @param command 待判定命令
+ * @return 拒绝原因；null 表示放行
  */
-private val READONLY_SHELL_ALLOWED_BASE_COMMANDS: Set<String> = setOf(
-    // 查看与检索
-    "cat", "head", "tail", "less", "more", "wc", "nl", "cut", "paste", "column",
-    "grep", "egrep", "fgrep", "rg", "ack", "ag",
-    "find", "locate", "which", "whereis", "file", "stat", "realpath", "readlink",
-    "ls", "dir", "tree", "exa",
-    // 排序/去重/转换（纯文本，无副作用）
-    "sort", "uniq", "tr", "fold", "fmt", "expand", "unexpand", "rev",
-    "awk", "sed",  // 受限：见下方 checkReadonlyCommand 进一步拒绝 sed -i / sed 写文件
-    // 编码/哈希（只读运算）
-    "md5sum", "sha1sum", "sha256sum", "sum", "cksum", "xxd", "od", "hexdump",
-    "base32", "base64", "basename", "dirname",
-    // 系统只读探查
-    "echo",        // 受限：见 checkReadonlyCommand 拒 echo 重定向写
-    "printf",      // 受限：同上
-    "env", "printenv", "uname", "hostname", "id", "whoami", "date", "cal", "uptime",
-    "pwd", "true", "false", "test", "[", "command", "type", "help",
-    "man", "info",
-    // git 只读子命令
-    "git",
-    // diff / cmp
-    "diff", "cmp", "comm",
-    // jq / yq / xsltproc 等只读解析
-    "jq", "yq", "xsltproc", "xmllint",
-    // 字数/统计
-    "du", "df",
-)
-
-/// `echo` / `printf` 携带输出重定向（> >> >|）即写文件 → 拒绝。
-/// `sed` 带 -i/-i '' / --in-place → 拒绝。`awk` 带 -i inplace → 拒绝。
-/// `tee` 默认拒（写文件）；`cp`/`mv`/`rm`/`mkdir`/`rmdir`/`touch`/`chmod`/`chown` 等本身不在白名单。
-internal fun checkReadonlyCommand(command: String): String? {
+internal fun checkReadonlyCommand(rules: ReadonlyShellRules, command: String): String? {
     if (command.isBlank()) return "read-only shell: empty command"
 
-    // 拒绝任何重定向写（> >> >|）——这覆盖 echo > file / printf >> file / cat > file 等
-    // 注意管道 | 读端合法、tee 写端由 tee 不在白名单拦截
-    // 命令替换 $(...) 和反引号 `...` 可在"只读首命令"内部藏写命令（echo $(rm x)）→ 一律拒
-    if (command.contains("\$(") || command.contains("`")) {
-        return "read-only shell: command substitution ($()/backticks) is not allowed"
+    // 2) 禁字面量（命令替换 $() / 反引号 / 追加重定向 >> / 强制覆盖 >|）
+    for (literal in rules.rejectIfContainsLiteral) {
+        if (command.contains(literal)) {
+            return "read-only shell: blocked by literal rule: ${literal.take(20)}"
+        }
     }
-    if (Regex("""[^|]>\s*[^|&]""").containsMatchIn(command) ||
-        command.contains(">>") ||
-        command.contains(">|")
-    ) {
-        return "read-only shell: output redirection (>/>>) is not allowed"
+    // 3) 禁正则（如 shell 输出重定向 > file）
+    for (pattern in rules.rejectIfRegex) {
+        if (Regex(pattern).containsMatchIn(command)) {
+            return "read-only shell: blocked by pattern rule"
+        }
     }
 
+    // 4) 按复合命令分隔符切子命令，逐段判定
     val subCommands = command.split(Regex("""&&|\|\||;|\|"""))
     for (sub in subCommands) {
         val tokens = sub.trim().split(Regex("""\s+""")).filter { it.isNotBlank() }
         if (tokens.isEmpty()) continue
         val base = tokens.first().substringAfterLast('/')
 
-        // 整命令白名单校验
-        if (base !in READONLY_SHELL_ALLOWED_BASE_COMMANDS) {
+        // 4a) base 白名单（默认拒绝）
+        if (base !in rules.allowedBaseCommands) {
             return "read-only shell: command not in read-only allowlist: $base"
         }
-        // sed 写文件
-        if (base == "sed" && tokens.any { it == "-i" || it == "--in-place" || it.startsWith("-i") }) {
-            return "read-only shell: sed in-place editing is not allowed"
+        // 4b) 该 base 的专属规则
+        val rule = rules.perCommandRules[base] ?: continue
+        if (tokens.any { t -> rule.rejectIfAnyFlagEquals.any { t == it } }) {
+            return "read-only shell: $base blocked by flag-equals rule"
         }
-        // awk 写文件
-        if (base == "awk" && tokens.any { it == "-i" || it == "--include" } &&
-            tokens.any { it == "inplace" || it.contains("inplace") }) {
-            return "read-only shell: awk in-place editing is not allowed"
+        if (tokens.any { t -> rule.rejectIfAnyFlagStartsWith.any { t.startsWith(it) } }) {
+            return "read-only shell: $base blocked by flag-startswith rule"
         }
-        // awk 的 print/printf 重定向到文件（awk '{... > "file"}'）属 awk 语法非 shell 重定向，
-        // 上面 shell 重定向正则拦不到；对 awk 命令文本额外检 > 即拒（宁可误伤少数高级用法）。
-        if (base == "awk" && sub.contains('>')) {
-            return "read-only shell: awk output redirection is not allowed"
+        if (tokens.any { t -> rule.rejectIfAnyFlagContains.any { t.contains(it) } }) {
+            return "read-only shell: $base blocked by flag-contains rule"
         }
-        // git 子命令限定为只读集合
-        // find 的 -exec/-execdir/-ok/-delete 会写/删文件 → 拒（find 本身只读，但这些动作破坏）
-        if (base == "find" && tokens.any { it == "-delete" || it == "-exec" || it == "-execdir" || it == "-ok" || it == "-okdir" }) {
-            return "read-only shell: find -exec/-delete is not allowed"
+        if (rule.rejectIfSubcommandContains.any { sub.contains(it) }) {
+            return "read-only shell: $base blocked by subcommand-contains rule"
         }
-        if (base == "git") {
-            val sub = tokens.drop(1).firstOrNull { !it.startsWith("-") }
-            // 仅保留公认只读子命令；branch/tag/stash/config/remote 均可写故排除
-            val readOnlyGitSub = setOf(
-                "status", "log", "show", "diff", "blame", "ls-files",
-                "ls-tree", "ls-remote", "rev-parse", "rev-list", "describe",
-                "shortlog", "name-rev", "for-each-ref", "grep",
-            )
-            if (sub != null && sub !in readOnlyGitSub) {
-                return "read-only shell: git subcommand not in read-only allowlist: git $sub"
+        if (rule.allowedSubcommands.isNotEmpty()) {
+            val subToken = tokens.drop(1).firstOrNull { !it.startsWith("-") }
+            if (subToken != null && subToken !in rule.allowedSubcommands) {
+                return "read-only shell: $base subcommand not in allowlist: $base $subToken"
             }
         }
     }
@@ -374,7 +349,8 @@ private fun createReadShellTool(
     execute = {
         val params = it.jsonObject
         val command = params.string("command") ?: error("command is required")
-        val reject = checkReadonlyCommand(command)
+        // 规则集从 assets 加载（数据驱动）；getKoin 拿 androidContext 注册的 Context。
+        val reject = checkReadonlyCommand(cachedReadonlyRules, command)
         if (reject != null) {
             return@Tool listOf(
                 UIMessagePart.Text(

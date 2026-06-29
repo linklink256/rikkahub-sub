@@ -1,0 +1,56 @@
+{
+  "_comment": "workspace_read_shell 的只读判定规则集（数据驱动）。新增/调整只读边界只改此文件，不动代码。",
+
+  "allowedBaseCommands": [
+    "cat", "head", "tail", "less", "more", "wc", "nl", "cut", "paste", "column",
+    "grep", "egrep", "fgrep", "rg", "ack", "ag",
+    "find", "locate", "which", "whereis", "file", "stat", "realpath", "readlink",
+    "ls", "dir", "tree", "exa",
+    "sort", "uniq", "tr", "fold", "fmt", "expand", "unexpand", "rev",
+    "awk", "sed",
+    "md5sum", "sha1sum", "sha256sum", "sum", "cksum", "xxd", "od", "hexdump",
+    "base32", "base64", "basename", "dirname",
+    "echo", "printf",
+    "env", "printenv", "uname", "hostname", "id", "whoami", "date", "cal", "uptime",
+    "pwd", "true", "false", "test", "[", "command", "type", "help",
+    "man", "info",
+    "git",
+    "diff", "cmp", "comm",
+    "jq", "yq", "xsltproc", "xmllint",
+    "du", "df"
+  ],
+
+  "rejectIfContainsLiteral": [
+    "$(",
+    "`",
+    ">>",
+    ">|"
+  ],
+
+  "rejectIfRegex": [
+    "[^|]>\\s*[^|&]"
+  ],
+
+  "perCommandRules": {
+    "sed": {
+      "rejectIfAnyFlagStartsWith": ["-i"],
+      "rejectIfAnyFlagEquals": ["--in-place"]
+    },
+    "awk": {
+      "_note": "OR 语义（任一命中即拒），比旧硬编码的 AND(-i 且 inplace) 更严格：awk -i lib.awk（加载库，只读）也会被拒。安全方向强化，可接受。",
+      "rejectIfAnyFlagEquals": ["-i", "--include"],
+      "rejectIfAnyFlagContains": ["inplace"],
+      "rejectIfSubcommandContains": [">"]
+    },
+    "find": {
+      "rejectIfAnyFlagEquals": ["-delete", "-exec", "-execdir", "-ok", "-okdir"]
+    },
+    "git": {
+      "allowedSubcommands": [
+        "status", "log", "show", "diff", "blame", "ls-files",
+        "ls-tree", "ls-remote", "rev-parse", "rev-list", "describe",
+        "shortlog", "name-rev", "for-each-ref", "grep"
+      ]
+    }
+  }
+}

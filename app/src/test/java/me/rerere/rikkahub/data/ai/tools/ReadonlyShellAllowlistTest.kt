@@ -1,6 +1,7 @@
 package me.rerere.rikkahub.data.ai.tools
 
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -10,7 +11,52 @@ import org.junit.Test
  */
 class ReadonlyShellAllowlistTest {
 
-    private fun reject(cmd: String): String? = checkReadonlyCommand(cmd)
+    // 测试用规则集：复刻 assets/shell/readonly_rules.json 的内容，保持纯 JVM（不依赖 Android assets）。
+    private val rules = ReadonlyShellRules(
+        allowedBaseCommands = setOf(
+            "cat", "head", "tail", "less", "more", "wc", "nl", "cut", "paste", "column",
+            "grep", "egrep", "fgrep", "rg", "ack", "ag",
+            "find", "locate", "which", "whereis", "file", "stat", "realpath", "readlink",
+            "ls", "dir", "tree", "exa",
+            "sort", "uniq", "tr", "fold", "fmt", "expand", "unexpand", "rev",
+            "awk", "sed",
+            "md5sum", "sha1sum", "sha256sum", "sum", "cksum", "xxd", "od", "hexdump",
+            "base32", "base64", "basename", "dirname",
+            "echo", "printf",
+            "env", "printenv", "uname", "hostname", "id", "whoami", "date", "cal", "uptime",
+            "pwd", "true", "false", "test", "[", "command", "type", "help",
+            "man", "info",
+            "git",
+            "diff", "cmp", "comm",
+            "jq", "yq", "xsltproc", "xmllint",
+            "du", "df",
+        ),
+        rejectIfContainsLiteral = listOf("$(", "`", ">>", ">|"),
+        rejectIfRegex = listOf("""[^|]>\s*[^|&]"""),
+        perCommandRules = mapOf(
+            "sed" to PerCommandRule(
+                rejectIfAnyFlagStartsWith = listOf("-i"),
+                rejectIfAnyFlagEquals = listOf("--in-place"),
+            ),
+            "awk" to PerCommandRule(
+                rejectIfAnyFlagEquals = listOf("-i", "--include"),
+                rejectIfAnyFlagContains = listOf("inplace"),
+                rejectIfSubcommandContains = listOf(">"),
+            ),
+            "find" to PerCommandRule(
+                rejectIfAnyFlagEquals = listOf("-delete", "-exec", "-execdir", "-ok", "-okdir"),
+            ),
+            "git" to PerCommandRule(
+                allowedSubcommands = setOf(
+                    "status", "log", "show", "diff", "blame", "ls-files",
+                    "ls-tree", "ls-remote", "rev-parse", "rev-list", "describe",
+                    "shortlog", "name-rev", "for-each-ref", "grep",
+                ),
+            ),
+        ),
+    )
+
+    private fun reject(cmd: String): String? = checkReadonlyCommand(rules, cmd)
 
     @Test
     fun readCommands_allowed() {
@@ -144,5 +190,36 @@ class ReadonlyShellAllowlistTest {
             val r = reject(cmd)
             assertTrue("应拒绝 find 写动作: $cmd (实际=${r ?: "放行了!"})", r != null)
         }
+    }
+}
+
+    @Test
+    fun emptyRules_failClosed_rejectsEverything() {
+        // loadReadonlyShellRules 在 assets 缺失/解析失败时返回空规则集（fail-closed）。
+        // 空白名单 → 即便是最无害的只读命令也应被拒，确保安全方向失败。
+        val empty = ReadonlyShellRules()
+        val r = checkReadonlyCommand(empty, "cat /workspace/a.txt")
+        assertTrue(
+            "空规则集应 fail-closed 拒绝一切命令（含 cat），实际=${r ?: "放行了!"}",
+            r != null,
+        )
+    }
+
+    @Test
+    fun rulesJson_roundtrips_preservingFields() {
+        // 验证 ReadonlyShellRules 的 kotlinx 序列化往返稳定——确保 assets JSON 的字段名
+        // 与数据模型一致（拼错字段名会导致解析后集合为空、fail-closed 误拒所有命令）。
+        val original = rules
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val encoded = json.encodeToString(ReadonlyShellRules.serializer(), original)
+        val decoded = json.decodeFromString(ReadonlyShellRules.serializer(), encoded)
+        assertEquals(original.allowedBaseCommands, decoded.allowedBaseCommands)
+        assertEquals(original.rejectIfContainsLiteral, decoded.rejectIfContainsLiteral)
+        assertEquals(original.perCommandRules.keys, decoded.perCommandRules.keys)
+        // 关键：git 的 allowedSubcommands 必须完整往返（非空）
+        assertEquals(
+            original.perCommandRules["git"]?.allowedSubcommands,
+            decoded.perCommandRules["git"]?.allowedSubcommands,
+        )
     }
 }
