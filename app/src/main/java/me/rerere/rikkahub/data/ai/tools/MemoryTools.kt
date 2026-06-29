@@ -25,6 +25,7 @@ fun buildMemoryTools(
 ): List<Tool> = listOf(
     Tool(
         name = "memory_tool",
+        annotations = ToolAnnotations(destructiveHint = true),
         description = """
             The memory tool stores long-term information across conversations.
             Use `action` to control the operation: `create` (add), `edit` (update), `delete` (remove).

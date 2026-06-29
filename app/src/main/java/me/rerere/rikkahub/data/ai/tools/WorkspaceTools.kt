@@ -108,6 +108,7 @@ private fun createReadFileTool(
         )
     },
     needsApproval = { needsApproval("workspace_read_file") },
+    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val path = it.jsonObject.absolutePath("path")
         if (path.isImagePath()) {
@@ -154,6 +155,7 @@ private fun createWriteFileTool(
         )
     },
     needsApproval = { needsApproval("workspace_write_file") },
+    annotations = ToolAnnotations(destructiveHint = true),
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
@@ -198,6 +200,7 @@ private fun createEditFileTool(
         )
     },
     needsApproval = { needsApproval("workspace_edit_file") },
+    annotations = ToolAnnotations(destructiveHint = true),
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
@@ -346,6 +349,7 @@ private fun createReadShellTool(
         )
     },
     needsApproval = { needsApproval("workspace_read_shell") },
+    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val params = it.jsonObject
         val command = params.string("command") ?: error("command is required")
@@ -429,6 +433,7 @@ private fun createShellTool(
         )
     },
     needsApproval = { needsApproval("workspace_shell") },
+    annotations = ToolAnnotations(destructiveHint = true, openWorldHint = true),
     execute = {
         val params = it.jsonObject
         val command = params.string("command") ?: error("command is required")

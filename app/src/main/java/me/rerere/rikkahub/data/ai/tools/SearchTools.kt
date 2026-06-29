@@ -21,6 +21,7 @@ fun createSearchTools(settings: Settings): Set<Tool> {
         add(
             Tool(
                 name = "search_web",
+                annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
                 description = """
                     Search the web for up-to-date or specific information.
                     Use this when the user asks for the latest news, current facts, or needs verification.
@@ -99,6 +100,7 @@ fun createSearchTools(settings: Settings): Set<Tool> {
                         val service = SearchService.getService(options)
                         service.scrapingParameters(options)
                     },
+                    annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
                     execute = {
                         val options = settings.searchServices.getOrElse(
                             index = settings.searchServiceSelected,

@@ -210,6 +210,7 @@ fun createSkillTools(
     tools.add(
         Tool(
             name = "use_skill",
+            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Load and apply a skill to get specialized instructions or capabilities.
                 Call this tool when the user's request matches one of the available skills.
@@ -294,6 +295,7 @@ fun createSkillTools(
                         description = toolDescription,
                         parameters = { jsonSchemaToInputSchema(toolParameters) },
                         needsApproval = { needsApprovalFlag },
+                        annotations = ToolAnnotations(destructiveHint = true, openWorldHint = true),
                         execute = { args ->
                             executeSkillTool(
                                 workspaceId = workspaceId,

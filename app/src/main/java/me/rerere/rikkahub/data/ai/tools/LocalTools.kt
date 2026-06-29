@@ -94,6 +94,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val javascriptTool by lazy {
         Tool(
             name = "eval_javascript",
+            annotations = ToolAnnotations(openWorldHint = true),
             description = """
                 Execute JavaScript code using QuickJS engine (ES2020).
                 The result is the value of the last expression in the code.
@@ -156,6 +157,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val timeTool by lazy {
         Tool(
             name = "get_time_info",
+            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Get the current local date and time info from the device.
                 Returns year/month/day, weekday, ISO date/time strings, timezone, and timestamp.
@@ -192,6 +194,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val clipboardTool by lazy {
         Tool(
             name = "clipboard_tool",
+            annotations = ToolAnnotations(destructiveHint = true),
             description = """
                 Read or write plain text from the device clipboard.
                 Use action: read or write. For write, provide text.
@@ -249,6 +252,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val ttsTool by lazy {
         Tool(
             name = "text_to_speech",
+            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Speak text aloud to the user using the device's text-to-speech engine.
                 Use this when the user asks you to read something aloud, or when audio output is appropriate.
@@ -281,6 +285,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val askUserTool by lazy {
         Tool(
             name = "ask_user",
+            annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
             description = """
                 Ask the user one or more questions when you need clarification, additional information, or confirmation.
                 Each question can optionally provide a list of suggested options for the user to choose from.
@@ -350,6 +355,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val fetchTool by lazy {
         Tool(
             name = "fetch",
+            annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
             description = """
                 Fetch content from a URL via a simple HTTP GET request.
                 Use this to retrieve raw text content from APIs, raw files, or simple web pages.
@@ -461,6 +467,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val logsTool by lazy {
         Tool(
             name = "get_logs",
+            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Retrieve the app's recent runtime logs, including AI HTTP request logs and text logs.
                 Use this to inspect the requests the app made to AI providers (URL, method, status code,
@@ -518,6 +525,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val screenTimeTool by lazy {
         Tool(
             name = "get_screen_time",
+            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Get the user's app screen usage (screen time) over a time range.
                 Specify a custom interval with 'begin'/'end', or use the 'range' preset (today/week).
@@ -656,6 +664,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val calendarQueryTool by lazy {
         Tool(
             name = "calendar_query",
+            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Query calendar events on the user's device within a time range.
                 Specify a custom interval with 'begin'/'end', or use the 'range' preset (today/week/month).
@@ -849,6 +858,7 @@ class LocalTools(private val context: Context, private val eventBus: AppEventBus
     val calendarCreateTool by lazy {
         Tool(
             name = "calendar_create",
+            annotations = ToolAnnotations(destructiveHint = true),
             description = """
                 Create a new calendar event on the user's device.
                 Requires title and start time at minimum. End time defaults to 1 hour after start.

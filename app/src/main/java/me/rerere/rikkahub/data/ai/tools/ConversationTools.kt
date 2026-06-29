@@ -26,6 +26,7 @@ fun createConversationTools(
 ): List<Tool> = listOf(
     Tool(
         name = "recent_chats",
+        annotations = ToolAnnotations(readOnlyHint = true),
         description = """
             List the user's recent conversations with you to understand their preferences and ongoing topics.
             Returns conversation titles and the date of last activity, ordered by pinned first then most recently updated.
@@ -65,6 +66,7 @@ fun createConversationTools(
     ),
     Tool(
         name = "conversation_search",
+        annotations = ToolAnnotations(readOnlyHint = true),
         description = """
             Full-text search across the user's past conversations to recall specific information they mentioned before.
             Use focused keywords. Run multiple searches with different keywords if needed.
