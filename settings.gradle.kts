@@ -11,7 +11,6 @@ pluginManagement {
         gradlePluginPortal()
         maven("https://repo.itextsupport.com/android")
     }
-    includeBuild("build-logic")
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == "io.objectbox") {
@@ -24,6 +23,7 @@ plugins {
     id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
+includeBuild("build-logic")
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
