@@ -476,10 +476,12 @@ sealed class UIMessagePart {
         /** Whether generation can resume and handle this tool immediately */
         val canResumeExecution: Boolean get() = !isExecuted && approvalState.canResumeToolExecution()
 
-        /** Parse input string as JsonElement */
-        fun inputAsJson(): JsonElement = runCatching {
-            json.parseToJsonElement(input.ifBlank { "{}" })
-        }.getOrElse { JsonObject(emptyMap()) }
+        /** Parse input string as JsonElement, always returns a JsonObject */
+        fun inputAsJson(): JsonElement =
+            runCatching { json.parseToJsonElement(input.ifBlank { "{}" }) }
+                .getOrNull()
+                ?.let { if (it is JsonObject) it else null }
+                ?: JsonObject(emptyMap())
 
         fun merge(other: Tool): Tool {
             return Tool(
