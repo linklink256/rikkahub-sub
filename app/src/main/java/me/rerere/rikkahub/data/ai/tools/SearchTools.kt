@@ -7,6 +7,7 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import me.rerere.ai.core.Tool
+import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.utils.JsonInstantPretty
