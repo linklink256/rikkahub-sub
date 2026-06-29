@@ -283,9 +283,9 @@ internal fun checkReadonlyCommand(command: String): String? {
         return "read-only shell: output redirection (>/>>) is not allowed"
     }
 
-    val subCommands = command.split(Regex("&&|\|\||;|\|"))
+    val subCommands = command.split(Regex("""&&|\|\||;|\|"""))
     for (sub in subCommands) {
-        val tokens = sub.trim().split(Regex("\s+")).filter { it.isNotBlank() }
+        val tokens = sub.trim().split(Regex("""\s+""")).filter { it.isNotBlank() }
         if (tokens.isEmpty()) continue
         val base = tokens.first().substringAfterLast('/')
 
