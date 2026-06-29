@@ -1,0 +1,75 @@
+package me.rerere.rikkahub.data.ai.tools.local
+
+import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
+import me.rerere.ai.core.InputSchema
+import me.rerere.ai.core.Tool
+import me.rerere.ai.core.ToolAnnotations
+import me.rerere.ai.ui.UIMessagePart
+import me.rerere.common.android.LogEntry
+import me.rerere.common.android.Logging
+import me.rerere.common.android.redacted
+import me.rerere.rikkahub.utils.JsonInstant
+import kotlinx.serialization.json.add
+
+internal fun logsTool(): Tool = Tool(
+    name = "get_logs",
+    annotations = ToolAnnotations(readOnlyHint = true),
+    description = """
+        Retrieve the app's recent runtime logs, including AI HTTP request logs and text logs.
+        Use this to inspect the requests the app made to AI providers (URL, method, status code,
+        duration, errors) and general app log messages — helpful for debugging issues the user
+        is experiencing. Sensitive headers (Authorization / API keys / cookies) are redacted.
+        Optional 'type' filters logs: "all" (default), "request", or "text".
+        Optional 'limit' caps the number of returned entries (default 20, max 100).
+    """.trimIndent().replace("\\n", " "),
+    parameters = {
+        InputSchema.Obj(
+            properties = buildJsonObject {
+                put("type", buildJsonObject {
+                    put("type", "string")
+                    put("enum", buildJsonArray {
+                        add("all")
+                        add("request")
+                        add("text")
+                    })
+                    put("description", "Filter logs by type: all (default), request, or text")
+                })
+                put("limit", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Max number of log entries to return (default 20, max 100)")
+                })
+            }
+        )
+    },
+    execute = {
+        val params = it.jsonObject
+        val type = params["type"]?.jsonPrimitive?.contentOrNull ?: "all"
+        val limit = params["limit"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()
+            ?.coerceIn(1, 100) ?: 20
+
+        val allLogs: List<LogEntry> = when (type) {
+            "request" -> Logging.getRequestLogs()
+            "text" -> Logging.getTextLogs()
+            else -> Logging.getRecentLogs()
+        }
+        val selected = allLogs.take(limit).map { it.redacted() }
+
+        val payload = buildJsonObject {
+            put("count", selected.size)
+            put("totalAvailable", allLogs.size)
+            put("requestLoggingEnabled", Logging.isRequestLoggingEnabled())
+            put(
+                "logs",
+                JsonInstant.encodeToJsonElement(ListSerializer(LogEntry.serializer()), selected)
+            )
+        }
+        listOf(UIMessagePart.Text(payload.toString()))
+    }
+)

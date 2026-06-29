@@ -225,6 +225,9 @@ fun createSkillTools(
                         appendLine("  <skill>")
                         appendLine("    <name>${skill.name}</name>")
                         appendLine("    <description>${skill.description}</description>")
+                        if (!skill.compatibility.isNullOrBlank()) {
+                            appendLine("    <compatibility>${skill.compatibility}</compatibility>")
+                        }
                         appendLine("  </skill>")
                     }
                     append("</available_skills>")

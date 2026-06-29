@@ -226,11 +226,14 @@ class SkillManager(
             val frontmatter = SkillFrontmatterParser.parse(content)
             val name = frontmatter["name"]?.takeIf { it.isNotBlank() } ?: return null
             val description = frontmatter["description"]?.takeIf { it.isNotBlank() } ?: return null
+            val knownKeys = setOf("name", "description", "compatibility", "allowed-tools")
+            val metadata = frontmatter.filterKeys { it !in knownKeys }
             SkillMetadata(
                 name = name,
                 description = description,
                 compatibility = frontmatter["compatibility"],
                 allowedTools = frontmatter["allowed-tools"]?.split(" ")?.filter { it.isNotBlank() } ?: emptyList(),
+                metadata = metadata,
                 skillDir = skillDir,
             )
         }.getOrElse {
@@ -245,6 +248,7 @@ data class SkillMetadata(
     val description: String,
     val compatibility: String? = null,
     val allowedTools: List<String> = emptyList(),
+    val metadata: Map<String, String> = emptyMap(),
     val skillDir: File,
 ) {
     val skillFile: File get() = skillDir.resolve("SKILL.md")
