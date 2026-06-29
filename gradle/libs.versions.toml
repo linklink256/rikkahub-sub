@@ -167,6 +167,9 @@ slf4j-android = { module = "uk.uuid.slf4j:slf4j-android", version = "2.0.17-0" }
 sqlite-android = { module = "com.github.rikkahub:sqlite-android", version.ref = "sqlite-android" }
 termux-terminal-view = { module = "com.termux.termux-app:terminal-view", version.ref = "termux" }
 guava-listenablefuture = { module = "com.google.guava:listenablefuture", version = "9999.0-empty-to-avoid-conflict-with-guava" }
+android-gradlePlugin = { module = "com.android.tools.build:gradle", version.ref = "agp" }
+kotlin-gradlePlugin = { module = "org.jetbrains.kotlin:kotlin-gradle-plugin", version.ref = "kotlin" }
+compose-gradlePlugin = { module = "org.jetbrains.kotlin:compose-compiler-gradle-plugin", version.ref = "kotlin" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
@@ -178,3 +181,4 @@ google-services = { id = "com.google.gms.google-services", version.ref = "google
 firebase-crashlytics = { id = "com.google.firebase.crashlytics", version.ref = "firebase-crashlytics" }
 android-test = { id = "com.android.test", version.ref = "agp" }
 baselineprofile = { id = "androidx.baselineprofile", version.ref = "baselineprofile" }
+

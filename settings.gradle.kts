@@ -2,8 +2,8 @@ pluginManagement {
     repositories {
         google {
             content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
+                includeGroupByRegex("com\\\\.android.*")
+                includeGroupByRegex("com\\\\.google.*")
                 includeGroupByRegex("androidx.*")
             }
         }
@@ -11,6 +11,7 @@ pluginManagement {
         gradlePluginPortal()
         maven("https://repo.itextsupport.com/android")
     }
+    includeBuild("build-logic")
     resolutionStrategy {
         eachPlugin {
             if (requested.id.id == "io.objectbox") {

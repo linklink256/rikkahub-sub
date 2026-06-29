@@ -5,8 +5,7 @@ import java.io.FileInputStream
 import java.util.Properties
 
 plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.compose)
+    id("rikkahub.android.application.compose")
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
@@ -16,7 +15,6 @@ plugins {
 
 android {
     namespace = "me.rerere.rikkahub"
-    compileSdk = 37
 
     defaultConfig {
         // Fork: 改 applicationId 以便与原版 RikkaHub 共存安装（不冲突）。
@@ -28,8 +26,6 @@ android {
         targetSdk = 37
         versionCode = 166
         versionName = "2.3.3-sub"
-
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
         ndk {
             abiFilters += listOf("arm64-v8a", "x86_64")
@@ -108,14 +104,6 @@ android {
             buildConfigField("String", "VERSION_CODE", "\"${android.defaultConfig.versionCode}\"")
         }
     }
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
-    }
-    buildFeatures {
-        compose = true
-        buildConfig = true
-    }
     sourceSets {
         getByName("androidTest").assets.srcDirs("$projectDir/schemas")
     }
@@ -129,16 +117,6 @@ android {
         }
     }
     tasks.withType<KotlinCompile>().configureEach {
-        compilerOptions.optIn.add("androidx.compose.material3.ExperimentalMaterial3Api")
-        compilerOptions.optIn.add("androidx.compose.material3.ExperimentalMaterial3ExpressiveApi")
-        compilerOptions.optIn.add("androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi")
-        compilerOptions.optIn.add("androidx.compose.animation.ExperimentalAnimationApi")
-        compilerOptions.optIn.add("androidx.compose.animation.ExperimentalSharedTransitionApi")
-        compilerOptions.optIn.add("androidx.compose.foundation.ExperimentalFoundationApi")
-        compilerOptions.optIn.add("androidx.compose.foundation.layout.ExperimentalLayoutApi")
-        compilerOptions.optIn.add("kotlin.uuid.ExperimentalUuidApi")
-        compilerOptions.optIn.add("kotlin.time.ExperimentalTime")
-        compilerOptions.optIn.add("kotlinx.coroutines.ExperimentalCoroutinesApi")
         compilerOptions.optIn.add("androidx.navigation3.runtime.ExperimentalNavigation3Api")
     }
 }
