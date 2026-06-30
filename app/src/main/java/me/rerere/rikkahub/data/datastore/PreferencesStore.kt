@@ -626,7 +626,6 @@ data class BackupReminderConfig(
     val lastBackupTime: Long = 0L,
 )
 
-@Serializable
 fun Settings.isNotConfigured() = providers.all { it.models.isEmpty() }
 
 fun Settings.findModelById(uuid: Uuid?, fallback: Uuid? = null): Model? {
