@@ -62,14 +62,14 @@ class LogRedactionTest {
             durationMs = 50L,
             error = null,
         ).redacted() as LogEntry.RequestLog
-        assertEquals("***REDACTED***", redacted.requestHeaders["Authorization"])
-        assertEquals("***REDACTED***", redacted.responseHeaders["Set-Cookie"])
-        assertTrue(redacted.requestBody!!.contains("***REDACTED***"))
+        assertEquals("***REDACTED***", log.requestHeaders["Authorization"])
+        assertEquals("***REDACTED***", log.responseHeaders["Set-Cookie"])
+        assertTrue(log.requestBody!!.contains("***REDACTED***"))
         // 非敏感字段保留
-        assertEquals("https://example.com", redacted.url)
-        assertEquals("POST", redacted.method)
-        assertEquals(200, redacted.responseCode)
-        assertEquals(50L, redacted.durationMs)
+        assertEquals("https://example.com", log.url)
+        assertEquals("POST", log.method)
+        assertEquals(200, log.responseCode)
+        assertEquals(50L, log.durationMs)
     }
 
     @Test
