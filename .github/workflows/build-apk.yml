@@ -1,16 +1,16 @@
-# RikkaHub Sub — Debug APK Build
+# RikkaHub Sub — Debug + Release APK Build
 #
 # Triggered on:
 #   - Push to master branch
 #   - Manual trigger via GitHub Actions UI (workflow_dispatch)
 #
-# Builds debug APKs with ABI splits (arm64-v8a, x86_64, universal)
-# and uploads them as a build artifact (retention: 30 days).
+# Builds both debug and release APKs with ABI splits (arm64-v8a, x86_64, universal)
+# and uploads them as build artifacts (retention: 30 days).
 #
 # Debug signing uses Android SDK's default debug keystore.
-# No release keystore needed.
+# Release signing uses the fork keystore bundled in the repo (app/keystore/subagent-fork.keystore).
 
-name: Build Debug APK
+name: Build APK
 
 on:
   push:
@@ -19,7 +19,7 @@ on:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build APK (debug + release)
     runs-on: ubuntu-latest
 
     steps:
@@ -43,9 +43,19 @@ jobs:
       - name: Build debug APK
         run: ./gradlew assembleDebug
 
+      - name: Build release APK
+        run: ./gradlew assembleRelease
+
       - name: Upload debug APK artifacts
         uses: actions/upload-artifact@v4
         with:
           name: rikkahub-sub-debug-apk
           path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30
+
+      - name: Upload release APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rikkahub-sub-release-apk
+          path: app/build/outputs/apk/release/*.apk
           retention-days: 30
