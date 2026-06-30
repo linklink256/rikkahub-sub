@@ -153,8 +153,6 @@ class SettingsStore(
         // YOLO mode
         val YOLO_MODE = booleanPreferencesKey("yolo_mode")
 
-        // 网络代理
-        val PROXY_CONFIG = stringPreferencesKey("proxy_config")
     }
 
     private val dataStore = context.settingsStore
@@ -260,7 +258,6 @@ class SettingsStore(
                 launchCount = preferences[LAUNCH_COUNT] ?: 0,
                 sponsorAlertDismissedAt = preferences[SPONSOR_ALERT_DISMISSED_AT] ?: 0,
                 yoloMode = preferences[YOLO_MODE] == true,
-                proxyConfig = preferences.readJson(PROXY_CONFIG, ProxyConfig()),
             )
         }
         .map {
@@ -421,7 +418,6 @@ class SettingsStore(
             preferences[LAUNCH_COUNT] = settings.launchCount
             preferences[SPONSOR_ALERT_DISMISSED_AT] = settings.sponsorAlertDismissedAt
             preferences[YOLO_MODE] = settings.yoloMode
-            preferences.writeJson(PROXY_CONFIG, settings.proxyConfig)
         }
     }
 
@@ -545,7 +541,6 @@ data class Settings(
     val launchCount: Int = 0,
     val sponsorAlertDismissedAt: Int = 0,
     val yoloMode: Boolean = false,
-    val proxyConfig: ProxyConfig = ProxyConfig(),
 ) {
     companion object {
         // 构造一个用于初始化的settings, 但它不能用于保存，防止使用初始值存储
@@ -632,17 +627,6 @@ data class BackupReminderConfig(
 )
 
 @Serializable
-data class ProxyConfig(
-    val enabled: Boolean = false,
-    val host: String = "",
-    val port: Int = 0,
-    val username: String = "",
-    val password: String = "",
-) {
-    val isConfigured: Boolean
-        get() = enabled && host.isNotBlank() && port > 0
-}
-
 fun Settings.isNotConfigured() = providers.all { it.models.isEmpty() }
 
 fun Settings.findModelById(uuid: Uuid?, fallback: Uuid? = null): Model? {

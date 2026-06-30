@@ -1200,15 +1200,7 @@
   <string name="workspace_terminal_exited">Terminal exited</string>
   <string name="extensions_page_workspace">Workspace</string>
   <string name="extensions_page_workspace_desc">Manage local working directories accessible by Agent</string>
-  <string name="extensions_page_proxy">Network Proxy</string>
-  <string name="extensions_page_proxy_desc">Configure global HTTP proxy settings</string>
-  <string name="setting_proxy_enabled">Enable Proxy</string>
-  <string name="setting_proxy_host">Proxy Host</string>
-  <string name="setting_proxy_port">Proxy Port</string>
-  <string name="setting_proxy_username">Username (optional)</string>
-  <string name="setting_proxy_password">Password (optional)</string>
-  <string name="setting_proxy_save">Save</string>
-  <string name="setting_proxy_saved">Proxy settings saved and applied</string>
+
   <string name="workspace_select">Select Workspace</string>
   <string name="workspace_no_binding">No binding</string>
   <string name="workspace_manage">Manage Workspaces</string>
@@ -1318,8 +1310,6 @@
   <string name="assistant_page_local_tools_calendar_desc">Let the AI query and create calendar events</string>
   <string name="assistant_page_local_tools_yolo_mode_title">YOLO Mode</string>
   <string name="assistant_page_local_tools_yolo_mode_desc">Let the AI run fully autonomously without approval for any tool call</string>
-  <string name="assistant_page_local_tools_network_proxy_title">Network Proxy</string>
-  <string name="assistant_page_local_tools_network_proxy_desc">Set, clear, or query the app\'s global HTTP proxy</string>
   <string name="chat_message_tool_screen_time">Read screen time</string>
   <string name="tool_ui_screen_time_total">Total screen time</string>
 </resources>

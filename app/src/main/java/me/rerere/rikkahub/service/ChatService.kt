@@ -1119,7 +1119,6 @@ class ChatService(
         is LocalToolOption.ScreenTime -> "screen_time"
         is LocalToolOption.Calendar -> "calendar"
         is LocalToolOption.YoloMode -> "yolo_mode"
-        is LocalToolOption.NetworkProxy -> "network_proxy"
     }
 
     /**

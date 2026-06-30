@@ -1199,15 +1199,7 @@
   <string name="workspace_terminal_exited">终端已退出</string>
   <string name="extensions_page_workspace">工作区</string>
   <string name="extensions_page_workspace_desc">管理可由Agent访问的本地工作目录</string>
-  <string name="extensions_page_proxy">网络代理</string>
-  <string name="extensions_page_proxy_desc">配置全局 HTTP 代理设置</string>
-  <string name="setting_proxy_enabled">启用代理</string>
-  <string name="setting_proxy_host">代理主机</string>
-  <string name="setting_proxy_port">代理端口</string>
-  <string name="setting_proxy_username">用户名（可选）</string>
-  <string name="setting_proxy_password">密码（可选）</string>
-  <string name="setting_proxy_save">保存</string>
-  <string name="setting_proxy_saved">代理设置已保存并生效</string>
+
   <string name="workspace_select">选择工作区</string>
   <string name="workspace_no_binding">未绑定</string>
   <string name="workspace_manage">管理工作区</string>
@@ -1318,7 +1310,5 @@
   <string name="assistant_page_local_tools_screen_time_permission_required">请在设置中授予使用情况访问权限以使用屏幕时间功能</string>
   <string name="assistant_page_local_tools_yolo_mode_title">YOLO 模式</string>
   <string name="assistant_page_local_tools_yolo_mode_desc">让 AI 完全自主运行，无需对任何工具调用进行审批</string>
-  <string name="assistant_page_local_tools_network_proxy_title">网络代理</string>
-  <string name="assistant_page_local_tools_network_proxy_desc">设置、清除或查询应用的全局 HTTP 代理</string>
 </resources>
 

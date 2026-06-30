@@ -53,10 +53,6 @@ sealed class LocalToolOption {
     @Serializable
     @SerialName("yolo_mode")
     data object YoloMode : LocalToolOption()
-
-    @Serializable
-    @SerialName("network_proxy")
-    data object NetworkProxy : LocalToolOption()
 }
 
 class LocalTools(

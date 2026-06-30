@@ -240,20 +240,6 @@ private fun AssistantLocalToolContent(
                     )
                 }
             )
-            item(
-                headlineContent = {
-                    Text(stringResource(R.string.assistant_page_local_tools_network_proxy_title))
-                },
-                supportingContent = {
-                    Text(stringResource(R.string.assistant_page_local_tools_network_proxy_desc))
-                },
-                trailingContent = {
-                    Switch(
-                        checked = assistant.localTools.contains(LocalToolOption.NetworkProxy),
-                        onCheckedChange = { toggleLocalTool(LocalToolOption.NetworkProxy, it) }
-                    )
-                }
-            )
         }
     }
 }

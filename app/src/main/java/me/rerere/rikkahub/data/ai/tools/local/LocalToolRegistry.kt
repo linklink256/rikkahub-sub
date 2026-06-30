@@ -24,6 +24,5 @@ internal val LocalToolRegistry: Map<LocalToolOption, (Context, AppEventBus, Sett
     LocalToolOption.ScreenTime to { context, eventBus, _ -> listOf(screenTimeTool(context, eventBus)) },
     LocalToolOption.Calendar to { context, _, _ -> calendarTools(context) },
     LocalToolOption.YoloMode to { _, _, settingsStore -> listOf(yoloModeTool(settingsStore)) },
-    LocalToolOption.NetworkProxy to { _, _, settingsStore -> listOf(networkProxyTool(settingsStore)) },
     // AskBtw intentionally absent — it's subagent-only, no main-agent tool.
 )
