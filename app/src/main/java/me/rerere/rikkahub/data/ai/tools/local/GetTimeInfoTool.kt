@@ -4,15 +4,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 import java.time.ZonedDateTime
 import java.time.format.TextStyle
 import java.util.Locale
 
 internal fun getTimeInfoTool(): Tool = Tool(
     name = "get_time_info",
-    annotations = ToolAnnotations(readOnlyHint = true),
     description = """
         Get the current local date and time info from the device.
         Returns year/month/day, weekday, ISO date/time strings, timezone, and timestamp.
@@ -41,6 +40,6 @@ internal fun getTimeInfoTool(): Tool = Tool(
             put("utc_offset", now.offset.id)
             put("timestamp_ms", now.toInstant().toEpochMilli())
         }
-        listOf(UIMessagePart.Text(payload.toString()))
+        payload.asToolResult()
     }
 )

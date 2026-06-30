@@ -7,14 +7,13 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 import me.rerere.rikkahub.data.event.AppEvent
 import me.rerere.rikkahub.data.event.AppEventBus
 
 internal fun ttsTool(eventBus: AppEventBus): Tool = Tool(
     name = "text_to_speech",
-    annotations = ToolAnnotations(readOnlyHint = true),
     description = """
         Speak text aloud to the user using the device's text-to-speech engine.
         Use this when the user asks you to read something aloud, or when audio output is appropriate.
@@ -39,6 +38,6 @@ internal fun ttsTool(eventBus: AppEventBus): Tool = Tool(
         val payload = buildJsonObject {
             put("success", true)
         }
-        listOf(UIMessagePart.Text(payload.toString()))
+        payload.asToolResult()
     }
 )

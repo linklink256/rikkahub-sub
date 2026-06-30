@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.rikkahub.data.files.SkillToolDeclaration
 import me.rerere.rikkahub.data.files.SkillToolExecute
 import me.rerere.workspace.WorkspaceCommandResult
@@ -389,28 +388,6 @@ class SkillsToolsTest {
             execute = SkillToolExecute(command = "ls")
         )
         assertEquals("shell", shellDecl.execute.type)
-    }
-
-    @Test
-    fun `javascript tool uses openWorldHint annotation`() {
-        val isJsTool = true
-        val annotations = if (isJsTool) {
-            ToolAnnotations(openWorldHint = true)
-        } else {
-            ToolAnnotations(destructiveHint = true, openWorldHint = true)
-        }
-        assertEquals(ToolAnnotations(openWorldHint = true), annotations)
-    }
-
-    @Test
-    fun `shell tool uses destructiveHint and openWorldHint annotation`() {
-        val isJsTool = false
-        val annotations = if (isJsTool) {
-            ToolAnnotations(openWorldHint = true)
-        } else {
-            ToolAnnotations(destructiveHint = true, openWorldHint = true)
-        }
-        assertEquals(ToolAnnotations(destructiveHint = true, openWorldHint = true), annotations)
     }
 
     @Test

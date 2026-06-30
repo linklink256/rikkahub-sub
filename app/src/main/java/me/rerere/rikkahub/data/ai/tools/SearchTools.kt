@@ -7,8 +7,6 @@ import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
-import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.datastore.Settings
 import me.rerere.rikkahub.utils.JsonInstantPretty
 import me.rerere.rikkahub.utils.toLocalString
@@ -22,7 +20,6 @@ fun createSearchTools(settings: Settings): Set<Tool> {
         add(
             Tool(
                 name = "search_web",
-                annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
                 description = """
                     Search the web for up-to-date or specific information.
                     Use this when the user asks for the latest news, current facts, or needs verification.
@@ -76,7 +73,7 @@ fun createSearchTools(settings: Settings): Set<Tool> {
                                 })
                             JsonObject(map)
                         }
-                    listOf(UIMessagePart.Text(results.toString()))
+                    results.asToolResult()
                 }
             )
         )
@@ -101,7 +98,6 @@ fun createSearchTools(settings: Settings): Set<Tool> {
                         val service = SearchService.getService(options)
                         service.scrapingParameters(options)
                     },
-                    annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
                     execute = {
                         val options = settings.searchServices.getOrElse(
                             index = settings.searchServiceSelected,
@@ -113,7 +109,7 @@ fun createSearchTools(settings: Settings): Set<Tool> {
                             serviceOptions = options,
                         )
                         val payload = JsonInstantPretty.encodeToJsonElement(result.getOrThrow()).jsonObject
-                        listOf(UIMessagePart.Text(payload.toString()))
+                        payload.asToolResult()
                     }
                 ))
         }

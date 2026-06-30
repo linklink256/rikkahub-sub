@@ -9,15 +9,14 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 import java.net.HttpURLConnection
 import java.net.URL
 import kotlinx.serialization.json.add
 
 internal fun fetchTool(): Tool = Tool(
     name = "fetch",
-    annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
     description = """
         Fetch content from a URL via a simple HTTP GET request.
         Use this to retrieve raw text content from APIs, raw files, or simple web pages.
@@ -91,21 +90,8 @@ internal fun fetchTool(): Tool = Tool(
             val contentType = connection.contentType ?: ""
             val stream = if (code in 200..299) connection.inputStream else connection.errorStream
             val text = stream?.bufferedReader(Charsets.UTF_8)?.use { reader ->
-                val sb = StringBuilder()
-                var total = 0
-                val buf = CharArray(8192)
-                while (true) {
-                    val n = reader.read(buf)
-                    if (n < 0) break
-                    total += n
-                    if (total > 50000) {
-                        sb.append(buf, 0, n)
-                        break
-                    }
-                    sb.append(buf, 0, n)
-                }
-                val result = sb.toString()
-                if (total > 50000) result + "\n... (truncated)" else result
+                val full = reader.readText()
+                if (full.length > 50000) full.take(50000) + "\n... (truncated)" else full
             } ?: ""
             buildJsonObject {
                 put("status", code)
@@ -121,6 +107,6 @@ internal fun fetchTool(): Tool = Tool(
         } finally {
             connection.disconnect()
         }
-        listOf(UIMessagePart.Text(payload.toString()))
+        payload.asToolResult()
     }
 )

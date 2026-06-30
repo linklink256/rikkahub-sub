@@ -385,8 +385,6 @@ class GenerationHandler(
                     )
                 }
                 Log.i(TAG, "generateText: executing tool ${toolDef.name} with args: $args")
-                val ann = toolDef.annotations
-                Log.i(TAG, "executeSingleTool: ${tool.toolName} annotations=${ann ?: "none"}")
                 val result = withToolCallId(tool.toolCallId) { toolDef.execute(args) }
                 val hasShellAccess = toolsInternal.any { it.name == "workspace_shell" || it.name == "workspace_read_shell" }
                 tool.copy(output = maybeTruncateToolOutput(tool.toolCallId, result, hasShellAccess))

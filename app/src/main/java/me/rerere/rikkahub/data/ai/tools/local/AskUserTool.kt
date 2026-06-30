@@ -5,12 +5,10 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import kotlinx.serialization.json.add
 
 internal fun askUserTool(): Tool = Tool(
     name = "ask_user",
-    annotations = ToolAnnotations(readOnlyHint = true, openWorldHint = true),
     description = """
         Ask the user one or more questions when you need clarification, additional information, or confirmation.
         Each question can optionally provide a list of suggested options for the user to choose from.

@@ -10,8 +10,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 import me.rerere.common.android.LogEntry
 import me.rerere.common.android.Logging
 import me.rerere.common.android.redacted
@@ -20,7 +20,6 @@ import kotlinx.serialization.json.add
 
 internal fun logsTool(): Tool = Tool(
     name = "get_logs",
-    annotations = ToolAnnotations(readOnlyHint = true),
     description = """
         Retrieve the app's recent runtime logs, including AI HTTP request logs and text logs.
         Use this to inspect the requests the app made to AI providers (URL, method, status code,
@@ -70,6 +69,6 @@ internal fun logsTool(): Tool = Tool(
                 JsonInstant.encodeToJsonElement(ListSerializer(LogEntry.serializer()), selected)
             )
         }
-        listOf(UIMessagePart.Text(payload.toString()))
+        payload.asToolResult()
     }
 )

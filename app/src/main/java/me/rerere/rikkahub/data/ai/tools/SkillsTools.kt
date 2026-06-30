@@ -15,7 +15,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.files.SkillMetadata
@@ -166,7 +165,7 @@ suspend fun executeSkillTool(
 ): List<UIMessagePart> {
     val rawCommand = decl.execute.command
     if (rawCommand == null) {
-        return listOf(UIMessagePart.Text("Tool failed: command is null for shell-type tool"))
+        return "Tool failed: command is null for shell-type tool".asToolResult()
     }
 
     // Security audit: resolve the script path to verify it doesn't escape the skill directory.
@@ -313,7 +312,6 @@ fun createSkillTools(
     tools.add(
         Tool(
             name = "use_skill",
-            annotations = ToolAnnotations(readOnlyHint = true),
             description = """
                 Load and apply a skill to get specialized instructions or capabilities.
                 Call this tool when the user's request matches one of the available skills.
@@ -409,11 +407,6 @@ fun createSkillTools(
                     description = toolDescription,
                     parameters = { jsonSchemaToInputSchema(toolParameters) },
                     needsApproval = { needsApprovalFlag },
-                    annotations = if (isJsTool) {
-                        ToolAnnotations(openWorldHint = true)
-                    } else {
-                        ToolAnnotations(destructiveHint = true, openWorldHint = true)
-                    },
                     execute = { args ->
                         if (isJsTool) {
                             executeJsSkillTool(

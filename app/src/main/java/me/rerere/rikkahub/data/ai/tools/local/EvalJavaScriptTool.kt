@@ -11,12 +11,11 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 
 internal fun evalJavaScriptTool(): Tool = Tool(
     name = "eval_javascript",
-    annotations = ToolAnnotations(openWorldHint = true),
     description = """
         Execute JavaScript code using QuickJS engine (ES2020).
         The result is the value of the last expression in the code.
@@ -71,6 +70,6 @@ internal fun evalJavaScriptTool(): Tool = Tool(
                 }
             )
         }
-        listOf(UIMessagePart.Text(payload.toString()))
+        payload.asToolResult()
     }
 )

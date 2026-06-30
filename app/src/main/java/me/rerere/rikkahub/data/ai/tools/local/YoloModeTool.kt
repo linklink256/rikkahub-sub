@@ -7,7 +7,6 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.rikkahub.data.datastore.SettingsStore
 
@@ -17,7 +16,6 @@ import me.rerere.rikkahub.data.datastore.SettingsStore
  */
 internal fun yoloModeTool(settingsStore: SettingsStore): Tool = Tool(
     name = "yolo_mode",
-    annotations = ToolAnnotations(destructiveHint = true),
     description = """
         Toggle or query YOLO mode. When YOLO mode is ON, all tool calls execute
         without user approval (including file writes and shell commands) — the AI

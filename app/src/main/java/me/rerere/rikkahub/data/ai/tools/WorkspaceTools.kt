@@ -10,7 +10,6 @@ import kotlinx.serialization.json.put
 import me.rerere.workspace.WorkspaceSearchMatch
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.DiffMetadata
 import me.rerere.ai.ui.UIMessagePart
 import me.rerere.ai.ui.toMetadata
@@ -129,7 +128,6 @@ private fun createReadFileTool(
         )
     },
     needsApproval = { needsApproval("workspace_read_file") },
-    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
@@ -200,14 +198,13 @@ private fun createWriteFileTool(
         )
     },
     needsApproval = { needsApproval("workspace_write_file") },
-    annotations = ToolAnnotations(destructiveHint = true),
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
-        val text = params.string("text") ?: error("text is required")
+        val text = params.strReq("text")
         val overwrite = params["overwrite"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: true
         val entry = workspaceRepository.writeTextInRootfs(workspaceId, path, text, overwrite)
-        listOf(UIMessagePart.Text(entry.toJson().toString()))
+        entry.toJson().asToolResult()
     },
 )
 
@@ -245,12 +242,11 @@ private fun createEditFileTool(
         )
     },
     needsApproval = { needsApproval("workspace_edit_file") },
-    annotations = ToolAnnotations(destructiveHint = true),
     execute = {
         val params = it.jsonObject
         val path = params.absolutePath("path")
-        val oldText = params.string("old_text") ?: error("old_text is required")
-        val newText = params.string("new_text") ?: error("new_text is required")
+        val oldText = params.strReq("old_text")
+        val newText = params.strReq("new_text")
         val replaceAll = params["replace_all"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
         require(oldText.isNotEmpty()) { "old_text must not be empty" }
 
@@ -316,14 +312,13 @@ private fun createSearchTool(
         )
     },
     needsApproval = { needsApproval("workspace_search") },
-    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val params = it.jsonObject
-        val rawPath = params.string("path") ?: "/workspace"
-        val query = params.string("query") ?: error("query is required")
+        val rawPath = params.str("path") ?: "/workspace"
+        val query = params.strReq("query")
         val regex = params["regex"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
         val ignoreCase = params["ignore_case"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: true
-        val includeGlob = params.string("include_glob")
+        val includeGlob = params.str("include_glob")
 
         val (area, relativePath) = rootfsPathToAreaAndRelative(rawPath)
         require(area == WorkspaceStorageArea.FILES) {
@@ -373,11 +368,10 @@ private fun createGlobTool(
         )
     },
     needsApproval = { needsApproval("workspace_glob") },
-    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val params = it.jsonObject
-        val rawPath = params.string("path") ?: "/workspace"
-        val pattern = params.string("pattern") ?: error("pattern is required")
+        val rawPath = params.str("path") ?: "/workspace"
+        val pattern = params.strReq("pattern")
 
         val (area, relativePath) = rootfsPathToAreaAndRelative(rawPath)
         require(area == WorkspaceStorageArea.FILES) {
@@ -417,10 +411,9 @@ private fun createListTool(
         )
     },
     needsApproval = { needsApproval("workspace_list") },
-    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val params = it.jsonObject
-        val rawPath = params.string("path") ?: "/workspace"
+        val rawPath = params.str("path") ?: "/workspace"
 
         val (area, relativePath) = rootfsPathToAreaAndRelative(rawPath)
         val entries = workspaceRepository.listFiles(workspaceId, area, relativePath)
@@ -550,10 +543,9 @@ private fun createReadShellTool(
         )
     },
     needsApproval = { needsApproval("workspace_read_shell") },
-    annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
         val params = it.jsonObject
-        val command = params.string("command") ?: error("command is required")
+        val command = params.strReq("command")
         // 规则集从 assets 加载（数据驱动）；getKoin 拿 androidContext 注册的 Context。
         val reject = checkReadonlyCommand(cachedReadonlyRules, command)
         if (reject != null) {
@@ -568,9 +560,9 @@ private fun createReadShellTool(
                 )
             )
         }
-        val cwd = (params.string("cwd") ?: defaultCwd.orEmpty())
+        val cwd = (params.str("cwd") ?: defaultCwd.orEmpty())
             .removePrefix("/workspace/").removePrefix("/workspace")
-        val timeoutMillis = params.string("timeout")?.toLongOrNull()
+        val timeoutMillis = params.str("timeout")?.toLongOrNull()
             ?.coerceIn(1L, SHELL_TIMEOUT_MAX_SECONDS)?.times(1_000L)
             ?: WorkspaceManager.DEFAULT_COMMAND_TIMEOUT_MS
         val result = workspaceRepository.executeCommand(workspaceId, command, cwd, timeoutMillis)
@@ -634,10 +626,9 @@ private fun createShellTool(
         )
     },
     needsApproval = { needsApproval("workspace_shell") },
-    annotations = ToolAnnotations(destructiveHint = true, openWorldHint = true),
     execute = {
         val params = it.jsonObject
-        val command = params.string("command") ?: error("command is required")
+        val command = params.strReq("command")
         // Block execution of scripts under /skills/ from shell.
         // Skill tools must be invoked via their registered function-calling
         // tools (skill__ prefix), not by manually running skill scripts.
@@ -655,9 +646,9 @@ private fun createShellTool(
                 )
             )
         }
-        val cwd = (params.string("cwd") ?: defaultCwd.orEmpty())
+        val cwd = (params.str("cwd") ?: defaultCwd.orEmpty())
             .removePrefix("/workspace/").removePrefix("/workspace")
-        val timeoutMillis = params.string("timeout")?.toLongOrNull()
+        val timeoutMillis = params.str("timeout")?.toLongOrNull()
             ?.coerceIn(1L, SHELL_TIMEOUT_MAX_SECONDS)
             ?.times(1_000L)
             ?: WorkspaceManager.DEFAULT_COMMAND_TIMEOUT_MS
@@ -675,9 +666,6 @@ private fun createShellTool(
         )
     },
 )
-
-private fun kotlinx.serialization.json.JsonObject.string(name: String): String? =
-    this[name]?.jsonPrimitive?.contentOrNull
 
 private suspend fun WorkspaceRepository.readTextInRootfs(
     workspaceId: String,
@@ -810,7 +798,7 @@ private fun String.parseRootfsEntries(): List<WorkspaceFileEntry> {
 }
 
 private fun kotlinx.serialization.json.JsonObject.absolutePath(name: String): String {
-    val path = string(name)?.replace('\\', '/')?.trim() ?: error("$name is required")
+    val path = str(name)?.replace('\\', '/')?.trim() ?: error("$name is required")
     require(path.isNotBlank()) { "$name is required" }
     require(path.startsWith("/")) { "$name must be an absolute path inside Rootfs" }
     require(!path.contains('\u0000')) { "$name contains invalid character" }
@@ -858,16 +846,6 @@ private fun WorkspaceFileEntry.toJson() = buildJsonObject {
 }
 
 /**
- * Known script file extensions used by skill tools.
- */
-private val SKILL_SCRIPT_EXTENSIONS = SkillConstants.SCRIPT_EXTENSIONS
-
-/**
- * Interpreters that can execute script files.
- */
-private val SCRIPT_INTERPRETERS = SkillConstants.SCRIPT_INTERPRETERS
-
-/**
  * Checks if a shell command attempts to execute a script file under /skills/.
  *
  * Returns an error message string if the command is blocked, or null if allowed.
@@ -891,13 +869,13 @@ internal fun checkSkillScriptExecution(command: String): String? {
         // Check if any token is an interpreter (bash, sh, python, etc.)
         val hasInterpreter = tokens.any { token ->
             val base = token.substringAfterLast('/')
-            base in SCRIPT_INTERPRETERS
+            base in SkillConstants.SCRIPT_INTERPRETERS
         }
 
         // Check if any token references a script file under /skills/
         val hasSkillScript = tokens.any { token ->
             token.contains("/skills/") &&
-                SKILL_SCRIPT_EXTENSIONS.any { token.endsWith(it) }
+                SkillConstants.SCRIPT_EXTENSIONS.any { token.endsWith(it) }
         }
 
         if (hasInterpreter && hasSkillScript) {
@@ -910,7 +888,7 @@ internal fun checkSkillScriptExecution(command: String): String? {
         // (e.g. `/skills/github-cli/tools/repo_list.sh --arg`)
         val firstToken = tokens.first()
         if (firstToken.contains("/skills/") &&
-            SKILL_SCRIPT_EXTENSIONS.any { firstToken.endsWith(it) }
+            SkillConstants.SCRIPT_EXTENSIONS.any { firstToken.endsWith(it) }
         ) {
             return "Direct execution of skill scripts via shell is blocked. " +
                 "Use the skill's registered function-calling tools (skill__ prefix) instead."

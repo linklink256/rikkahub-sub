@@ -10,8 +10,8 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 import me.rerere.rikkahub.data.event.AppEvent
 import me.rerere.rikkahub.data.event.AppEventBus
 import me.rerere.rikkahub.utils.hasUsageStatsPermission
@@ -22,7 +22,6 @@ import kotlinx.serialization.json.add
 
 internal fun screenTimeTool(context: Context, eventBus: AppEventBus): Tool = Tool(
     name = "get_screen_time",
-    annotations = ToolAnnotations(readOnlyHint = true),
     description = """
         Get the user's app screen usage (screen time) over a time range.
         Specify a custom interval with 'begin'/'end', or use the 'range' preset (today/week).
@@ -83,7 +82,7 @@ internal fun screenTimeTool(context: Context, eventBus: AppEventBus): Tool = Too
                         "opened; please ask the user to enable 'Usage access' for this app and try again."
                 )
             }
-            return@Tool listOf(UIMessagePart.Text(payload.toString()))
+            return@Tool payload.asToolResult()
         }
 
         val params = it.jsonObject
@@ -110,7 +109,7 @@ internal fun screenTimeTool(context: Context, eventBus: AppEventBus): Tool = Too
                 put("error", "INVALID_TIME")
                 put("message", e.message ?: "Invalid time format for begin/end.")
             }
-            return@Tool listOf(UIMessagePart.Text(payload.toString()))
+            return@Tool payload.asToolResult()
         }
 
         if (!startTime.isBefore(endTime)) {
@@ -118,7 +117,7 @@ internal fun screenTimeTool(context: Context, eventBus: AppEventBus): Tool = Too
                 put("error", "INVALID_RANGE")
                 put("message", "begin must be earlier than end.")
             }
-            return@Tool listOf(UIMessagePart.Text(payload.toString()))
+            return@Tool payload.asToolResult()
         }
 
         val endMs = endTime.toInstant().toEpochMilli()
@@ -153,6 +152,6 @@ internal fun screenTimeTool(context: Context, eventBus: AppEventBus): Tool = Too
                 }
             })
         }
-        listOf(UIMessagePart.Text(payload.toString()))
+        payload.asToolResult()
     }
 )

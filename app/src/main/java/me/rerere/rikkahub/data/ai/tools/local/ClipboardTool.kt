@@ -9,15 +9,14 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
-import me.rerere.ai.core.ToolAnnotations
 import me.rerere.ai.ui.UIMessagePart
+import me.rerere.rikkahub.data.ai.tools.asToolResult
 import me.rerere.rikkahub.utils.readClipboardText
 import me.rerere.rikkahub.utils.writeClipboardText
 import kotlinx.serialization.json.add
 
 internal fun clipboardTool(context: Context): Tool = Tool(
     name = "clipboard_tool",
-    annotations = ToolAnnotations(destructiveHint = true),
     description = """
         Read or write plain text from the device clipboard.
         Use action: read or write. For write, provide text.
@@ -53,7 +52,7 @@ internal fun clipboardTool(context: Context): Tool = Tool(
                 val payload = buildJsonObject {
                     put("text", context.readClipboardText())
                 }
-                listOf(UIMessagePart.Text(payload.toString()))
+                payload.asToolResult()
             }
 
             "write" -> {
@@ -63,7 +62,7 @@ internal fun clipboardTool(context: Context): Tool = Tool(
                     put("success", true)
                     put("text", text)
                 }
-                listOf(UIMessagePart.Text(payload.toString()))
+                payload.asToolResult()
             }
 
             else -> error("unknown action: $action, must be one of [read, write]")
