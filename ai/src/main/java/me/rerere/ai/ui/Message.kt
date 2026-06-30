@@ -96,7 +96,10 @@ data class UIMessage(
 
                     is UIMessagePart.Tool -> {
                         if (deltaPart.toolCallId.isBlank()) {
-                            // No ID yet - append to the last Tool if it also has no ID
+                            // No ID yet — this is an arguments fragment (e.g. input_json_delta).
+                            // Merge into the last Tool part if one exists; otherwise create a
+                            // placeholder (orphan) that will be adopted when the tool_use
+                            // declaration (with ID) arrives.
                             val lastTool = acc.lastOrNull { it is UIMessagePart.Tool } as? UIMessagePart.Tool
                             if (lastTool != null) {
                                 acc.map { part ->
@@ -106,17 +109,39 @@ data class UIMessage(
                                 acc + deltaPart.copy()
                             }
                         } else {
-                            // Has ID - find and update by ID, or insert new
+                            // Has ID — the tool_use declaration. Find an existing Tool with the
+                            // same ID, or adopt a blank-ID orphan (created when arguments
+                            // fragments arrived before the declaration), or insert new.
                             val existsPart = acc.find {
                                 it is UIMessagePart.Tool && it.toolCallId == deltaPart.toolCallId
                             } as? UIMessagePart.Tool
-                            if (existsPart == null) {
-                                acc + deltaPart.copy()
-                            } else {
+                            if (existsPart != null) {
                                 acc.map { part ->
                                     if (part is UIMessagePart.Tool && part.toolCallId == deltaPart.toolCallId) {
                                         part.merge(deltaPart)
                                     } else part
+                                }
+                            } else {
+                                // No matching ID. Look for a blank-ID orphan Tool (the last Tool
+                                // with blank ID) and adopt it: merge its accumulated input into
+                                // the now-identified tool_use declaration.
+                                val orphan = acc.lastOrNull {
+                                    it is UIMessagePart.Tool && it.toolCallId.isBlank()
+                                } as? UIMessagePart.Tool
+                                if (orphan != null) {
+                                    acc.map { part ->
+                                        if (part === orphan) {
+                                            // Merge orphan's input into the declaration, keeping
+                                            // the declaration's ID and name.
+                                            orphan.copy(
+                                                toolCallId = deltaPart.toolCallId,
+                                                toolName = deltaPart.toolName.ifBlank { orphan.toolName },
+                                                input = orphan.input + deltaPart.input,
+                                            )
+                                        } else part
+                                    }
+                                } else {
+                                    acc + deltaPart.copy()
                                 }
                             }
                         }

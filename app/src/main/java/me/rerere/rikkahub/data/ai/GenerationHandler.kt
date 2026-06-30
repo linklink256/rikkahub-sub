@@ -364,11 +364,25 @@ class GenerationHandler(
             // Auto 或 Approved —— 实际执行工具
             runCatching {
                 val toolDef = toolsInternal.find { it.name == tool.toolName }
-                    ?: error("Tool ${tool.toolName} not found")
+                    ?: error(
+                        if (tool.toolName.isBlank()) {
+                            "Tool name is empty — the streaming tool-call declaration may have been lost " +
+                                "or delivered out of order. This is a known issue with some providers when " +
+                                "arguments fragments arrive before the tool_use declaration."
+                        } else {
+                            "Tool ${tool.toolName} not found in the available tool set. " +
+                                "Available tools: ${toolsInternal.joinToString { it.name }.take(300)}"
+                        }
+                    )
                 val args = runCatching {
                     json.parseToJsonElement(tool.input.ifBlank { "{}" })
                 }.getOrElse {
-                    error("Invalid tool arguments JSON for ${tool.toolName}: ${it.message}")
+                    error(
+                        "Invalid tool arguments JSON for ${tool.toolName}. " +
+                            "The arguments may have been truncated during streaming " +
+                            "(check max_tokens) or corrupted during merge. " +
+                            "Raw input (length=${tool.input.length}): ${tool.input.take(200)}..."
+                    )
                 }
                 Log.i(TAG, "generateText: executing tool ${toolDef.name} with args: $args")
                 val ann = toolDef.annotations
