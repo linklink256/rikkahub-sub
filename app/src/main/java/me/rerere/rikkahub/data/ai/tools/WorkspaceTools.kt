@@ -2,10 +2,12 @@ package me.rerere.rikkahub.data.ai.tools
 
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
+import me.rerere.workspace.WorkspaceSearchMatch
 import me.rerere.ai.core.InputSchema
 import me.rerere.ai.core.Tool
 import me.rerere.ai.core.ToolAnnotations
@@ -39,6 +41,9 @@ val WorkspaceToolDefaultApprovals: Map<String, Boolean> = mapOf(
     "workspace_edit_file" to false,
     "workspace_shell" to false,
     "workspace_read_shell" to false,
+    "workspace_search" to false,
+    "workspace_glob" to false,
+    "workspace_list" to false,
 )
 
 fun resolveWorkspaceToolApproval(name: String, overrides: Map<String, Boolean>): Boolean =
@@ -62,6 +67,9 @@ suspend fun createWorkspaceTools(
         createEditFileTool(workspaceId, ::needsApproval, ::isApprovalExplicitlyDisabled, workspaceRepository),
         createShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
         createReadShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
+        createSearchTool(workspaceId, ::needsApproval, workspaceRepository),
+        createGlobTool(workspaceId, ::needsApproval, workspaceRepository),
+        createListTool(workspaceId, ::needsApproval, workspaceRepository),
     )
 }
 
@@ -81,6 +89,9 @@ suspend fun createWorkspaceReadOnlyTools(
         createReadFileTool(workspaceId, ::needsApproval, workspaceRepository),
         // 只读模式只给受限读 shell（白名单只读命令），不再给全功能 workspace_shell
         createReadShellTool(workspaceId, ::needsApproval, workspaceRepository, shellCwd),
+        createSearchTool(workspaceId, ::needsApproval, workspaceRepository),
+        createGlobTool(workspaceId, ::needsApproval, workspaceRepository),
+        createListTool(workspaceId, ::needsApproval, workspaceRepository),
     )
 }
 
@@ -99,11 +110,20 @@ private fun createReadFileTool(
         Read a file using the assistant's bound workspace Rootfs. Paths must be absolute inside Rootfs.
         Use /workspace for the workspace files area.
         Supports UTF-8 text files and image files (png, jpg, jpeg, gif, webp, bmp).
+        Optional offset and limit parameters allow reading specific line ranges from text files.
     """.trimIndent().replace("\n", " "),
     parameters = {
         InputSchema.Obj(
             properties = buildJsonObject {
                 putPathProperty(required = true)
+                put("offset", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Line number to start reading from (1-based, default 1)")
+                })
+                put("limit", buildJsonObject {
+                    put("type", "integer")
+                    put("description", "Maximum number of lines to read (default: read all, max 2000)")
+                })
             },
             required = listOf("path"),
         )
@@ -111,16 +131,40 @@ private fun createReadFileTool(
     needsApproval = { needsApproval("workspace_read_file") },
     annotations = ToolAnnotations(readOnlyHint = true),
     execute = {
-        val path = it.jsonObject.absolutePath("path")
+        val params = it.jsonObject
+        val path = params.absolutePath("path")
         if (path.isImagePath()) {
             workspaceRepository.readImageInRootfs(workspaceId, path)
         } else {
             val text = workspaceRepository.readTextInRootfs(workspaceId, path)
+            val lines = text.lines()
+            val totalLines = lines.size
+            val offset = params["offset"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()?.coerceAtLeast(1) ?: 1
+            val limit = params["limit"]?.jsonPrimitive?.contentOrNull?.toIntOrNull()?.coerceIn(1, 2000)
+            val resultText = if (offset > 1 || limit != null) {
+                val startIdx = (offset - 1).coerceAtMost(totalLines)
+                val endIdx = if (limit != null) (startIdx + limit).coerceAtMost(totalLines) else totalLines
+                lines.subList(startIdx, endIdx).joinToString("\n")
+            } else {
+                text
+            }
+            val returnedLines = if (offset > 1 || limit != null) {
+                // count actual lines returned
+                val startIdx = (offset - 1).coerceAtMost(totalLines)
+                val endIdx = if (limit != null) (startIdx + limit).coerceAtMost(totalLines) else totalLines
+                endIdx - startIdx
+            } else {
+                totalLines
+            }
             listOf(
                 UIMessagePart.Text(
                     buildJsonObject {
                         put("path", path)
-                        put("text", text)
+                        put("text", resultText)
+                        put("totalLines", totalLines)
+                        put("returnedLines", returnedLines)
+                        put("offset", offset)
+                        if (limit != null) put("limit", limit)
                     }.toString()
                 )
             )
@@ -230,6 +274,162 @@ private fun createEditFileTool(
                 }.toString(),
                 // diff 存入 metadata 供 UI 渲染 diff view, 不会随工具结果发送给 API
                 metadata = diff?.let { d -> DiffMetadata(diff = d).toMetadata() },
+            )
+        )
+    },
+)
+
+private fun createSearchTool(
+    workspaceId: String,
+    needsApproval: (String) -> Boolean,
+    workspaceRepository: WorkspaceRepository,
+) = Tool(
+    name = "workspace_search",
+    description = "Search file contents in the workspace for a text pattern or regex. " +
+        "Returns matching lines with file paths and line numbers. " +
+        "Structured alternative to 'grep -rn' — no shell escaping issues.",
+    parameters = {
+        InputSchema.Obj(
+            properties = buildJsonObject {
+                put("query", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Text or regex pattern to search for")
+                })
+                put("path", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Directory path to search in (absolute inside Rootfs, defaults to /workspace)")
+                })
+                put("regex", buildJsonObject {
+                    put("type", "boolean")
+                    put("description", "Treat query as regex (default false = literal match)")
+                })
+                put("ignore_case", buildJsonObject {
+                    put("type", "boolean")
+                    put("description", "Case-insensitive search (default true)")
+                })
+                put("include_glob", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Glob pattern to filter files (e.g. '*.kt')")
+                })
+            },
+            required = listOf("query"),
+        )
+    },
+    needsApproval = { needsApproval("workspace_search") },
+    annotations = ToolAnnotations(readOnlyHint = true),
+    execute = {
+        val params = it.jsonObject
+        val rawPath = params.string("path") ?: "/workspace"
+        val query = params.string("query") ?: error("query is required")
+        val regex = params["regex"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: false
+        val ignoreCase = params["ignore_case"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull() ?: true
+        val includeGlob = params.string("include_glob")
+
+        val (area, relativePath) = rootfsPathToAreaAndRelative(rawPath)
+        require(area == WorkspaceStorageArea.FILES) {
+            "workspace_search only supports /workspace files area"
+        }
+
+        val matches = workspaceRepository.grep(workspaceId, query, relativePath, regex, ignoreCase, includeGlob)
+        listOf(
+            UIMessagePart.Text(
+                buildJsonObject {
+                    put("results", JsonArray(matches.map { match ->
+                        buildJsonObject {
+                            put("path", match.path)
+                            put("line", match.line)
+                            put("text", match.text)
+                        }
+                    }))
+                    put("total", matches.size)
+                }.toString()
+            )
+        )
+    },
+)
+
+private fun createGlobTool(
+    workspaceId: String,
+    needsApproval: (String) -> Boolean,
+    workspaceRepository: WorkspaceRepository,
+) = Tool(
+    name = "workspace_glob",
+    description = "Find files matching a glob pattern in the workspace. " +
+        "Structured alternative to 'find -name'. " +
+        "Returns file entries with path/name/size/isDirectory.",
+    parameters = {
+        InputSchema.Obj(
+            properties = buildJsonObject {
+                put("pattern", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Glob pattern (e.g. '**/*.kt', '*.gradle.kts')")
+                })
+                put("path", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Directory to search in (absolute inside Rootfs, defaults to /workspace)")
+                })
+            },
+            required = listOf("pattern"),
+        )
+    },
+    needsApproval = { needsApproval("workspace_glob") },
+    annotations = ToolAnnotations(readOnlyHint = true),
+    execute = {
+        val params = it.jsonObject
+        val rawPath = params.string("path") ?: "/workspace"
+        val pattern = params.string("pattern") ?: error("pattern is required")
+
+        val (area, relativePath) = rootfsPathToAreaAndRelative(rawPath)
+        require(area == WorkspaceStorageArea.FILES) {
+            "workspace_glob only supports /workspace files area"
+        }
+
+        val entries = workspaceRepository.glob(workspaceId, pattern, relativePath)
+        listOf(
+            UIMessagePart.Text(
+                buildJsonObject {
+                    put("files", JsonArray(entries.map { it.toJson() }))
+                    put("total", entries.size)
+                }.toString()
+            )
+        )
+    },
+)
+
+private fun createListTool(
+    workspaceId: String,
+    needsApproval: (String) -> Boolean,
+    workspaceRepository: WorkspaceRepository,
+) = Tool(
+    name = "workspace_list",
+    description = "List directory contents in the workspace. " +
+        "Structured alternative to 'ls'. " +
+        "Returns file entries with path/name/size/isDirectory/updatedAt.",
+    parameters = {
+        InputSchema.Obj(
+            properties = buildJsonObject {
+                put("path", buildJsonObject {
+                    put("type", "string")
+                    put("description", "Directory path (absolute inside Rootfs, defaults to /workspace)")
+                })
+            },
+            required = emptyList(),
+        )
+    },
+    needsApproval = { needsApproval("workspace_list") },
+    annotations = ToolAnnotations(readOnlyHint = true),
+    execute = {
+        val params = it.jsonObject
+        val rawPath = params.string("path") ?: "/workspace"
+
+        val (area, relativePath) = rootfsPathToAreaAndRelative(rawPath)
+        val entries = workspaceRepository.listFiles(workspaceId, area, relativePath)
+        listOf(
+            UIMessagePart.Text(
+                buildJsonObject {
+                    put("files", JsonArray(entries.map { it.toJson() }))
+                    put("total", entries.size)
+                }.toString()
             )
         )
     },
