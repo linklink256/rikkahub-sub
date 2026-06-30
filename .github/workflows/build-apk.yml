@@ -1,0 +1,51 @@
+# RikkaHub Sub — Debug APK Build
+#
+# Triggered on:
+#   - Push to master branch
+#   - Manual trigger via GitHub Actions UI (workflow_dispatch)
+#
+# Builds debug APKs with ABI splits (arm64-v8a, x86_64, universal)
+# and uploads them as a build artifact (retention: 30 days).
+#
+# Debug signing uses Android SDK's default debug keystore.
+# No release keystore needed.
+
+name: Build Debug APK
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build debug APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: 17
+          distribution: temurin
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Ensure gradlew is executable
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug
+
+      - name: Upload debug APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rikkahub-sub-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          retention-days: 30

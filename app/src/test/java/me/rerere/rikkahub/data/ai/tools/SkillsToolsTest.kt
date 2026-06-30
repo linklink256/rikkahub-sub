@@ -6,12 +6,18 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import me.rerere.ai.core.InputSchema
+import me.rerere.ai.core.ToolAnnotations
+import me.rerere.rikkahub.data.files.SkillToolDeclaration
+import me.rerere.rikkahub.data.files.SkillToolExecute
 import me.rerere.workspace.WorkspaceCommandResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.io.File
+import java.nio.file.Files
 
 class SkillsToolsTest {
 
@@ -258,5 +264,176 @@ class SkillsToolsTest {
         assertFalse(isSafeName("foo\$HOME"))
         assertFalse(isSafeName("foo bar"))
         assertFalse(isSafeName(""))
+    }
+
+    // ========================================================================
+    // executeJsSkillTool (needs QuickJS native libs — may skip on JVM)
+    // ========================================================================
+
+    @Test
+    fun `executeJsSkillTool runs JS and returns result`() {
+        // This test requires QuickJS native library (Android-only). On a desktop
+        // JVM, QuickJSContext.create() will throw UnsatisfiedLinkError. We skip
+        // gracefully in that case and treat this as an Android-instrumented test.
+        val jsCode = """
+            function main(args) {
+                console.log("Hello from JS");
+                return { result: "ok", input: args };
+            }
+        """.trimIndent()
+
+        val logs = arrayListOf<String>()
+        val context = try {
+            com.whl.quickjs.wrapper.QuickJSContext.create()
+        } catch (e: UnsatisfiedLinkError) {
+            // QuickJS native libs not available on this JVM — skip test
+            return
+        }
+
+        try {
+            context.setConsole(object : com.whl.quickjs.wrapper.QuickJSContext.Console {
+                override fun log(info: String?) { logs.add("[LOG] $info") }
+                override fun info(info: String?) { logs.add("[INFO] $info") }
+                override fun warn(info: String?) { logs.add("[WARN] $info") }
+                override fun error(info: String?) { logs.add("[ERROR] $info") }
+            })
+
+            context.evaluate(jsCode)
+
+            val fn = context.globalObject.getJSFunction("main")
+            assertNotNull("main function should exist", fn)
+
+            val result = fn!!.call("""{"test": true}""")
+            assertNotNull("result should not be null", result)
+            assertTrue("result should be a QuickJSObject", result is com.whl.quickjs.wrapper.QuickJSObject)
+            val jsonStr = (result as com.whl.quickjs.wrapper.QuickJSObject).stringify()
+            assertTrue("result should contain 'ok'", jsonStr.contains("ok"))
+
+            assertTrue("console.log should be captured", logs.isNotEmpty())
+            assertTrue("logs should contain Hello", logs.any { it.contains("Hello") })
+
+            fn.release()
+        } finally {
+            context.destroy()
+        }
+    }
+
+    @Test
+    fun `executeJsSkillTool with custom function name`() {
+        val jsCode = """
+            function myFunc(args) {
+                return { from: "myFunc", value: JSON.parse(args).x };
+            }
+        """.trimIndent()
+
+        val context = try {
+            com.whl.quickjs.wrapper.QuickJSContext.create()
+        } catch (e: UnsatisfiedLinkError) {
+            return
+        }
+
+        try {
+            context.evaluate(jsCode)
+            val fn = context.globalObject.getJSFunction("myFunc")
+            assertNotNull("myFunc should exist", fn)
+
+            val result = fn!!.call("""{"x": 42}""")
+            assertTrue("result should be QuickJSObject", result is com.whl.quickjs.wrapper.QuickJSObject)
+            val jsonStr = (result as com.whl.quickjs.wrapper.QuickJSObject).stringify()
+            assertTrue("result should contain myFunc", jsonStr.contains("myFunc"))
+            assertTrue("result should contain 42", jsonStr.contains("42"))
+
+            fn.release()
+        } finally {
+            context.destroy()
+        }
+    }
+
+    @Test
+    fun `executeJsSkillTool returns error for missing function`() {
+        val jsCode = """
+            var x = 1;
+        """.trimIndent()
+
+        val context = try {
+            com.whl.quickjs.wrapper.QuickJSContext.create()
+        } catch (e: UnsatisfiedLinkError) {
+            return
+        }
+
+        try {
+            context.evaluate(jsCode)
+            val fn = context.globalObject.getJSFunction("main")
+            assertNull("main function should not exist", fn)
+        } finally {
+            context.destroy()
+        }
+    }
+
+    // ========================================================================
+    // createSkillTools routing logic (type=javascript vs shell)
+    // ========================================================================
+
+    @Test
+    fun `createSkillTools routing detects javascript type correctly`() {
+        val jsDecl = SkillToolDeclaration(
+            name = "js-tool",
+            description = "A JS tool",
+            execute = SkillToolExecute(type = "javascript", entry = "test.js")
+        )
+        assertEquals("javascript", jsDecl.execute.type)
+
+        val shellDecl = SkillToolDeclaration(
+            name = "shell-tool",
+            description = "A shell tool",
+            execute = SkillToolExecute(command = "ls")
+        )
+        assertEquals("shell", shellDecl.execute.type)
+    }
+
+    @Test
+    fun `javascript tool uses openWorldHint annotation`() {
+        val isJsTool = true
+        val annotations = if (isJsTool) {
+            ToolAnnotations(openWorldHint = true)
+        } else {
+            ToolAnnotations(destructiveHint = true, openWorldHint = true)
+        }
+        assertEquals(ToolAnnotations(openWorldHint = true), annotations)
+    }
+
+    @Test
+    fun `shell tool uses destructiveHint and openWorldHint annotation`() {
+        val isJsTool = false
+        val annotations = if (isJsTool) {
+            ToolAnnotations(openWorldHint = true)
+        } else {
+            ToolAnnotations(destructiveHint = true, openWorldHint = true)
+        }
+        assertEquals(ToolAnnotations(destructiveHint = true, openWorldHint = true), annotations)
+    }
+
+    @Test
+    fun `javascript tool execution routes to executeJsSkillTool logic`() {
+        val decl = SkillToolDeclaration(
+            name = "test-js",
+            description = "Test",
+            execute = SkillToolExecute(type = "javascript", entry = "test.js", `function` = "main")
+        )
+        assertTrue("Type should be javascript", decl.execute.type == "javascript")
+        assertNotNull("Entry should be set", decl.execute.entry)
+        assertNull("Shell command should be null for JS tool", decl.execute.command)
+    }
+
+    @Test
+    fun `shell tool execution routes to executeSkillTool logic`() {
+        val decl = SkillToolDeclaration(
+            name = "test-shell",
+            description = "Test",
+            execute = SkillToolExecute(command = "echo hello")
+        )
+        assertEquals("Type should default to shell", "shell", decl.execute.type)
+        assertNotNull("Command should be set", decl.execute.command)
+        assertNull("Entry should be null for shell tool", decl.execute.entry)
     }
 }

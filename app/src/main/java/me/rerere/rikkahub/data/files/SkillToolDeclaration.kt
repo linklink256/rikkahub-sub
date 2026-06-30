@@ -31,10 +31,19 @@ data class SkillToolDeclaration(
 
 /**
  * Execution options for a [SkillToolDeclaration].
+ *
+ * Two execution modes:
+ * - **shell** (default): runs [command] in the workspace sandbox (needs workspace).
+ * - **javascript**: runs [entry] JS file with QuickJS (no workspace needed).
+ *   The exported [function] is called with the tool's JSON args as a string.
+ *   If [function] is null, `"main"` is used.
  */
 @Serializable
 data class SkillToolExecute(
-    val command: String,
+    val command: String? = null,
+    val type: String = "shell",
+    val entry: String? = null,
+    val `function`: String? = null,
     val timeoutMillis: Long? = null,
     val needsApproval: Boolean = false,
 )

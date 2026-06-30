@@ -144,6 +144,94 @@ class SkillToolDeclarationTest {
         SkillToolFileParser.parse(yaml)
     }
 
+    // ── New fields: type / entry / function ────────────────────────────
+
+    @Test
+    fun `parse javascript tool declaration`() {
+        val yaml = """
+            |version: 1
+            |tools:
+            |  - name: list_files
+            |    description: List files in a directory
+            |    parameters:
+            |      type: object
+            |      properties:
+            |        path:
+            |          type: string
+            |    execute:
+            |      type: javascript
+            |      entry: tools/list_files.js
+            |      function: main
+            |      timeoutMillis: 10000
+            |      needsApproval: false
+        """.trimMargin()
+
+        val file = SkillToolFileParser.parse(yaml)
+        assertEquals(1, file.tools.size)
+
+        val tool = file.tools[0]
+        assertEquals("list_files", tool.name)
+        assertEquals("javascript", tool.execute.type)
+        assertEquals("tools/list_files.js", tool.execute.entry)
+        assertEquals("main", tool.execute.`function`)
+        assertEquals(10000L, tool.execute.timeoutMillis)
+        assertFalse(tool.execute.needsApproval)
+        assertNull(tool.execute.command)
+    }
+
+    @Test
+    fun `parse javascript tool defaults function to null when omitted`() {
+        val yaml = """
+            |version: 1
+            |tools:
+            |  - name: hello
+            |    description: Say hello
+            |    execute:
+            |      type: javascript
+            |      entry: hello.js
+        """.trimMargin()
+
+        val file = SkillToolFileParser.parse(yaml)
+        assertEquals("javascript", file.tools[0].execute.type)
+        assertEquals("hello.js", file.tools[0].execute.entry)
+        assertNull(file.tools[0].execute.`function`)
+    }
+
+    @Test
+    fun `parse old format without type defaults to shell`() {
+        val yaml = """
+            |version: 1
+            |tools:
+            |  - name: list_repos
+            |    description: List repos
+            |    execute:
+            |      command: bash tools/list_repos.sh
+        """.trimMargin()
+
+        val file = SkillToolFileParser.parse(yaml)
+        assertEquals("shell", file.tools[0].execute.type)
+        assertEquals("bash tools/list_repos.sh", file.tools[0].execute.command)
+        assertNull(file.tools[0].execute.entry)
+        assertNull(file.tools[0].execute.`function`)
+    }
+
+    @Test
+    fun `parse explicit shell type still works`() {
+        val yaml = """
+            |version: 1
+            |tools:
+            |  - name: test
+            |    description: A shell tool
+            |    execute:
+            |      type: shell
+            |      command: echo hello
+        """.trimMargin()
+
+        val file = SkillToolFileParser.parse(yaml)
+        assertEquals("shell", file.tools[0].execute.type)
+        assertEquals("echo hello", file.tools[0].execute.command)
+    }
+
     // ── resolveCommandPath() tests ─────────────────────────────────────
 
     @Test

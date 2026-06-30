@@ -1,5 +1,8 @@
 package me.rerere.rikkahub.data.ai.tools
 
+import com.whl.quickjs.wrapper.JSFunction
+import com.whl.quickjs.wrapper.QuickJSContext
+import com.whl.quickjs.wrapper.QuickJSObject
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -161,10 +164,15 @@ suspend fun executeSkillTool(
     workspaceRepository: WorkspaceRepository,
     args: JsonElement,
 ): List<UIMessagePart> {
+    val rawCommand = decl.execute.command
+    if (rawCommand == null) {
+        return listOf(UIMessagePart.Text("Tool failed: command is null for shell-type tool"))
+    }
+
     // Security audit: resolve the script path to verify it doesn't escape the skill directory.
     // Pure commands (e.g. "gh repo list" with no script path) return null from resolveSkillScript,
     // which is allowed — the command will still execute.
-    val resolvedScript = skillManager.resolveSkillScript(skillName, decl.execute.command)
+    val resolvedScript = skillManager.resolveSkillScript(skillName, rawCommand)
     if (resolvedScript != null && !resolvedScript.exists()) {
         // The path is syntactically valid and stays inside the skill directory,
         // but the file doesn't exist. We log a warning and let the execution
@@ -172,7 +180,7 @@ suspend fun executeSkillTool(
         android.util.Log.w(TAG, "executeSkillTool: script not found: ${resolvedScript.absolutePath}")
     }
 
-    val command = buildSkillToolCommand(skillName, decl.execute.command)
+    val command = buildSkillToolCommand(skillName, rawCommand)
     val stdin = args.toString().toByteArray()
     val timeoutMillis = (decl.execute.timeoutMillis ?: WorkspaceManager.DEFAULT_COMMAND_TIMEOUT_MS)
         .coerceAtMost(600_000L)
@@ -187,6 +195,100 @@ suspend fun executeSkillTool(
 
     val text = formatToolResult(result, timeoutMillis)
     return listOf(UIMessagePart.Text(text))
+}
+
+/**
+ * Executes a JavaScript skill tool using QuickJS.
+ *
+ * Reads the JS file at [decl.execute.entry] (relative to the skill directory),
+ * evaluates it, calls the exported function (default `"main"`), and returns
+ * the result along with any console output.
+ *
+ * This function does **not** require a workspace — JS tools run in-process
+ * inside the QuickJS sandbox.
+ *
+ * @param skillName the skill name (for file resolution).
+ * @param decl the tool declaration (must have type == "javascript").
+ * @param skillManager used to resolve the JS entry file path.
+ * @param args the tool's JSON input arguments (passed as JSON string to the JS function).
+ * @return a single-element list containing the result JSON as [UIMessagePart.Text].
+ */
+suspend fun executeJsSkillTool(
+    skillName: String,
+    decl: SkillToolDeclaration,
+    skillManager: SkillManager,
+    args: JsonElement,
+): List<UIMessagePart> {
+    val entryPath = decl.execute.entry
+    if (entryPath.isNullOrBlank()) {
+        return listOf(UIMessagePart.Text("""{"error": "entry is required for javascript tools"}"""))
+    }
+
+    val jsFile = skillManager.resolveSkillFile(skillName, entryPath)
+    if (jsFile == null) {
+        return listOf(UIMessagePart.Text("""{"error": "Entry file '$entryPath' not found or path escapes skill directory"}"""))
+    }
+    if (!jsFile.exists()) {
+        return listOf(UIMessagePart.Text("""{"error": "Entry file '$entryPath' not found"}"""))
+    }
+
+    val jsCode = try {
+        jsFile.readText()
+    } catch (e: Exception) {
+        android.util.Log.w(TAG, "executeJsSkillTool: Failed to read $entryPath", e)
+        return listOf(UIMessagePart.Text("""{"error": "Failed to read entry file: ${e.message}"}"""))
+    }
+
+    val logs = arrayListOf<String>()
+    val context = QuickJSContext.create()
+    var fn: JSFunction? = null
+
+    try {
+        context.setConsole(object : QuickJSContext.Console {
+            override fun log(info: String?) {
+                logs.add("[LOG] $info")
+            }
+
+            override fun info(info: String?) {
+                logs.add("[INFO] $info")
+            }
+
+            override fun warn(info: String?) {
+                logs.add("[WARN] $info")
+            }
+
+            override fun error(info: String?) {
+                logs.add("[ERROR] $info")
+            }
+        })
+
+        context.evaluate(jsCode)
+
+        val functionName = decl.execute.`function` ?: "main"
+        fn = context.globalObject.getJSFunction(functionName)
+        if (fn == null) {
+            return listOf(UIMessagePart.Text("""{"error": "Function '$functionName' not found in '$entryPath'"}"""))
+        }
+
+        val result = fn.call(args.toString())
+        val payload = buildJsonObject {
+            if (logs.isNotEmpty()) {
+                put("logs", JsonPrimitive(logs.joinToString("\n")))
+            }
+            put(
+                key = "result",
+                element = when (result) {
+                    null -> JsonNull
+                    is QuickJSObject -> JsonPrimitive(result.stringify())
+                    else -> JsonPrimitive(result.toString())
+                }
+            )
+        }
+        return listOf(UIMessagePart.Text(payload.toString()))
+    } finally {
+        fn?.release()
+        context.destroy()
+    }
 }
 
 fun createSkillTools(
@@ -270,49 +372,69 @@ fun createSkillTools(
         )
     )
 
-    // 2) Register executable tools from skills' tools.yaml, only when workspace is ready
-    if (workspaceId != null && workspaceRepository != null) {
-        for (skill in available) {
-            if (!isSafeName(skill.name)) {
-                android.util.Log.w(TAG, "createSkillTools: skipping skill '${skill.name}' — name contains unsafe characters")
+    // 2) Register executable tools from skills' tools.yaml.
+    //    JS tools (type=javascript) don't need a workspace — they run in-process
+    //    with QuickJS. Shell tools still require workspaceId + workspaceRepository.
+    val workspaceAvailable = workspaceId != null && workspaceRepository != null
+    for (skill in available) {
+        if (!isSafeName(skill.name)) {
+            android.util.Log.w(TAG, "createSkillTools: skipping skill '${skill.name}' — name contains unsafe characters")
+            continue
+        }
+        val declarations = skillManager.listToolDeclarations(skill.name)
+        android.util.Log.i(TAG, "createSkillTools: skill '${skill.name}' declared ${declarations.size} tool(s)")
+        me.rerere.common.android.Logging.log(
+            "SkillTools",
+            "createSkillTools: skill '${skill.name}' → ${declarations.size} tool declaration(s)"
+        )
+        for (decl in declarations) {
+            if (!isSafeName(decl.name)) {
+                android.util.Log.w(TAG, "createSkillTools: skipping tool '${decl.name}' in skill '${skill.name}' — name contains unsafe characters")
                 continue
             }
-            val declarations = skillManager.listToolDeclarations(skill.name)
-            android.util.Log.i(TAG, "createSkillTools: skill '${skill.name}' declared ${declarations.size} tool(s)")
-            me.rerere.common.android.Logging.log(
-                "SkillTools",
-                "createSkillTools: skill '${skill.name}' → ${declarations.size} tool declaration(s)"
-            )
-            for (decl in declarations) {
-                if (!isSafeName(decl.name)) {
-                    android.util.Log.w(TAG, "createSkillTools: skipping tool '${decl.name}' in skill '${skill.name}' — name contains unsafe characters")
-                    continue
-                }
-                val toolName = "${SKILL_TOOL_PREFIX}${skill.name}-${decl.name}"
-                val toolDescription = decl.description
-                val toolParameters = decl.parameters
-                val needsApprovalFlag = decl.execute.needsApproval
 
-                tools.add(
-                    Tool(
-                        name = toolName,
-                        description = toolDescription,
-                        parameters = { jsonSchemaToInputSchema(toolParameters) },
-                        needsApproval = { needsApprovalFlag },
-                        annotations = ToolAnnotations(destructiveHint = true, openWorldHint = true),
-                        execute = { args ->
-                            executeSkillTool(
-                                workspaceId = workspaceId,
+            val isJsTool = decl.execute.type == "javascript"
+
+            // Shell tools require workspace; JS tools do not
+            if (!isJsTool && !workspaceAvailable) continue
+
+            val toolName = "${SKILL_TOOL_PREFIX}${skill.name}-${decl.name}"
+            val toolDescription = decl.description
+            val toolParameters = decl.parameters
+            val needsApprovalFlag = decl.execute.needsApproval
+
+            tools.add(
+                Tool(
+                    name = toolName,
+                    description = toolDescription,
+                    parameters = { jsonSchemaToInputSchema(toolParameters) },
+                    needsApproval = { needsApprovalFlag },
+                    annotations = if (isJsTool) {
+                        ToolAnnotations(openWorldHint = true)
+                    } else {
+                        ToolAnnotations(destructiveHint = true, openWorldHint = true)
+                    },
+                    execute = { args ->
+                        if (isJsTool) {
+                            executeJsSkillTool(
                                 skillName = skill.name,
                                 decl = decl,
                                 skillManager = skillManager,
-                                workspaceRepository = workspaceRepository,
                                 args = args,
                             )
-                        },
-                    )
+                        } else {
+                            executeSkillTool(
+                                workspaceId = workspaceId!!,
+                                skillName = skill.name,
+                                decl = decl,
+                                skillManager = skillManager,
+                                workspaceRepository = workspaceRepository!!,
+                                args = args,
+                            )
+                        }
+                    },
                 )
-            }
+            )
         }
     }
 
