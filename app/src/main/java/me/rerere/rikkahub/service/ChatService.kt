@@ -1,11 +1,7 @@
 package me.rerere.rikkahub.service
 
 import android.app.Application
-import android.app.PendingIntent
-import android.content.Context
-import android.content.Intent
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -56,10 +52,7 @@ import me.rerere.ai.ui.finishReasoning
 import me.rerere.ai.ui.isEmptyInputMessage
 import me.rerere.common.android.Logging
 import me.rerere.rikkahub.AppScope
-import me.rerere.rikkahub.CHAT_COMPLETED_NOTIFICATION_CHANNEL_ID
-import me.rerere.rikkahub.CHAT_LIVE_UPDATE_NOTIFICATION_CHANNEL_ID
 import me.rerere.rikkahub.R
-import me.rerere.rikkahub.RouteActivity
 import me.rerere.rikkahub.data.ai.GenerationChunk
 import me.rerere.rikkahub.data.ai.GenerationHandler
 import me.rerere.rikkahub.data.ai.currentToolCallId
@@ -75,11 +68,6 @@ import me.rerere.rikkahub.data.ai.subagent.removeSubagentProfile
 import me.rerere.rikkahub.data.ai.subagent.upsertSubagentProfile
 import me.rerere.rikkahub.data.ai.tools.LocalToolOption
 import me.rerere.rikkahub.data.ai.tools.LocalTools
-import me.rerere.rikkahub.data.ai.tools.createConversationTools
-import me.rerere.rikkahub.data.ai.tools.createSearchTools
-import me.rerere.rikkahub.data.ai.tools.createSkillTools
-import me.rerere.rikkahub.data.ai.tools.createWorkspaceReadOnlyTools
-import me.rerere.rikkahub.data.ai.tools.createWorkspaceTools
 import me.rerere.rikkahub.data.files.SkillManager
 import me.rerere.rikkahub.data.ai.transformers.Base64ImageToLocalFileTransformer
 import me.rerere.rikkahub.data.ai.transformers.DocumentAsPromptTransformer
@@ -108,9 +96,6 @@ import me.rerere.rikkahub.data.repository.ConversationRepository
 import me.rerere.rikkahub.data.repository.MemoryRepository
 import me.rerere.rikkahub.data.repository.WorkspaceRepository
 import me.rerere.rikkahub.utils.applyPlaceholders
-import me.rerere.rikkahub.utils.sendNotification
-import me.rerere.rikkahub.utils.cancelNotification
-import me.rerere.workspace.WorkspaceShellStatus
 import java.time.Instant
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
@@ -168,13 +153,15 @@ class ChatService(
     private val generationHandler: GenerationHandler,
     private val templateTransformer: TemplateTransformer,
     private val providerManager: ProviderManager,
-    private val localTools: LocalTools,
+    @Suppress("unused") private val localTools: LocalTools,
     val mcpManager: McpManager,
     private val filesManager: FilesManager,
     private val skillManager: SkillManager,
     private val workspaceRepository: WorkspaceRepository,
     private val subagentHost: SubagentHost,
     private val json: Json,
+    private val chatNotifier: ChatNotifier,
+    private val toolAssembler: ToolAssembler,
 ) {
     // workspace 系统提示注入 (依赖 workspaceRepository, 故在类内构造)
     private val workspaceReminderTransformer = WorkspaceReminderTransformer(workspaceRepository)
@@ -606,26 +593,11 @@ class ChatService(
                 tools = buildList {
                     val delegateOnly = assistant.enableSubagents && assistant.subagentDelegateOnly
                     if (delegateOnly) {
-                        // 纯决策模式：主代理保留「只读」能力以便快速查看上下文，
-                        // 但不持有写入/编辑能力——实际执行（写文件、跑脚本等）交由子代理。
-                        if (settings.enableWebSearch) {
-                            addAll(createSearchTools(settings))
-                        }
-                        addAll(localTools.getTools(assistant.localTools.filter {
-                            it == LocalToolOption.AskUser || it == LocalToolOption.TimeInfo || it == LocalToolOption.Clipboard || it == LocalToolOption.Logs
-                        }))
-                        if (assistant.enableRecentChatsReference) {
-                            addAll(createConversationTools(conversationRepo, assistant.id))
-                        }
-                        addAll(createWorkspaceToolsIfReady(
-                            assistant.workspaceId?.toString(),
-                            conversation.workspaceCwd,
-                            readOnly = true,
-                        ))
+                        addAll(toolAssembler.buildDelegateOnlyTools(assistant, settings, conversation.workspaceCwd))
                     } else {
-                        when (val result = buildCommonTools(assistant, settings, conversation.workspaceCwd, McpErrorStrategy.STRICT)) {
-                            is CommonToolsResult.Ok -> addAll(result.tools)
-                            is CommonToolsResult.McpError -> {
+                        when (val result = toolAssembler.buildCommonTools(assistant, settings, conversation.workspaceCwd, ToolAssembler.McpErrorStrategy.STRICT)) {
+                            is ToolAssembler.CommonToolsResult.Ok -> addAll(result.tools)
+                            is ToolAssembler.CommonToolsResult.McpError -> {
                                 addError(
                                     error = IllegalStateException(
                                         context.getString(
@@ -644,7 +616,7 @@ class ChatService(
                 },
             ).onCompletion {
                 // 取消 Live Update 通知
-                cancelLiveUpdateNotification(conversationId)
+                chatNotifier.cancelLiveUpdateNotification(conversationId)
 
                 // 可能被取消了，或者意外结束，兜底更新
                 val updatedConversation = getConversationFlow(conversationId).value.copy(
@@ -657,7 +629,8 @@ class ChatService(
 
                 // Show notification if app is not in foreground
                 if (!isForeground.value && settings.displaySetting.enableNotificationOnMessageGeneration) {
-                    sendGenerationDoneNotification(conversationId, senderName)
+                    val lastMessageText = updatedConversation.currentMessages.lastOrNull()?.toText()?.take(50)?.trim() ?: ""
+                    chatNotifier.sendGenerationDoneNotification(conversationId, senderName, lastMessageText)
                 }
             }
             .collect { chunk ->
@@ -669,14 +642,14 @@ class ChatService(
 
                         // 如果应用不在前台，发送 Live Update 通知
                         if (!isForeground.value && settings.displaySetting.enableNotificationOnMessageGeneration && settings.displaySetting.enableLiveUpdateNotification) {
-                            sendLiveUpdateNotification(conversationId, chunk.messages, senderName)
+                            chatNotifier.sendLiveUpdateNotification(conversationId, chunk.messages, senderName)
                         }
                     }
                 }
             }
         }.onFailure {
             // 取消 Live Update 通知
-            cancelLiveUpdateNotification(conversationId)
+            chatNotifier.cancelLiveUpdateNotification(conversationId)
 
             it.printStackTrace()
             addError(it, conversationId, title = context.getString(R.string.error_title_generation))
@@ -697,182 +670,6 @@ class ChatService(
                 e.printStackTrace()
                 addError(e, conversationId, title = context.getString(R.string.error_title_send_message))
             }
-        }
-    }
-
-    /**
-     * MCP 名非法时的处理策略。
-     */
-    private enum class McpErrorStrategy {
-        /** 主代理：检测到非法名时返回 [CommonToolsResult.McpError]，由调用方上报错误 */
-        STRICT,
-        /** 子代理：静默过滤非法名，不抛错、不打断，并按 [Assistant.mcpServers] 过滤 */
-        SOFT,
-    }
-
-    /**
-     * [buildCommonTools] 的返回类型。
-     */
-    private sealed class CommonToolsResult {
-        data class Ok(val tools: List<Tool>) : CommonToolsResult()
-        data class McpError(val invalidNames: List<String>) : CommonToolsResult()
-    }
-
-    /**
-     * 构建主代理/子代理共享的基础工具集（搜索 / 本地 / workspace / skills / mcp）。
-     *
-     * 提取自根代理 buildList 的非 delegateOnly 分支和 buildSubagentBaseTools，
-     * 消除两处几乎完全相同的工具装配代码。差异仅在 MCP 非法名称的处理方式：
-     * - [McpErrorStrategy.STRICT]：检测到非法名时返回 [CommonToolsResult.McpError]，
-     *   由调用方决定如何上报错误。
-     * - [McpErrorStrategy.SOFT]：静默过滤非法名，并额外按 [Assistant.mcpServers]
-     *   过滤（子代理场景）。
-     */
-    private suspend fun buildCommonTools(
-        assistant: Assistant,
-        settings: Settings,
-        workspaceCwd: String?,
-        mcpStrategy: McpErrorStrategy,
-    ): CommonToolsResult {
-        val allMcpTools = mcpManager.getAllAvailableTools()
-
-        if (mcpStrategy == McpErrorStrategy.STRICT) {
-            val invalidNames = allMcpTools
-                .map { it.second }
-                .distinct()
-                .filter { name -> name.isEmpty() || !name.all { it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9' } }
-            if (invalidNames.isNotEmpty()) {
-                return CommonToolsResult.McpError(invalidNames)
-            }
-        }
-
-        val tools = buildList {
-            if (settings.enableWebSearch) {
-                addAll(createSearchTools(settings))
-            }
-            addAll(localTools.getTools(assistant.localTools))
-            if (assistant.enableRecentChatsReference) {
-                addAll(createConversationTools(conversationRepo, assistant.id))
-            }
-            addAll(createWorkspaceToolsIfReady(assistant.workspaceId?.toString(), workspaceCwd))
-
-            val allInstalledSkills = skillManager.listSkills()
-            if (allInstalledSkills.isNotEmpty()) {
-                val installedSkillNames = allInstalledSkills.map { it.name }.toSet()
-                val cleanedSkills = cleanStaleEnabledSkills(assistant, installedSkillNames)
-                autoEnableNewSkills(assistant, cleanedSkills, installedSkillNames)
-                addAll(
-                    createSkillTools(
-                        enabledSkills = installedSkillNames,
-                        allSkills = allInstalledSkills,
-                        skillManager = skillManager,
-                        workspaceRepository = workspaceRepository,
-                        workspaceId = assistant.workspaceId?.toString(),
-                    )
-                )
-            }
-
-            val filteredMcpTools = if (mcpStrategy == McpErrorStrategy.SOFT) {
-                allMcpTools
-                    .filter { (_, serverName, _) ->
-                        serverName.isNotEmpty() && serverName.all {
-                            it in 'a'..'z' || it in 'A'..'Z' || it in '0'..'9'
-                        }
-                    }
-                    .filter { (serverId, _, _) ->
-                        // 按子代理配置的 MCP 服务器过滤；空集 = 不限制（继承父代理的场景）
-                        assistant.mcpServers.isEmpty() || serverId in assistant.mcpServers
-                    }
-            } else {
-                allMcpTools
-            }
-
-            filteredMcpTools.forEach { (serverId, serverName, tool) ->
-                add(
-                    Tool(
-                        name = "mcp__${serverName}__${tool.name}",
-                        description = tool.description ?: "",
-                        parameters = { tool.inputSchema },
-                        needsApproval = { tool.needsApproval },
-                        execute = {
-                            mcpManager.callTool(serverId, tool.name, it.jsonObject)
-                        },
-                    )
-                )
-            }
-        }
-
-        return CommonToolsResult.Ok(tools)
-    }
-
-    /**
-     * 清理 [assistant] 的 [Assistant.enabledSkills] 中已不存在的技能名（幽灵技能）。
-     *
-     * 与 quickMessageIds / modeInjectionIds / lorebookIds / mcpServers 不同，
-     * enabledSkills 在迁移阶段没有被过滤（因为 SkillManager 在 app 层，
-     * PreferencesStore 无法访问磁盘上的技能列表）。此方法在每次构建工具前
-     * 检查并异步回写清理后的值，确保持久化数据与磁盘一致。
-     *
-     * @return 清理后的 enabledSkills（如果无变化则返回原值）
-     */
-    private fun cleanStaleEnabledSkills(
-        assistant: Assistant,
-        installedSkillNames: Set<String>,
-    ): Set<String> {
-        if (assistant.enabledSkills.isEmpty()) return assistant.enabledSkills
-        val cleaned = assistant.enabledSkills.filter { it in installedSkillNames }.toSet()
-        if (cleaned.size == assistant.enabledSkills.size) return assistant.enabledSkills
-        // 异步回写清理后的值
-        appScope.launch {
-            settingsStore.updateAssistantSkills(assistant.id) { cleaned }
-        }
-        Logging.log(TAG, "cleanStaleEnabledSkills: removed ${assistant.enabledSkills.size - cleaned.size} ghost skill(s) from assistant ${assistant.id}: ${assistant.enabledSkills - cleaned}")
-        return cleaned
-    }
-
-    /**
-     * 自动将磁盘上新安装的技能加入 [Assistant.enabledSkills]。
-     *
-     * 与 [cleanStaleEnabledSkills] 对称：后者清理已删除的幽灵技能，
-     * 本方法发现已安装但未启用的技能并异步回写，使新技能在下一轮消息即可用，
-     * 无需用户手动到 UI 中开启。这解决了通过 workspace_shell 直接写入
-     * /skills/ 目录的技能无法被发现的问题——autoEnableSkill() 仅在
-     * UI 层导入时触发，文件系统直写不走那条路径。
-     *
-     * @param enabledSkills 当前已启用的技能名集合（已清理幽灵）
-     * @param installedSkillNames 磁盘上实际安装的技能名集合
-     */
-    private fun autoEnableNewSkills(
-        assistant: Assistant,
-        enabledSkills: Set<String>,
-        installedSkillNames: Set<String>,
-    ) {
-        val newSkills = installedSkillNames - enabledSkills
-        if (newSkills.isEmpty()) return
-        appScope.launch {
-            settingsStore.updateAssistantSkills(assistant.id) { it + newSkills }
-        }
-        Logging.log(TAG, "autoEnableNewSkills: enabled ${newSkills.size} new skill(s) for assistant ${assistant.id}: $newSkills")
-    }
-
-    private suspend fun createWorkspaceToolsIfReady(
-        workspaceId: String?,
-        cwd: String? = null,
-        readOnly: Boolean = false,
-    ): List<Tool> {
-        if (workspaceId.isNullOrBlank()) return emptyList()
-        val workspace = workspaceRepository.getById(workspaceId) ?: return emptyList()
-        if (workspace.shellStatus != WorkspaceShellStatus.READY.name) {
-            Log.d(
-                TAG,
-                "createWorkspaceToolsIfReady: skip workspace tools, workspace=$workspaceId, status=${workspace.shellStatus}"
-            )
-            return emptyList()
-        }
-        return if (readOnly) {
-            createWorkspaceReadOnlyTools(workspaceId, workspaceRepository, cwd)
-        } else {
-            createWorkspaceTools(workspaceId, workspaceRepository, cwd)
         }
     }
 
@@ -1018,16 +815,16 @@ class ChatService(
     /**
      * 子代理的基础工具集（搜索 / 本地 / workspace / skills / mcp）。
      *
-     * 委托给 [buildCommonTools]，使用 [McpErrorStrategy.SOFT]：MCP 名非法项
+     * 委托给 [ToolAssembler.buildCommonTools]，使用 [ToolAssembler.McpErrorStrategy.SOFT]：MCP 名非法项
      * 做软过滤（子代理不抛错、不打断），并按 [Assistant.mcpServers] 过滤。
      */
     private suspend fun buildSubagentBaseTools(
         assistant: Assistant,
         settings: Settings,
         workspaceCwd: String?,
-    ): List<Tool> = when (val result = buildCommonTools(assistant, settings, workspaceCwd, McpErrorStrategy.SOFT)) {
-        is CommonToolsResult.Ok -> result.tools
-        is CommonToolsResult.McpError -> emptyList() // SOFT 策略不会返回 Error
+    ): List<Tool> = when (val result = toolAssembler.buildCommonTools(assistant, settings, workspaceCwd, ToolAssembler.McpErrorStrategy.SOFT)) {
+        is ToolAssembler.CommonToolsResult.Ok -> result.tools
+        is ToolAssembler.CommonToolsResult.McpError -> emptyList() // SOFT 策略不会返回 Error
     }
 
     // ---- 检查无效消息 ----
@@ -1461,118 +1258,6 @@ class ChatService(
         )
 
         saveConversation(conversationId, newConversation)
-    }
-
-    // ---- 通知 ----
-
-    private fun sendGenerationDoneNotification(conversationId: Uuid, senderName: String) {
-        // 先取消 Live Update 通知
-        cancelLiveUpdateNotification(conversationId)
-
-        val conversation = getConversationFlow(conversationId).value
-        context.sendNotification(
-            channelId = CHAT_COMPLETED_NOTIFICATION_CHANNEL_ID,
-            notificationId = 1
-        ) {
-            title = senderName
-            content = conversation.currentMessages.lastOrNull()?.toText()?.take(50)?.trim() ?: ""
-            autoCancel = true
-            useDefaults = true
-            category = NotificationCompat.CATEGORY_MESSAGE
-            contentIntent = getPendingIntent(context, conversationId)
-        }
-    }
-
-    private fun getLiveUpdateNotificationId(conversationId: Uuid): Int {
-        return conversationId.hashCode() + 10000
-    }
-
-    private fun sendLiveUpdateNotification(
-        conversationId: Uuid,
-        messages: List<UIMessage>,
-        senderName: String
-    ) {
-        val lastMessage = messages.lastOrNull() ?: return
-        val parts = lastMessage.parts
-
-        // 确定当前状态
-        val (chipText, statusText, contentText) = determineNotificationContent(parts)
-
-        context.sendNotification(
-            channelId = CHAT_LIVE_UPDATE_NOTIFICATION_CHANNEL_ID,
-            notificationId = getLiveUpdateNotificationId(conversationId)
-        ) {
-            title = senderName
-            content = contentText
-            subText = statusText
-            ongoing = true
-            onlyAlertOnce = true
-            category = NotificationCompat.CATEGORY_PROGRESS
-            useBigTextStyle = true
-            contentIntent = getPendingIntent(context, conversationId)
-            requestPromotedOngoing = true
-            shortCriticalText = chipText
-        }
-    }
-
-    private fun determineNotificationContent(parts: List<UIMessagePart>): Triple<String, String, String> {
-        // 检查最近的 part 来确定状态
-        val lastReasoning = parts.filterIsInstance<UIMessagePart.Reasoning>().lastOrNull()
-        val lastTool = parts.filterIsInstance<UIMessagePart.Tool>().lastOrNull()
-        val lastText = parts.filterIsInstance<UIMessagePart.Text>().lastOrNull()
-
-        return when {
-            // 正在执行工具
-            lastTool != null && !lastTool.isExecuted -> {
-                val toolName = lastTool.toolName.substringAfterLast("__")
-                Triple(
-                    context.getString(R.string.notification_live_update_chip_tool),
-                    context.getString(R.string.notification_live_update_tool, toolName),
-                    lastTool.input.take(100)
-                )
-            }
-            // 正在思考（Reasoning 未结束）
-            lastReasoning != null && lastReasoning.finishedAt == null -> {
-                Triple(
-                    context.getString(R.string.notification_live_update_chip_thinking),
-                    context.getString(R.string.notification_live_update_thinking),
-                    lastReasoning.reasoning.takeLast(200)
-                )
-            }
-            // 正在写回复
-            lastText != null -> {
-                Triple(
-                    context.getString(R.string.notification_live_update_chip_writing),
-                    context.getString(R.string.notification_live_update_writing),
-                    lastText.text.takeLast(200)
-                )
-            }
-            // 默认状态
-            else -> {
-                Triple(
-                    context.getString(R.string.notification_live_update_chip_writing),
-                    context.getString(R.string.notification_live_update_title),
-                    ""
-                )
-            }
-        }
-    }
-
-    private fun cancelLiveUpdateNotification(conversationId: Uuid) {
-        context.cancelNotification(getLiveUpdateNotificationId(conversationId))
-    }
-
-    private fun getPendingIntent(context: Context, conversationId: Uuid): PendingIntent {
-        val intent = Intent(context, RouteActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("conversationId", conversationId.toString())
-        }
-        return PendingIntent.getActivity(
-            context,
-            conversationId.hashCode(),
-            intent,
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
-        )
     }
 
     // ---- 对话状态更新 ----

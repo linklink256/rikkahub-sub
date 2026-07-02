@@ -10,7 +10,9 @@ import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.ai.subagent.SubagentHost
 import me.rerere.rikkahub.data.ai.tools.LocalTools
 import me.rerere.rikkahub.data.event.AppEventBus
+import me.rerere.rikkahub.service.ChatNotifier
 import me.rerere.rikkahub.service.ChatService
+import me.rerere.rikkahub.service.ToolAssembler
 import me.rerere.rikkahub.utils.EmojiData
 import me.rerere.rikkahub.utils.EmojiUtils
 import me.rerere.rikkahub.utils.JsonInstant
@@ -70,6 +72,24 @@ val appModule = module {
         SubagentHost(get())
     }
 
+    // ---- ChatService 解耦组件 ----
+
+    single {
+        ChatNotifier(get())
+    }
+
+    single {
+        ToolAssembler(
+            appScope = get(),
+            settingsStore = get(),
+            mcpManager = get(),
+            localTools = get(),
+            conversationRepo = get(),
+            skillManager = get(),
+            workspaceRepository = get(),
+        )
+    }
+
     single {
         ChatService(
             context = get(),
@@ -86,7 +106,9 @@ val appModule = module {
             skillManager = get(),
             workspaceRepository = get(),
             subagentHost = get(),
-            json = get()
+            json = get(),
+            chatNotifier = get(),
+            toolAssembler = get(),
         )
     }
 }
