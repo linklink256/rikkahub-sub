@@ -2,6 +2,7 @@ package me.rerere.rikkahub.service
 
 import android.util.Log
 import kotlinx.coroutines.launch
+import kotlinx.serialization.json.jsonObject
 import me.rerere.ai.core.Tool
 import me.rerere.rikkahub.AppScope
 import me.rerere.rikkahub.data.ai.mcp.McpManager
