@@ -485,8 +485,3 @@ private fun ProviderConfigureGoogle(
         )
     }
 }
-(stringResource(R.string.setting_provider_page_project_id)) },
-            modifier = Modifier.fillMaxWidth(),
-        )
-    }
-}
