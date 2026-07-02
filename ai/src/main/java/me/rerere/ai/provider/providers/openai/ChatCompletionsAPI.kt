@@ -389,8 +389,24 @@ class ChatCompletionsAPI(
                     }
 
                     "opencode.ai" -> {
-                        if (level != ReasoningLevel.AUTO) {
-                            put("reasoning_effort", level.effort)
+                        // opencode 是中转聚合平台，转发 deepseek / claude / gpt 等。不同模型关闭思考的方式不同：
+                        // - DeepSeek V4：reasoning_effort 只控制强度，不能关闭思考；关闭思考必须用
+                        //   thinking:{type:"disabled"}。且 opencode 不允许同时传 thinking 和 reasoning_effort
+                        //   （会 400 "cannot specify both 'thinking' and 'reasoning_effort'"），故二选一。
+                        // - 其他模型：沿用 reasoning_effort。
+                        val modelId = params.model.modelId.lowercase()
+                        if ("deepseek" in modelId) {
+                            when (level) {
+                                ReasoningLevel.OFF -> put("thinking", buildThinkingConfig(level)) // {type: disabled} —— 真正关思考
+                                ReasoningLevel.AUTO -> { /* 不传，DeepSeek V4 默认思考开启 */ }
+                                ReasoningLevel.XHIGH -> put("reasoning_effort", "max") // DeepSeek 最高档 = max
+                                else -> put("reasoning_effort", level.effort) // low/medium/high
+                            }
+                        } else {
+                            // 非 deepseek 模型：保持原逻辑
+                            if (level != ReasoningLevel.AUTO) {
+                                put("reasoning_effort", level.effort)
+                            }
                         }
                     }
 
