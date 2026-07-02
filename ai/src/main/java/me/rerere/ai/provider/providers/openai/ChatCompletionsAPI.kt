@@ -388,33 +388,19 @@ class ChatCompletionsAPI(
                         }
                     }
 
-                    "opencode.ai" -> {
-                        // opencode 是中转聚合平台，转发 deepseek / claude / gpt 等。不同模型关闭思考的方式不同：
-                        // - DeepSeek V4：reasoning_effort 只控制强度，不能关闭思考；关闭思考必须用
-                        //   thinking:{type:"disabled"}。且 opencode 不允许同时传 thinking 和 reasoning_effort
-                        //   （会 400 "cannot specify both 'thinking' and 'reasoning_effort'"），故二选一。
-                        // - 其他模型：沿用 reasoning_effort。
-                        val modelId = params.model.modelId.lowercase()
-                        if ("deepseek" in modelId) {
-                            when (level) {
-                                ReasoningLevel.OFF -> put("thinking", buildThinkingConfig(level)) // {type: disabled} —— 真正关思考
-                                ReasoningLevel.AUTO -> { /* 不传，DeepSeek V4 默认思考开启 */ }
-                                ReasoningLevel.XHIGH -> put("reasoning_effort", "max") // DeepSeek 最高档 = max
-                                else -> put("reasoning_effort", level.effort) // low/medium/high
-                            }
-                        } else {
-                            // 非 deepseek 模型：保持原逻辑
-                            if (level != ReasoningLevel.AUTO) {
-                                put("reasoning_effort", level.effort)
-                            }
-                        }
-                    }
-
                     else -> {
-                        // OpenAI 官方
-                        // 文档中，completions API 只支持 "low", "medium", "high"
-                        if (level != ReasoningLevel.AUTO) {
+                        // 兜底分支：OpenAI 官方 + opencode 等所有未单独列出的网关。
+                        // 参考 LastChat 的实现：OFF 时不发 thinking:{type:disabled}（那是 DeepSeek
+                        // 直连专属字段，opencode 等网关不透传/会报错），而是发 chat_template_kwargs.
+                        // enable_thinking=false —— 这是 Jinja 模板层参数，vLLM/SGLang/NVIDIA NIM 等
+                        // 后端推理框架在 chat template 渲染时识别它来关闭思考，opencode 网关会原样透传。
+                        // 开启时（非 AUTO/OFF）发 reasoning_effort 控制强度。
+                        if (level != ReasoningLevel.AUTO && level != ReasoningLevel.OFF) {
                             put("reasoning_effort", if (level.effort == "none") "low" else level.effort)
+                        } else if (level == ReasoningLevel.OFF) {
+                            put("chat_template_kwargs", buildJsonObject {
+                                put("enable_thinking", false)
+                            })
                         }
                     }
                 }
