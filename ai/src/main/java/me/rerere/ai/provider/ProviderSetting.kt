@@ -33,6 +33,8 @@ sealed class ProviderSetting {
     abstract val builtIn: Boolean
     abstract val description: @Composable() () -> Unit
     abstract val shortDescription: @Composable() () -> Unit
+    abstract val apiKey: String
+    abstract val baseUrl: String
 
     abstract fun addModel(model: Model): ProviderSetting
     abstract fun editModel(model: Model): ProviderSetting
@@ -50,8 +52,8 @@ sealed class ProviderSetting {
         @Transient override val builtIn: Boolean = false,
         @Transient override val description: @Composable (() -> Unit) = {},
         @Transient override val shortDescription: @Composable (() -> Unit) = {},
-        var apiKey: String = "",
-        var baseUrl: String = "https://api.openai.com/v1",
+        override var apiKey: String = "",
+        override var baseUrl: String = "https://api.openai.com/v1",
         var chatCompletionsPath: String = "/chat/completions",
         var useResponseApi: Boolean = false,
         var includeHistoryReasoning: Boolean = true,
@@ -90,8 +92,8 @@ sealed class ProviderSetting {
         @Transient override val builtIn: Boolean = false,
         @Transient override val description: @Composable (() -> Unit) = {},
         @Transient override val shortDescription: @Composable (() -> Unit) = {},
-        var apiKey: String = "",
-        var baseUrl: String = "https://generativelanguage.googleapis.com/v1beta",
+        override var apiKey: String = "",
+        override var baseUrl: String = "https://generativelanguage.googleapis.com/v1beta",
         var vertexAI: Boolean = false,
         var useServiceAccount: Boolean = false,
         var privateKey: String = "", // only for vertex AI service account
@@ -133,8 +135,8 @@ sealed class ProviderSetting {
         @Transient override val builtIn: Boolean = false,
         @Transient override val description: @Composable (() -> Unit) = {},
         @Transient override val shortDescription: @Composable (() -> Unit) = {},
-        var apiKey: String = "",
-        var baseUrl: String = "https://api.anthropic.com/v1",
+        override var apiKey: String = "",
+        override var baseUrl: String = "https://api.anthropic.com/v1",
         var promptCaching: Boolean = false,
         var promptCacheTtl: ClaudePromptCacheTtl = ClaudePromptCacheTtl.FIVE_MINUTES,
     ) : ProviderSetting() {

@@ -71,28 +71,31 @@ interface SearchService<T : SearchServiceOptions> {
     ): Result<ScrapedResult> = Result.failure(UnsupportedOperationException("Scrape not supported"))
 
     companion object {
+        private val SERVICE_REGISTRY: Map<KClass<out SearchServiceOptions>, SearchService<*>> = linkedMapOf(
+            SearchServiceOptions.BingLocalOptions::class to BingSearchService,
+            SearchServiceOptions.RikkaHubOptions::class to RikkaHubSearchService,
+            SearchServiceOptions.ZhipuOptions::class to ZhipuSearchService,
+            SearchServiceOptions.TavilyOptions::class to TavilySearchService,
+            SearchServiceOptions.ExaOptions::class to ExaSearchService,
+            SearchServiceOptions.SearXNGOptions::class to SearXNGService,
+            SearchServiceOptions.LinkUpOptions::class to LinkUpService,
+            SearchServiceOptions.BraveOptions::class to BraveSearchService,
+            SearchServiceOptions.MetasoOptions::class to MetasoSearchService,
+            SearchServiceOptions.OllamaOptions::class to OllamaSearchService,
+            SearchServiceOptions.PerplexityOptions::class to PerplexitySearchService,
+            SearchServiceOptions.FirecrawlOptions::class to FirecrawlSearchService,
+            SearchServiceOptions.JinaOptions::class to JinaSearchService,
+            SearchServiceOptions.BochaOptions::class to BochaSearchService,
+            SearchServiceOptions.GrokOptions::class to GrokSearchService,
+            SearchServiceOptions.TinyfishOptions::class to TinyfishSearchService,
+            SearchServiceOptions.SerperOptions::class to SerperSearchService,
+            SearchServiceOptions.CustomJsOptions::class to CustomJsSearchService,
+        )
+
         @Suppress("UNCHECKED_CAST")
         fun <T : SearchServiceOptions> getService(options: T): SearchService<T> {
-            return when (options) {
-                is SearchServiceOptions.TavilyOptions -> TavilySearchService
-                is SearchServiceOptions.ExaOptions -> ExaSearchService
-                is SearchServiceOptions.ZhipuOptions -> ZhipuSearchService
-                is SearchServiceOptions.BingLocalOptions -> BingSearchService
-                is SearchServiceOptions.SearXNGOptions -> SearXNGService
-                is SearchServiceOptions.LinkUpOptions -> LinkUpService
-                is SearchServiceOptions.BraveOptions -> BraveSearchService
-                is SearchServiceOptions.MetasoOptions -> MetasoSearchService
-                is SearchServiceOptions.OllamaOptions -> OllamaSearchService
-                is SearchServiceOptions.PerplexityOptions -> PerplexitySearchService
-                is SearchServiceOptions.FirecrawlOptions -> FirecrawlSearchService
-                is SearchServiceOptions.JinaOptions -> JinaSearchService
-                is SearchServiceOptions.BochaOptions -> BochaSearchService
-                is SearchServiceOptions.RikkaHubOptions -> RikkaHubSearchService
-                is SearchServiceOptions.GrokOptions -> GrokSearchService
-                is SearchServiceOptions.TinyfishOptions -> TinyfishSearchService
-                is SearchServiceOptions.SerperOptions -> SerperSearchService
-                is SearchServiceOptions.CustomJsOptions -> CustomJsSearchService
-            } as SearchService<T>
+            return (SERVICE_REGISTRY[options::class]
+                ?: error("Unknown SearchServiceOptions type: ${options::class}")) as SearchService<T>
         }
 
         @Volatile

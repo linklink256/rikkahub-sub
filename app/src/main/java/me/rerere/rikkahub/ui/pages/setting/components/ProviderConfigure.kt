@@ -72,16 +72,8 @@ fun ProviderConfigure(
 fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSetting {
     if (this::class == type) return this
 
-    val apiKey = when (this) {
-        is ProviderSetting.OpenAI -> this.apiKey
-        is ProviderSetting.Google -> this.apiKey
-        is ProviderSetting.Claude -> this.apiKey
-    }
-    val sourceBaseUrl = when (this) {
-        is ProviderSetting.OpenAI -> this.baseUrl
-        is ProviderSetting.Google -> this.baseUrl
-        is ProviderSetting.Claude -> this.baseUrl
-    }
+    val apiKey = this.apiKey
+    val sourceBaseUrl = this.baseUrl
     val targetDefaultBaseUrl = when (type) {
         ProviderSetting.OpenAI::class -> ProviderSetting.OpenAI().baseUrl
         ProviderSetting.Google::class -> ProviderSetting.Google().baseUrl
@@ -115,12 +107,8 @@ fun ProviderSetting.convertTo(type: KClass<out ProviderSetting>): ProviderSettin
 
 internal fun ProviderSetting.defaultBaseUrlForReset(): String {
     val defaultProvider = DEFAULT_PROVIDERS.find { it.id == id }
-    if (defaultProvider != null) {
-        when (this) {
-            is ProviderSetting.OpenAI -> if (defaultProvider is ProviderSetting.OpenAI) return defaultProvider.baseUrl
-            is ProviderSetting.Google -> if (defaultProvider is ProviderSetting.Google) return defaultProvider.baseUrl
-            is ProviderSetting.Claude -> if (defaultProvider is ProviderSetting.Claude) return defaultProvider.baseUrl
-        }
+    if (defaultProvider != null && defaultProvider::class == this::class) {
+        return defaultProvider.baseUrl
     }
     return when (this) {
         is ProviderSetting.OpenAI -> ProviderSetting.OpenAI().baseUrl
@@ -139,12 +127,7 @@ internal fun ProviderSetting.resetBaseUrlToDefault(): ProviderSetting {
 }
 
 internal fun ProviderSetting.isUsingDefaultBaseUrl(): Boolean {
-    val baseUrl = when (this) {
-        is ProviderSetting.OpenAI -> this.baseUrl
-        is ProviderSetting.Google -> this.baseUrl
-        is ProviderSetting.Claude -> this.baseUrl
-    }
-    return baseUrl == defaultBaseUrlForReset()
+    return this.baseUrl == defaultBaseUrlForReset()
 }
 
 private fun String.convertToTargetBaseUrl(targetDefaultBaseUrl: String): String {
@@ -498,6 +481,11 @@ private fun ProviderConfigureGoogle(
             value = provider.projectId,
             onValueChange = { onEdit(provider.copy(projectId = it.trim())) },
             label = { Text(stringResource(R.string.setting_provider_page_project_id)) },
+            modifier = Modifier.fillMaxWidth(),
+        )
+    }
+}
+(stringResource(R.string.setting_provider_page_project_id)) },
             modifier = Modifier.fillMaxWidth(),
         )
     }
